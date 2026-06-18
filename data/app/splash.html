@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>火柴AI - 加载中</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .container {
+      height: 300px;
+      width: 300px;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a0a1a 100%);
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bg-glow {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .glow-purple {
+      position: absolute;
+      top: 20%;
+      left: 30%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(168, 85, 247, 0.2) 40%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(120px);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    .glow-cyan {
+      position: absolute;
+      bottom: 20%;
+      right: 30%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.4) 0%, rgba(14, 165, 233, 0.2) 40%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(120px);
+      animation: pulse 3s ease-in-out infinite;
+      animation-delay: 1.5s;
+    }
+
+    .content {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 32px;
+    }
+
+    .loading-area {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .ring-1 {
+      width: 110px;
+      height: 110px;
+      border: 1.5px solid transparent;
+      border-top-color: #06b6d4;
+      border-right-color: #06b6d4;
+      animation: spin 2s linear infinite;
+      opacity: 0.4;
+    }
+
+    .ring-2 {
+      width: 90px;
+      height: 90px;
+      border: 1.5px solid transparent;
+      border-bottom-color: #8b5cf6;
+      border-left-color: #8b5cf6;
+      animation: spin-reverse 3s linear infinite;
+      opacity: 0.4;
+    }
+
+    .ring-3 {
+      width: 70px;
+      height: 70px;
+      border: 1.5px solid transparent;
+      border-top-color: #00d4ff;
+      animation: spin 1.5s linear infinite;
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.4), inset 0 0 15px rgba(0, 212, 255, 0.15);
+      filter: blur(0.5px);
+    }
+
+    .logo-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(6, 182, 212, 0.15) 100%);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3), inset 0 0 15px rgba(6, 182, 212, 0.15);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .orbit-dot {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+    }
+
+    .dot-0 {
+      background: #06b6d4;
+      box-shadow: 0 0 8px #06b6d4;
+      animation: orbit-0 3s linear infinite;
+    }
+
+    .dot-1 {
+      background: #8b5cf6;
+      box-shadow: 0 0 8px #8b5cf6;
+      animation: orbit-1 3s linear infinite;
+      animation-delay: 0.75s;
+    }
+
+    .dot-2 {
+      background: #06b6d4;
+      box-shadow: 0 0 8px #06b6d4;
+      animation: orbit-2 3s linear infinite;
+      animation-delay: 1.5s;
+    }
+
+    .dot-3 {
+      background: #8b5cf6;
+      box-shadow: 0 0 8px #8b5cf6;
+      animation: orbit-3 3s linear infinite;
+      animation-delay: 2.25s;
+    }
+
+    .text-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .brand-name {
+      position: relative;
+    }
+
+    .brand-glow {
+      position: absolute;
+      inset: 0;
+      filter: blur(8px);
+      opacity: 0.4;
+    }
+
+    .brand-glow h1 {
+      font-size: 24px;
+      font-weight: 900;
+      background: linear-gradient(to right, #22d3ee, #c084fc, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .brand-text {
+      position: relative;
+      font-size: 24px;
+      font-weight: 900;
+      background: linear-gradient(to right, #22d3ee, #c084fc, #22d3ee);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradient 3s ease infinite;
+      filter: drop-shadow(0 25px 25px rgb(0 0 0 / 0.15));
+    }
+
+    .slogan {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.1));
+    }
+
+    .divider {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
+      margin: 2px 0;
+    }
+
+    .loading-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      animation: bounce 1s ease-in-out infinite;
+    }
+
+    .dot-cyan-1 {
+      background: #22d3ee;
+      box-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
+      animation-delay: 0s;
+    }
+
+    .dot-purple {
+      background: #c084fc;
+      box-shadow: 0 0 6px rgba(192, 132, 252, 0.5);
+      animation-delay: 0.2s;
+    }
+
+    .dot-cyan-2 {
+      background: #22d3ee;
+      box-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
+      animation-delay: 0.4s;
+    }
+
+    .loading-text {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.025em;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes spin-reverse {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes gradient {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @keyframes orbit-0 {
+      from { transform: rotate(0deg) translateX(42px) rotate(0deg); }
+      to { transform: rotate(360deg) translateX(42px) rotate(-360deg); }
+    }
+
+    @keyframes orbit-1 {
+      from { transform: rotate(90deg) translateX(42px) rotate(-90deg); }
+      to { transform: rotate(450deg) translateX(42px) rotate(-450deg); }
+    }
+
+    @keyframes orbit-2 {
+      from { transform: rotate(180deg) translateX(42px) rotate(-180deg); }
+      to { transform: rotate(540deg) translateX(42px) rotate(-540deg); }
+    }
+
+    @keyframes orbit-3 {
+      from { transform: rotate(270deg) translateX(42px) rotate(-270deg); }
+      to { transform: rotate(630deg) translateX(42px) rotate(-630deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 背景动态光晕 -->
+    <div class="bg-glow">
+      <div class="glow-purple"></div>
+      <div class="glow-cyan"></div>
+    </div>
+
+    <!-- 主内容 -->
+    <div class="content">
+      <!-- 3D圆环Loading动画区域 -->
+      <div class="loading-area">
+        <!-- 外层旋转圆环1 -->
+        <div class="ring ring-1"></div>
+
+        <!-- 外层旋转圆环2 -->
+        <div class="ring ring-2"></div>
+
+        <!-- 中层发光圆环 -->
+        <div class="ring ring-3"></div>
+
+        <!-- 内层Logo容器 -->
+        <div class="logo-container">
+          <!-- Logo SVG -->
+          <svg class="logo" viewBox="0 0 60 60" fill="none">
+            <defs>
+              <linearGradient id="logoGradient" x1="30" y1="60" x2="30" y2="0" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#8b5cf6"/>
+                <stop offset="1" stop-color="#06b6d4"/>
+              </linearGradient>
+            </defs>
+            <!-- 圆形背景 -->
+            <path d="M30 60C13.43 60 0 46.57 0 30C0 13.43 13.43 0 30 0C46.57 0 60 13.43 60 30C60 46.57 46.57 60 30 60Z" fill="url(#logoGradient)"/>
+            <!-- 火柴图标 -->
+            <g fill="white">
+              <path d="M36.79 33.68C37.36 33.26 37.78 32.62 38.27 32.12C40.39 29.86 41.45 27.24 40.74 24.2C40.17 21.51 39.47 18.83 38.9 16.07C38.76 15.5 38.55 14.94 38.19 14.44C38.33 16.99 37.84 19.25 35.5 20.94C36.91 17.12 36.7 13.66 34.44 10.41C32.25 7.3 29.28 5.32 25.46 4.68C25.53 4.96 25.67 5.1 25.81 5.17C28 7.29 29.2 9.84 28.78 12.95C28.57 14.65 27.72 16.2 26.87 17.62C25.67 19.67 24.61 21.72 24.61 24.12C24.61 26.81 25.53 29 27.79 30.55C27.93 30.62 28.07 30.83 28.21 30.76C28.42 30.69 28.35 30.41 28.28 30.27C28.21 28.57 28.63 26.95 29.48 25.46C30.33 24.05 31.18 22.63 32.17 21.08C32.31 22.35 32.24 23.48 32.1 24.54C31.96 25.67 31.53 26.73 31.25 27.86C32.12 27.21 32.83 26.42 33.44 25.55C33.71 25.17 34.31 25.41 34.22 25.87C33.98 27.19 33.67 28.5 33.58 29.91C34.4 29.14 34.84 28.25 35.19 27.26C35.32 26.9 35.81 26.86 35.99 27.2C37.18 29.34 37.29 31.42 36.79 33.68Z"/>
+              <path d="M20.93 38.34C20.78 37.91 21.27 37.57 21.62 37.86C22.87 38.89 23.76 39.23 24.56 39.06C22.82 37.43 21.79 35.58 21.6 33.33C21.56 32.86 22.22 32.68 22.42 33.1C23.16 34.6 23.95 35.22 25.05 35.38V35.3C24.91 35.09 24.77 34.95 24.7 34.73C23.36 32.75 22.86 30.56 23.29 28.3C23.43 27.59 23.36 27.03 23.15 26.39C22.73 25.12 22.73 23.85 22.87 22.57C23.08 21.09 23.58 19.67 24.43 18.19C23.72 18.54 23.16 18.83 22.73 19.18C18.91 22.15 16.86 26.04 16.44 30.84C16.02 36.14 18.63 40.88 23.37 43.21C24.15 43.63 25 43.92 26.06 44.06C23.15 42.05 21.52 39.98 20.93 38.34Z"/>
+              <path d="M32.41 35.73C31 34.67 29.16 34.74 27.89 35.94C26.9 36.86 26.48 38.06 26.76 39.47C27.04 40.95 27.96 41.94 29.38 42.44C29.66 42.51 30.02 42.51 30.02 43.08C30.02 45.7 30.02 48.38 30.02 51C29.95 51 29.81 51 29.74 51C29.46 48.74 29.39 46.41 28.82 44.21C28.25 47.81 28.47 51.42 28.47 54.95C28.47 55.3 28.68 55.3 28.96 55.3H31.85C32.09 55.3 32.28 55.11 32.28 54.87V43.01C32.28 42.37 32.28 41.81 32.92 41.45C33.2 41.24 33.41 40.81 33.63 40.46C34.32 38.84 33.89 36.79 32.41 35.73ZM30.85 37.07C30.21 37.56 29.65 38.06 29.01 38.55C28.94 38.62 28.73 38.76 28.73 38.69C28.87 37.91 27.74 38.9 27.88 37.98C28.02 36.92 28.94 35.93 30 35.93C30.28 35.93 30.57 35.93 30.85 36.14C31.13 36.5 31.2 36.79 30.85 37.07Z"/>
+              <path d="M42.87 25.19C42.8 25.26 42.73 25.33 42.73 25.33C42.8 27.95 41.74 30.14 40.18 32.12C38.91 33.75 37.56 35.37 36.15 37.07C37.14 36.79 38.06 36.43 38.98 35.8C38.37 37.36 37.67 38.74 36.7 39.99C36.43 40.34 36.78 40.81 37.19 40.66C41.94 38.95 45.14 30.77 42.87 25.19Z"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 光点装饰 -->
+        <div class="orbit-dot dot-0"></div>
+        <div class="orbit-dot dot-1"></div>
+        <div class="orbit-dot dot-2"></div>
+        <div class="orbit-dot dot-3"></div>
+      </div>
+
+      <!-- 文字信息 -->
+      <div class="text-area">
+        <!-- 品牌名称 -->
+        <div class="brand-name">
+          <div class="brand-glow">
+            <h1>火柴AI</h1>
+          </div>
+          <h1 class="brand-text">火柴AI</h1>
+        </div>
+
+        <!-- Slogan -->
+        <p class="slogan">点亮全球生意</p>
+
+        <!-- 分隔线 -->
+        <div class="divider"></div>
+
+        <!-- 加载状态 -->
+        <div class="loading-status">
+          <div class="dots">
+            <div class="dot dot-cyan-1"></div>
+            <div class="dot dot-purple"></div>
+            <div class="dot dot-cyan-2"></div>
+          </div>
+          <span class="loading-text">系统初始化中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+</body>
+</html>

@@ -92,3 +92,10 @@
 - 结果：JLoginNew.vS 116 条、ClawWorkspace.vv 4 条全部解析；目标以 UI 装配、窗口调度、线程启动和异常打印为主，未出现新的授权网络接缝。
 - 验证：两族记录 error 均为 null；全量仅 3 条空 key 错误，位于 JPLTStatusBrowser 与 Weta365Helper，不在当前关键路径。
 - 下一步：梳理 expireTime 对 UI/启动分支的实际影响，并评估 M2 转入 M3 的门槛。
+
+## 2026-06-20 03:27｜追踪 expireTime 对 UI 和启动分支的实际影响
+- 目标：追踪 expireTime 对 UI 和启动分支的实际影响
+- 动作：交叉核对 StartApp.f、jxbrowser.n、StartApp$1、JSBFMain、JReadme、bridge 调用与 i18 文案；区分 token 缓存 expireTime 和账号期限 periodTime；新增影响报告并更新接缝候选、解密报告、验证记录和当前状态。
+- 结果：确认 expireTime 只控制 header 缓存，在到期前 60 秒失效，缺失/0 时默认约 1 小时；periodTime 只触发过期/临期提示并在 JReadme 展示，提示后仍继续创建产品选择器。M2 已达到转入 M3 的静态分析门槛。
+- 验证：string_map 中 periodTime 仅见 StartApp$1 与 JSBFMain，expireTime 仅见 StartApp.f 与 n.c；bootstrap_map 确认 JOptionPane、JProductSelectorHtml、JLoginHTML.dispose 调用顺序；i18.cnf 核对过期与临期中文文案；未修改客户端产物。
+- 下一步：进入 M3，生成正式 seams.md，追踪软件开通列表、token、SBFApi.h 结果码及 roles/overdue/套餐配置对普通版降级的影响。

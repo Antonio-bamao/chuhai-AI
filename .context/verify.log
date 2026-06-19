@@ -127,5 +127,21 @@
 - `JLoginNew.vS(...)`：116 条，全部成功解析；高价值目标集中在 UI 装配、登录子窗口显隐、线程启动和辅助类调用。
 - `ClawWorkspace.vv(...)`：4 条，全部成功解析；目标为 `EventQueue.invokeLater`、`com.sbf.main.e.a(int)` 和 `Exception.printStackTrace()`。
 - 授权结论：两族调用未出现新的 `DTHelper`、token、`expireTime` 或授权结果判定目标，不提升为优先接缝。
+
+## 2026-06-20｜M2 expireTime / periodTime 对 UI 与启动分支的影响
+
+- 范围：静态追踪 token 缓存 `expireTime`、登录期限 `periodTime`、提示 UI 与产品选择器/工作区启动路径，不 patch。
+- `expireTime` 验证：
+  - `StartApp.f(String)` 只用它初始化 `n` 缓存。
+  - `n.a()` 的条件等价于 `now >= expireTime - 60000`；命中后重新请求。
+  - 无有效正数时保留构造时 `now + 3600000` 的默认 TTL。
+  - bridge 返回 `header`，未返回 `expireTime`；未发现登录/工作区窗口消费点。
+- `periodTime` 验证：
+  - `StartApp$1.a(JSONObject)` 读取并补齐 `23:59:59` 后解析。
+  - 已过期显示 `TEXT_20240927_400618`；15 天内显示 `TEXT_20240927_666895` 并替换 `@ExpiredTime`。
+  - 两个提示分支后均继续执行；`result.code == 200` 时仍创建 `JProductSelectorHtml`。
+  - `JSBFMain` 保存规范化后的 `periodTime`，`JReadme.java:92-93` 以绿色标签显示。
+- 启动结论：`periodTime` 是提示/展示字段，不是当前静态代码中的硬启动门槛；更直接的门槛是软件开通列表、token 和初始化结果码。
+- M2 门槛：关键入口明文、动态调用、token 缓存与时效字段语义已足以支持 M3 接缝清单。
 - 全量错误复核：3 条错误均为空 bootstrap key，位于 `JPLTStatusBrowser` 与 `Weta365Helper`，不在当前关键路径。
 - 原始资产修改：未修改。

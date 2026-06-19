@@ -127,10 +127,17 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 - `jxbrowser.n` 在缓存写入时以 `Timer.schedule(task, 3600000, 36000000)` 启动刷新，即 1 小时后首次调用 `n.c()`，之后每 10 小时刷新一次。
 - `n.a(String,String)` 的原始字节码为单次 `new`、`dup`、写入 `c/d` 后返回；CFR 的“双重 new”输出不应作为对象归属证据。
 
+## M2 `expireTime` / `periodTime` 影响结论
+
+- token 返回中的 `expireTime` 只控制 `StartApp.f(String)` 的 `header` 缓存；在到期前 60 秒失效，缺失/0 时使用约 1 小时默认 TTL。
+- 固定的 1 小时首次、10 小时周期刷新不由 `expireTime` 决定。
+- bridge 只把 `header` 返回给前端，未把 `expireTime` 暴露给 UI；未发现它控制登录或工作区窗口分支。
+- 登录回调中的账号授权期限字段是 `periodTime`。它触发已过期/15 天内到期提示，并在 `JReadme` 中显示日期。
+- `periodTime` 提示后代码仍继续请求初始化数据并创建 `JProductSelectorHtml`；真正的本地启动门槛是软件开通列表、token 和 `SBFApi.h(...).result.code == 200`。
+- 详细证据见 `.context/expiretime-impact.md`。
+
 ## 下一步
 
-继续 M2 第二阶段：
-
-1. 梳理 `expireTime` 对 UI/启动分支的实际影响。
-2. 在隔离环境记录 token 请求的实际域名/路径。
-3. 评估 M2 验收门槛并准备转入 M3 接缝清单，不做 patch。
+1. M2 关键入口明文和 bootstrap 目标已达到可检索门槛，可转入 M3 授权接缝清单。
+2. M3 继续追踪 `roles`、`overdue`、套餐/功能配置与“普通版”降级的关系。
+3. 在隔离环境记录 token 请求的实际域名/路径和真实出网行为，不做 patch。

@@ -120,3 +120,12 @@
 - 反编译差异：CFR 显示的 `new n().c = string` 是对 `dup` 栈值的错误还原；原始字节码证明 URL 与请求体写入同一个返回实例。
 - 结论：`StartApp.f(String)` 首次响应写入缓存时即注册长期刷新任务，后续 `n.c()` 使用保存的 URL/请求体刷新 token/时效状态。
 - 原始资产修改：未修改。
+
+## 2026-06-20 03:20｜M2 JLoginNew 与 ClawWorkspace bootstrap 覆盖确认
+
+- 范围：核对现有 `bootstrap_map.json` 对 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 的覆盖与剩余错误，不 patch。
+- `JLoginNew.vS(...)`：116 条，全部成功解析；高价值目标集中在 UI 装配、登录子窗口显隐、线程启动和辅助类调用。
+- `ClawWorkspace.vv(...)`：4 条，全部成功解析；目标为 `EventQueue.invokeLater`、`com.sbf.main.e.a(int)` 和 `Exception.printStackTrace()`。
+- 授权结论：两族调用未出现新的 `DTHelper`、token、`expireTime` 或授权结果判定目标，不提升为优先接缝。
+- 全量错误复核：3 条错误均为空 bootstrap key，位于 `JPLTStatusBrowser` 与 `Weta365Helper`，不在当前关键路径。
+- 原始资产修改：未修改。

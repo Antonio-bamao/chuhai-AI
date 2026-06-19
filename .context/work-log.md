@@ -85,3 +85,10 @@
 - 结果：n$1.run 是唯一刷新调用者；缓存写入时注册 1 小时首次、10 小时周期的刷新任务；URL 与请求体 c/d 写入同一返回实例。
 - 验证：bootstrap 目标为 n$1.run -> n.c()；调度参数为 3600000/36000000；字节码仅一次 new n，并依次 putfield c、putfield d 后 areturn。
 - 下一步：继续处理 ClawWorkspace.vv、JLoginNew.vS，并梳理 expireTime 对 UI/启动分支的实际影响。
+
+## 2026-06-20 03:20｜确认 JLoginNew.vS 与 ClawWorkspace.vv 的 bootstrap 覆盖
+- 目标：确认 JLoginNew.vS 与 ClawWorkspace.vv 的 bootstrap 覆盖
+- 动作：按 bootstrap 名筛选 bootstrap_map；统计调用数量与错误；排除 Swing/AWT/String 等通用目标后复核剩余调用；读取 JLoginNew 与 ClawWorkspace 关键源码段。
+- 结果：JLoginNew.vS 116 条、ClawWorkspace.vv 4 条全部解析；目标以 UI 装配、窗口调度、线程启动和异常打印为主，未出现新的授权网络接缝。
+- 验证：两族记录 error 均为 null；全量仅 3 条空 key 错误，位于 JPLTStatusBrowser 与 Weta365Helper，不在当前关键路径。
+- 下一步：梳理 expireTime 对 UI/启动分支的实际影响，并评估 M2 转入 M3 的门槛。

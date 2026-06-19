@@ -94,6 +94,9 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 - `StartApp` 候选输出：`H:\项目\出海-AI\.artifacts\analysis\startapp_bootstrap_candidates.json`
 - 输出统计：73,600 条 bootstrap 调用记录；73,597 条成功解码；3 条保留错误原因。
 - 高价值 `StartApp` 候选：19 条，覆盖 `StartApp.f(String)`、`StartApp.i()`、`StartApp.k(String)`。
+- `JLoginNew.vS(...)`：116 条，全部成功解析，主要目标为 Swing/AWT UI 方法、语言/字体辅助、窗口显示与启动线程。
+- `ClawWorkspace.vv(...)`：4 条，全部成功解析，目标为 `EventQueue.invokeLater`、尺寸缩放辅助与 `Exception.printStackTrace`。
+- 全量 3 条解码错误位于 `JPLTStatusBrowser` 与 `Weta365Helper` 的空 key 调用，不在当前授权/登录/工作区关键路径。
 
 `StartApp.f(String)` 中已还原的关键调用目标：
 
@@ -128,6 +131,6 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 
 继续 M2 第二阶段：
 
-1. 继续解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)` 等 invokedynamic/bootstrap 形态。
-2. 梳理 `expireTime` 对 UI/启动分支的实际影响，并在隔离环境记录 token 请求的实际域名/路径。
-3. 产出更接近 M3 的 `seam-candidates.md` 草稿，但不做 patch。
+1. 梳理 `expireTime` 对 UI/启动分支的实际影响。
+2. 在隔离环境记录 token 请求的实际域名/路径。
+3. 评估 M2 验收门槛并准备转入 M3 接缝清单，不做 patch。

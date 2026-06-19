@@ -117,14 +117,15 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 ## M2 JS bridge token action 入口
 
 - `AdsCallback.getAction(String)` 与 `MiJava.getAction(String)` 的分支结构和 action 明文完全一致。
-- 两处均在 action 为 `get_current_token` 或 `getLoingIsToken` 时调用 `StartApp.f(String): String`。
+- 两处均用 `String.contains(...)` 判断参数是否包含 `get_current_token` 或 `getLoingIsToken`，命中时调用 `StartApp.f(String): String`。
 - bootstrap 描述符均为 `(Ljava/lang/String;)Ljava/lang/String;`，且 CFR 调用点把原始 `object` 直接作为唯一参数传入。
-- 当前可确认 `StartApp.f(String)` 的输入是 JS bridge action；尚不能把第 385 行最终拼接结果等同于完整远端 URL。
+- `StartApp.f(String)` 在原字符串后追加 `RT=<currentTimeMillis>`；`DTHelper.a(...)` 再追加 `rdtime=<currentTimeMillis>`，最终字符串直接传给 `Request.Builder.url(...)`。
+- 当前可确认输入是包含 token action 的 URL/参数字符串；本地资源未检索到实际域名/路径样本。
 
 ## 下一步
 
 继续 M2 第二阶段：
 
 1. 继续解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)` 等 invokedynamic/bootstrap 形态。
-2. 还原 `StartApp.f(String)` 最终请求 URL，并追踪 `com.sbf.main.jxbrowser.n.c()` 刷新路径。
+2. 追踪 `com.sbf.main.jxbrowser.n.c()` 刷新路径，并在隔离环境记录 token 请求的实际域名/路径。
 3. 产出更接近 M3 的 `seam-candidates.md` 草稿，但不做 patch。

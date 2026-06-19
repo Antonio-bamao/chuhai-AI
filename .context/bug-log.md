@@ -28,3 +28,12 @@
 - 解决方案：为 bootstrap 解码结果新增 `caller_signature`、`caller_method`、`caller_method_line` 字段；重生成候选时按签名与行段过滤。
 - 预防措施：后续所有接缝候选引用动态调用时同时看方法签名和源码行段，不只看方法名。
 - 状态：resolved
+
+## 误把 token action contains 分支描述为 equals
+- 现象：阶段文档一度写成参数等于 get_current_token 或 getLoingIsToken，进而把 StartApp.f 入参误描述为纯 action 字符串。
+- 触发条件：只核对了解密后的 action 明文和 StartApp.f 调用目标，没有同时核对同一源码行的比较函数 bootstrap 目标。
+- 影响：会误导后续 URL 语义判断，使看似无协议的 action 字符串与 OkHttp URL 要求产生矛盾。
+- 根因：混淆代码中的比较操作也由 invokedynamic 隐藏，CFR 外观不能代替 bootstrap 描述符证据。
+- 解决方案：核对 AdsCallback.java:191 与 MiJava.java:1553，确认比较目标均为 String.contains(CharSequence)；同步修正文档，并还原 RT/rdtime 拼接。
+- 预防措施：今后确认混淆分支语义时同时验证三项：明文字面量、比较函数 bootstrap 目标、被调用方法描述符。
+- 状态：resolved

@@ -22,10 +22,11 @@
 | 已解明文 | `ecode`、`ename`、`loginName`、`userName`、`roles`、`timer`、`token`、`result`、`header`、`data`、`expireTime`、`get_current_token`、`getLoingIsToken` |
 | 已还原动态调用 | `MD5Util2.c(String)`、`AESCBCHelper.a(String)`、`DTHelper.b(String,String): JSONObject`、`System.currentTimeMillis()`、`HashMap.get/containsKey/remove/put(...)`、`com.sbf.main.jxbrowser.n.a()/b()` |
 | 原逻辑观察 | 方法先用 `MD5Util2.c` 规范化入参，再查 `HashMap` 与 `n` 缓存；未命中时组装用户/角色/token JSON，经 `AESCBCHelper.a` 和 Base64 编码后传给 `DTHelper.b(String,String)`；随后解析返回 JSON 的 `result/header/data/expireTime`，并按 `expireTime` 写回 `n` 缓存。 |
-| 调用入口确认 | `AdsCallback.getAction(String)` 第 191-192 行与 `MiJava.getAction(String)` 第 1553-1554 行均在 action 等于 `get_current_token` 或 `getLoingIsToken` 时，将原始 `object` 直接传给静态 `StartApp.f(String): String`。这说明入参来源是 JS bridge action，而不是调用者预先组装好的 URL。 |
+| 调用入口确认 | `AdsCallback.getAction(String)` 第 191-192 行与 `MiJava.getAction(String)` 第 1553-1554 行均使用 `String.contains(...)` 判断参数是否包含 `get_current_token` 或 `getLoingIsToken`，命中后将原始 `object` 直接传给静态 `StartApp.f(String): String`。因此入参可以是包含 action 片段的完整 URL，而不是只有 action 名。 |
+| URL 拼接确认 | `StartApp.f(String)` 第 385 行在原始 URL 已含 `?` 时追加 `&RT=<currentTimeMillis>`，否则追加 `?RT=<currentTimeMillis>`；`DTHelper.a(...)` 第 314 行随后以同样规则追加 `rdtime=<currentTimeMillis>`，最终由 `Request.Builder.url(String)` 使用。 |
 | 补充确认 | `DTHelper.b(...)` 是通用 OkHttp 包装器，返回 `result/message/code/cookies`；`com.sbf.main.jxbrowser.n` 是带 `expireTime` 的本地状态缓存，`n.c()` 会调用 `DTHelper.b(...)` 刷新 `result/header/data/expireTime`。 |
-| 风险 | 不应在 `DTHelper` 通用网络层 patch，否则高概率误伤业务联网；`n` 缓存比 `DTHelper` 更接近授权状态。当前已确认 action 入口，但第 385 行最终 URL 拼接结果和 `getLoingIsToken` 的具体语义仍待确认。 |
-| 下一步 | 还原 `StartApp.f(String)` 第 385 行的 URL 拼接常量与参数；同时跟踪 `n.c()` 的刷新触发点。 |
+| 风险 | 不应在 `DTHelper` 通用网络层 patch，否则高概率误伤业务联网；`n` 缓存比 `DTHelper` 更接近授权状态。当前仍缺实际域名/路径样本和 `getLoingIsToken` 的具体语义。 |
+| 下一步 | 跟踪 `n.c()` 的刷新触发点，并在隔离环境抓包时记录实际 URL。 |
 | 回滚点 | 未 patch；回滚只需删除分析产物。 |
 
 ## 候选 2：`com.sbf.main.StartApp.i()`
@@ -77,6 +78,6 @@
 ## M3 前置缺口
 
 1. 需要继续还原 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 的目标类/方法/签名。
-2. `StartApp.f(String)` 的调用者与入参来源已确认；仍需还原最终请求 URL，并追踪 `com.sbf.main.jxbrowser.n.c()` 的刷新触发点。
+2. `StartApp.f(String)` 的调用者、入参来源和时间参数拼接已确认；仍需追踪 `com.sbf.main.jxbrowser.n.c()` 的刷新触发点，并在隔离环境记录实际域名/路径。
 3. 需要确认 `expireTime` 判断是服务端返回解析、缓存写入，还是 UI 展示。
 4. 需要在隔离环境中抓包验证哪些路径真的出网。

@@ -106,6 +106,7 @@
 - 输出统计：字符串记录 4,599 条，成功解码 4,599 条；授权候选 372 条；新增解码器覆盖 126 条。
 - 明文验证：`AdsCallback.getAction` 与 `MiJava.getAction` 均解出 `get_current_token`、`getLoingIsToken`。
 - bootstrap 验证：`AdsCallback.java:192` 与 `MiJava.java:1554` 均解析为静态调用 `com.sbf.main.StartApp.f(String): String`。
-- 参数流验证：两处 CFR 调用点均将 `getAction(String object)` 的原始 `object` 直接作为唯一参数传入。
-- 边界结论：`StartApp.f(String)` 的调用者与入参来源已确认；最终请求 URL 拼接结果仍待还原。
+- 参数流验证：两处 CFR 调用点均将 `getAction(String object)` 的原始 `object` 直接作为唯一参数传入；分支比较目标是 `String.contains(CharSequence)`，不是 `String.equals(Object)`。
+- URL 验证：`StartApp.f(String)` 追加 `RT` 时间参数，`DTHelper.a(...)` 再追加 `rdtime`，最终调用 `Request.Builder.url(String)`。
+- 边界结论：`StartApp.f(String)` 的调用者、入参来源和时间参数拼接已确认；实际域名/路径仍待隔离环境记录。
 - 原始资产修改：未修改。

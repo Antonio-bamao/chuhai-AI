@@ -71,3 +71,10 @@
 - 结果：字符串映射增至 4,599 条并全部解码；两套 bridge 均在 get_current_token 或 getLoingIsToken 分支将原始 action 直接传给 StartApp.f(String)。
 - 验证：python -m py_compile 退出码 0；全量解码输出 rows=4599、decoded=4599；AdsCallback 解码器 126 条、error=0；两处 bootstrap 均为 static StartApp.f(String): String。
 - 下一步：继续还原 StartApp.f(String) 第 385 行最终 URL 拼接结果，并追踪 jxbrowser.n.c() 的刷新触发点。
+
+## 2026-06-20 03:13｜还原 StartApp.f(String) 的 URL 语义与时间参数拼接
+- 目标：还原 StartApp.f(String) 的 URL 语义与时间参数拼接
+- 动作：核对 bridge 分支比较函数 bootstrap；解码 StartApp.f 第 385 行与 DTHelper.a 第 314 行常量；反查 Request.Builder.url(String) 使用点；搜索本地资源中的 token action 样本。
+- 结果：确认 bridge 使用 contains 而非 equals；原始参数可为包含 token action 的完整 URL；StartApp.f 追加 RT，DTHelper 再追加 rdtime，随后直接交给 OkHttp。
+- 验证：两套 bridge 的比较目标均为 String.contains(CharSequence)；明文常量为 ?、&RT=、?RT=、&rdtime=、?rdtime=；DTHelper.java:322 调用 Request.Builder.url(String)。
+- 下一步：追踪 jxbrowser.n.c() 的刷新触发点，并在隔离环境中记录实际 token 请求域名和路径。

@@ -8,3 +8,17 @@
 - 结果：已生成标准 .context 目录，并补齐 vision.md、design.md、master-plan.md、current-status.md、task-breakdown.md、decisions.md、risk-register.md。
 - 验证：待运行 validate_context.py 校验上下文门禁。
 - 下一步：运行上下文校验，修复任何模板残留或字段不合规问题。
+
+## 2026-06-20 02:13｜执行 M1-01 资产备份与原始启动记录
+- 目标：执行 M1-01 资产备份与原始启动记录
+- 动作：清点根目录与 data 目录资产；创建 .artifacts/backups/original-20260620-021044 备份点；生成全量 SHA256 CSV；记录关键文件元数据、哈希和静态启动线索；因隔离环境未确认，暂不实际启动客户端。
+- 结果：已产出 .context/assets-inventory.md、.context/backup-manifest.md、.context/verify.log；备份源与目标均为 772 个文件、1,706,314,191 bytes；App.dll 与 HuoChaiAI.exe 哈希抽检一致。
+- 验证：使用 Get-ChildItem 统计源/备份文件数和字节数；使用 Get-FileHash 抽检关键文件；Format-Hex 确认 App.dll 为 PK/ZIP 形态、HuoChaiAI.exe 为 MZ/PE 形态。
+- 下一步：由用户拍板先进入 M1-02 JADX 导出源码树，或先准备隔离环境执行 M1-03 原始启动验证。
+
+## 2026-06-20 02:13｜防止本地备份误入 Git
+- 目标：防止本地备份误入 Git
+- 动作：新增根目录 .gitignore，忽略 .artifacts/；保留 .context 中的人读清单，机器全量清单和备份留在本地 artifacts。
+- 结果：Git 后续不会默认显示 .artifacts/backups 和 .artifacts/manifests 中的大体积文件。
+- 验证：待运行 git status --short 与 validate_context.py 确认状态。
+- 下一步：完成最终校验并向用户汇报 M1-01 结果。

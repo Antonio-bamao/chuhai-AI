@@ -22,3 +22,10 @@
 - 结果：Git 后续不会默认显示 .artifacts/backups 和 .artifacts/manifests 中的大体积文件。
 - 验证：待运行 git status --short 与 validate_context.py 确认状态。
 - 下一步：完成最终校验并向用户汇报 M1-01 结果。
+
+## 2026-06-20 02:20｜执行 M1-02 源码树导出
+- 目标：执行 M1-02 源码树导出
+- 动作：确认 App.dll 为 Java class JAR；记录 ADR-0002，采用 CFR 替代 JADX；下载 CFR 0.152 并校验 MD5；复制备份 App.dll 为 .artifacts/working/m1-02/App.jar；使用 CFR 导出源码树；统计输出并抽样验证 StartApp、JLoginNew、ClawWorkspace。
+- 结果：已产出 .context/decompile-report.md；源码树位于 .artifacts/decompiled/cfr-app-20260620-0215，共 4,226 个 .java 文件；Manifest Main-Class 为 com.sbf.main.StartApp。
+- 验证：CFR 命令退出码 0；输出统计为 4,226 个 Java 文件；StartApp.java 含 public static void main；JLoginNew.java 与 ext/j2026/ClawWorkspace.java 已存在；validate_context.py 待最终运行。
+- 下一步：提交 M1-02 文档检查点，然后进入 M2 字符串解密分析。

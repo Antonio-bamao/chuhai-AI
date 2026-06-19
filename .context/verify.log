@@ -13,3 +13,19 @@
 - 实际启动：未执行。
 - 未执行原因：隔离/断网验证环境尚未由用户确认。为避免授权请求、失败重试或异常上报触达远端服务器，本轮不在当前联网主机直接启动客户端。
 - 下一步：确认隔离环境后执行 M1-03 原始启动验证；或先进入 M1-02 对备份后的 `App.dll` 做 JADX 导出。
+
+## 2026-06-20 02:15｜M1-02 源码树导出
+
+- 范围：M1-02 源码树导出。
+- 输入：备份副本 `H:\项目\出海-AI\.artifacts\working\m1-02\App.jar`。
+- 输入校验：与原始 `data\app\App.dll` SHA256 一致，均为 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。
+- 工具：CFR 0.152；MD5 `8A85ADA8CEC494121246805A5562B82B`。
+- 输出目录：`H:\项目\出海-AI\.artifacts\decompiled\cfr-app-20260620-0215`。
+- 输出统计：4,226 个 `.java` 文件，4,227 个总文件，59,649,060 bytes。
+- 入口验证：
+  - Manifest `Main-Class` 为 `com.sbf.main.StartApp`。
+  - 已导出 `com\sbf\main\StartApp.java`，含 `public static void main`。
+  - 已导出 `com\sbf\main\JLoginNew.java`。
+  - 已导出 `com\sbf\main\ext\j2026\ClawWorkspace.java`。
+- 工具偏离说明：计划名为 JADX，但输入实际是 Java `.class` JAR，采用 CFR 更适配；见 ADR-0002。
+- 原始资产修改：未修改。

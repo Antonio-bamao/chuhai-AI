@@ -41,3 +41,18 @@
 - 抽样验证：`StartApp.java` 第 75 行解出 `D:/aimirror/`；第 383 行附近解出 `token`；第 395 行解出 `expireTime`。
 - 限制：`StartApp.Sy(...)`、`JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 等 invokedynamic/bootstrap 形态尚未处理。
 - 原始资产修改：未修改。
+
+## 2026-06-20 02:34｜M2 第二阶段 j2026 字符串扩展
+
+- 范围：新增 `JLoginHTML$h.v(...)` 静态字符串解码器。
+- 脚本：`H:\项目\出海-AI\tools\decode_java_strings.py`。
+- 输出：重生成 `H:\项目\出海-AI\.artifacts\analysis\string_map.json` 与 `auth_string_candidates.json`。
+- 输出统计：1,094 条调用记录；1,034 条可读性评分 `>= 0.8`；`JLoginHTML$h.v(...)` 覆盖 93 条。
+- 授权候选：225 条。
+- 抽样验证：
+  - `ClawWorkspace.java` 第 29 行解出 `ClawWorkspace`。
+  - `ClawWorkspace.java` 第 30 行解出 `/html/ClawWorkspace.html`。
+  - `JLoginHTML.java` 第 39 行解出 `登录系统`。
+  - `JLoginHTML.java` 第 40 行解出 `/html/Login.html`。
+- 限制：`ClawWorkspace.vv(...)` 属于 invokedynamic/bootstrap 形态，不纳入当前静态字符串解码器。
+- 原始资产修改：未修改。

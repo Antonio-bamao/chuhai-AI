@@ -36,3 +36,10 @@
 - 结果：已产出 1,001 条字符串解码记录，其中 943 条可读性评分 >= 0.8；StartApp 中已解出 user、tenantCode、userId、token、result、header、data、expireTime 等字段；授权候选 132 条。
 - 验证：python -m py_compile 已通过；脚本执行退出码 0；抽样 StartApp 第 75 行解出 D:/aimirror/，第 383 行解出 token，第 395 行解出 expireTime；validate_context.py 待最终运行。
 - 下一步：提交 M2 第一阶段检查点，然后继续处理 JLoginHTML$h.v、ClawWorkspace.vv、JLoginNew.vS、StartApp.Sy 等动态调用/字符串形态。
+
+## 2026-06-20 02:34｜扩展 M2 j2026 静态字符串解码
+- 目标：扩展 M2 j2026 静态字符串解码
+- 动作：分析 JLoginHTML$h.v 的 key/常量；将其加入 tools/decode_java_strings.py；重生成 string_map.json 和 auth_string_candidates.json；更新字符串解密报告、验证记录和当前状态。
+- 结果：string_map 从 1,001 条增至 1,094 条；高可读记录从 943 条增至 1,034 条；授权候选从 132 条增至 225 条；j2026 路径解出 登录系统、/html/Login.html、ClawWorkspace、/html/ClawWorkspace.html。
+- 验证：python tools/decode_java_strings.py 退出码 0；python -m py_compile 退出码 0；抽样检查 JLoginHTML 与 ClawWorkspace 明文；validate_context.py 待最终运行。
+- 下一步：提交 j2026 静态字符串扩展检查点，然后继续分析 invokedynamic/bootstrap 形态。

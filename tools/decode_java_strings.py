@@ -134,11 +134,17 @@ DECODERS = {
         [-14, -94, 64, -22, -25, -119, -36, -20],
         [1533495656, 711390347, -1942746190, 1457004211],
     ),
+    "JLoginHTML$h.v": build_decoder(
+        -8144699472934638634,
+        [72, -86, 84, 126, -19, 34, 36, -62],
+        [654727986, -954217567, -1223823750, -1573023736],
+    ),
 }
 
 CALL_PATTERNS = {
     "JSetupDialog$JLoginNew.N": re.compile(r'JSetupDialog\$JLoginNew\.N\("((?:\\.|[^"\\])*)"\)'),
     "JTestFrame$JLoginNew$2.k": re.compile(r'JTestFrame\$JLoginNew\$2\.k\("((?:\\.|[^"\\])*)"\)'),
+    "JLoginHTML$h.v": re.compile(r'JLoginHTML\$h\.v\("((?:\\.|[^"\\])*)"\)'),
 }
 
 METHOD_DECL = re.compile(

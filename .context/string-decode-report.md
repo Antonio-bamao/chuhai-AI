@@ -13,11 +13,16 @@
 
 | 解码器 | 调用点数量 | 说明 |
 | --- | ---: | --- |
-| `JSetupDialog$JLoginNew.N(...)` | 442 | 依赖调用者 `className + methodName` 的字符串解密函数。 |
-| `JTestFrame$JLoginNew$2.k(...)` | 293 | 与 `N(...)` 结构相同，但 key/常量不同。 |
+| `JSetupDialog$JLoginNew.N(...)` | 550 | 依赖调用者 `className + methodName` 的字符串解密函数。 |
+| `JTestFrame$JLoginNew$2.k(...)` | 451 | 与 `N(...)` 结构相同，但 key/常量不同。 |
 | `JLoginHTML$h.v(...)` | 93 | j2026 登录/工作区相关字符串解密函数，与 `N(...)` 结构相同但 key/常量不同。 |
+| `c$c$a.f(...)` | 382 | `DTHelper` 等 HTTP 路径的字段/header 字符串。 |
+| `Keepapi$AiBotHelper$1.C(...)` | 261 | `DTHelper` 辅助 HTTP 路径的 header/协议字符串。 |
+| `MiJava$MiJava$181.W(...)` | 987 | `jxbrowser.n` 等缓存/授权状态路径的字段字符串。 |
+| `d$JTrayDialog.n(...)` | 403 | `StartApp$5` 等启动/定时任务路径的字符串。 |
+| `d$MiJava$188$1.B(...)` | 1,346 | `jxbrowser` 相关大量业务/UI 路径字符串，后续按需筛选。 |
 
-脚本实际抓到 1,094 条调用记录；其中包含同一行多个调用、以及后续匹配到的同类调用。当前可读性评分 `>= 0.8` 的记录有 1,034 条，第一版可作为 M3 检索输入。
+脚本实际抓到 4,473 条调用记录；当前 4,473 条均成功解码。授权相关候选从 225 条扩展到 362 条，第一版可作为 M3 检索输入。
 
 ## 入口类明文样本
 
@@ -39,7 +44,7 @@
 
 ## 授权相关候选
 
-按 `auth/license/login/token/expire/pay/order/user/tenant/role/header/result/data/password/product` 以及中文关键词筛选出 225 条候选，已写入：
+按 `auth/license/login/token/expire/pay/order/user/tenant/role/header/result/data/password/product` 以及中文关键词筛选出 362 条候选，已写入：
 
 ```text
 H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
@@ -65,6 +70,13 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 - `进入`
 - `购买`
 - `下载`
+
+扩展 HTTP/jxbrowser 解码后新增确认：
+
+- `DTHelper` 返回包装字段：`result`、`message`、`code`、`cookies`、`name`、`value`、`domain`、`expiresAt`、`persistent`、`secure`
+- `DTHelper` header/请求字段：`Authorization`、`User-Agent`、`cookie`、`headers`、`application/json`
+- `jxbrowser.n` 授权缓存字段：`result`、`header`、`data`、`expireTime`
+- `StartApp$5` 上报路径片段：`scpres/`、`.png`
 
 ## 重要限制
 
@@ -93,10 +105,17 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 
 `StartApp.i()` 中已还原 `RobotHelper.a()/b()` 和 `Timer.schedule(TimerTask, 0, 10000)`；`StartApp.k(String)` 还原为 `HashMap.get(...)` 包装器。
 
+## M2 HTTP/缓存边界观察
+
+- `DTHelper.b(String,String)` 是 `DTHelper.a(..., false)` 的薄包装；底层使用 OkHttp 构造 GET/POST/PUT/DELETE 请求、执行 `Call.execute()`，并统一包装为 `JSONObject`。
+- `DTHelper` 统一返回结构包含 `result/message/code/cookies`，因此它更像通用网络边界，不宜作为授权专属 patch 点。
+- `com.sbf.main.jxbrowser.n` 持有 `a:String`、`b:long expireTime`、`c/d:String`，`a()` 用 `System.currentTimeMillis()` 判断缓存是否接近过期，`c()` 会再次调用 `DTHelper.b(...)` 刷新 `result/header/data/expireTime`。
+- `StartApp$5.run()` 调用 `RobotHelper.a(false,null)` 截图，拼出 `scpres/...png`，上传到 `ALLOSSHelper.a(...)`，再调用 `SBFApi.a(int,int,String)` 上报；该 10 秒任务更像截图/状态上报，不是当前优先授权接缝。
+
 ## 下一步
 
 继续 M2 第二阶段：
 
 1. 继续解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)` 等 invokedynamic/bootstrap 形态。
-2. 反查 `DTHelper.b(...)`、`com.sbf.main.jxbrowser.n`、`StartApp$5`，确认网络、缓存和定时任务的边界。
+2. 反查 `StartApp.f(String)` 的入参来源和 `com.sbf.main.jxbrowser.n.c()` 刷新路径，确认授权状态缓存的调用链入口。
 3. 产出更接近 M3 的 `seam-candidates.md` 草稿，但不做 patch。

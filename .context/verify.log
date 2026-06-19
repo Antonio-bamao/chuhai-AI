@@ -84,3 +84,17 @@
   - `StartApp.k(String)` 第 534 行还原为 `HashMap.get(...)`。
 - 限制：本轮只确认调用目标；`DTHelper.b(...)` 的具体 URL/业务语义、`n` 的字段语义、`StartApp$5` 的定时任务行为仍需继续反查。
 - 原始资产修改：未修改。
+
+## 2026-06-20 03:02｜M2 HTTP/缓存字符串扩展与边界确认
+
+- 范围：扩展静态字符串解码器，辅助确认 `DTHelper`、`jxbrowser.n`、`StartApp$5` 的语义边界，不 patch。
+- 脚本：`H:\项目\出海-AI\tools\decode_java_strings.py`。
+- 新增解码器：`c$c$a.f(...)`、`Keepapi$AiBotHelper$1.C(...)`、`MiJava$MiJava$181.W(...)`、`d$JTrayDialog.n(...)`、`d$MiJava$188$1.B(...)`。
+- 输出：重生成 `H:\项目\出海-AI\.artifacts\analysis\string_map.json` 与 `auth_string_candidates.json`。
+- 输出统计：字符串记录 4,473 条，成功解码 4,473 条；授权候选 362 条。
+- 抽样验证：
+  - `DTHelper.java` 解出 `Authorization`、`User-Agent`、`application/json`、`result/message/code/cookies`。
+  - `jxbrowser\n.java` 解出 `result/header/data/expireTime`，并确认 `n.c()` 调用 `DTHelper.b(...)` 刷新状态。
+  - `StartApp$5.java` 解出 `scpres/`、`.png`，结合 bootstrap 目标确认其截图上传与 `SBFApi.a(...)` 上报路径。
+- 边界结论：`DTHelper` 是通用网络层，不作为优先 patch 点；`jxbrowser.n` 是更接近授权状态的本地缓存；`StartApp$5` 暂降为非优先授权接缝。
+- 原始资产修改：未修改。

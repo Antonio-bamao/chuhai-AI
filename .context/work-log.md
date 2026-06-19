@@ -57,3 +57,10 @@
 - 结果：全量 bootstrap 记录 73,600 条，成功解码 73,597 条；`startapp_bootstrap_candidates.json` 包含 19 条高价值 `StartApp` 调用；`StartApp.f(String)` 的 `DTHelper.b(String,String): JSONObject`、`AESCBCHelper.a(String)`、`MD5Util2.c(String)` 与缓存链已明确。
 - 验证：`python -m py_compile tools\decode_bootstrap_calls.py` 退出码 0；`python tools\decode_bootstrap_calls.py --source-root ... --out ...` 退出码 0；抽样打印 19 条候选并核对源码行段；未修改客户端产物。
 - 下一步：反查 `DTHelper.b(...)`、`com.sbf.main.jxbrowser.n`、`StartApp$5`，并继续处理 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)`。
+
+## 2026-06-20 03:03｜扩展 M2 HTTP/缓存字符串解码
+- 目标：补齐 `DTHelper`、`jxbrowser.n`、`StartApp$5` 相关明文，确认网络/缓存/定时任务边界。
+- 动作：为 `tools/decode_java_strings.py` 新增 5 个同构解码器；重生成 `string_map.json` 和 `auth_string_candidates.json`；结合 bootstrap map 反查 `DTHelper.b(...)`、`n.c()`、`StartApp$5.run()`。
+- 结果：字符串记录从 1,094 条扩展到 4,473 条，授权候选从 225 条扩展到 362 条；确认 `DTHelper` 是通用 OkHttp wrapper，`jxbrowser.n` 持有 `result/header/data/expireTime` 状态缓存，`StartApp$5` 更像截图上传/状态上报任务。
+- 验证：`python -m py_compile tools\decode_java_strings.py tools\decode_bootstrap_calls.py` 退出码 0；`python tools\decode_java_strings.py --source-root ... --out ...` 退出码 0；抽样 `DTHelper`、`n`、`StartApp$5` 明文字段并与源码/动态调用目标交叉核对。
+- 下一步：反查 `StartApp.f(String)` 的调用者和入参 URL，继续还原 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)`。

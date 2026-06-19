@@ -139,12 +139,42 @@ DECODERS = {
         [72, -86, 84, 126, -19, 34, 36, -62],
         [654727986, -954217567, -1223823750, -1573023736],
     ),
+    "c$c$a.f": build_decoder(
+        -5558785855947409150,
+        [26, -65, 17, -15, 61, -83, 24, -76],
+        [1661124947, 84476174, 873636781, -113518219],
+    ),
+    "Keepapi$AiBotHelper$1.C": build_decoder(
+        3937958849870418103,
+        [33, -34, 57, -6, -63, -92, 92, -54],
+        [-1492814596, -722234167, -1721848852, 484333427],
+    ),
+    "MiJava$MiJava$181.W": build_decoder(
+        6681889125754537689,
+        [106, -43, -43, -74, 74, 84, 24, 55],
+        [877174110, -1316375260, -2059877297, -2090820588],
+    ),
+    "d$JTrayDialog.n": build_decoder(
+        787646961109417875,
+        [-15, -63, -4, -14, 107, -116, -116, -95],
+        [-924053382, 2117251666, -2025566316, -786342393],
+    ),
+    "d$MiJava$188$1.B": build_decoder(
+        -5295390802134825839,
+        [119, 30, 91, 109, -57, 97, 5, 115],
+        [740895145, -1610822446, -544228048, 773248396],
+    ),
 }
 
 CALL_PATTERNS = {
     "JSetupDialog$JLoginNew.N": re.compile(r'JSetupDialog\$JLoginNew\.N\("((?:\\.|[^"\\])*)"\)'),
     "JTestFrame$JLoginNew$2.k": re.compile(r'JTestFrame\$JLoginNew\$2\.k\("((?:\\.|[^"\\])*)"\)'),
     "JLoginHTML$h.v": re.compile(r'JLoginHTML\$h\.v\("((?:\\.|[^"\\])*)"\)'),
+    "c$c$a.f": re.compile(r'c\$c\$a\.f\("((?:\\.|[^"\\])*)"\)'),
+    "Keepapi$AiBotHelper$1.C": re.compile(r'Keepapi\$AiBotHelper\$1\.C\("((?:\\.|[^"\\])*)"\)'),
+    "MiJava$MiJava$181.W": re.compile(r'MiJava\$MiJava\$181\.W\("((?:\\.|[^"\\])*)"\)'),
+    "d$JTrayDialog.n": re.compile(r'd\$JTrayDialog\.n\("((?:\\.|[^"\\])*)"\)'),
+    "d$MiJava$188$1.B": re.compile(r'd\$MiJava\$188\$1\.B\("((?:\\.|[^"\\])*)"\)'),
 }
 
 METHOD_DECL = re.compile(

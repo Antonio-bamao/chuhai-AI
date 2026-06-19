@@ -64,3 +64,10 @@
 - 结果：字符串记录从 1,094 条扩展到 4,473 条，授权候选从 225 条扩展到 362 条；确认 `DTHelper` 是通用 OkHttp wrapper，`jxbrowser.n` 持有 `result/header/data/expireTime` 状态缓存，`StartApp$5` 更像截图上传/状态上报任务。
 - 验证：`python -m py_compile tools\decode_java_strings.py tools\decode_bootstrap_calls.py` 退出码 0；`python tools\decode_java_strings.py --source-root ... --out ...` 退出码 0；抽样 `DTHelper`、`n`、`StartApp$5` 明文字段并与源码/动态调用目标交叉核对。
 - 下一步：反查 `StartApp.f(String)` 的调用者和入参 URL，继续还原 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)`。
+
+## 2026-06-20 03:09｜确认 M2 JS bridge token action 到 StartApp.f(String) 的入口
+- 目标：确认 M2 JS bridge token action 到 StartApp.f(String) 的入口
+- 动作：新增 AdsCallback$SGAICloudPanel$2.I 静态字符串解码器；重生成 string_map.json 与 auth_string_candidates.json；对照 AdsCallback.getAction、MiJava.getAction 和 bootstrap_map 确认 action 与调用描述符。
+- 结果：字符串映射增至 4,599 条并全部解码；两套 bridge 均在 get_current_token 或 getLoingIsToken 分支将原始 action 直接传给 StartApp.f(String)。
+- 验证：python -m py_compile 退出码 0；全量解码输出 rows=4599、decoded=4599；AdsCallback 解码器 126 条、error=0；两处 bootstrap 均为 static StartApp.f(String): String。
+- 下一步：继续还原 StartApp.f(String) 第 385 行最终 URL 拼接结果，并追踪 jxbrowser.n.c() 的刷新触发点。

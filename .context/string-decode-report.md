@@ -21,8 +21,9 @@
 | `MiJava$MiJava$181.W(...)` | 987 | `jxbrowser.n` 等缓存/授权状态路径的字段字符串。 |
 | `d$JTrayDialog.n(...)` | 403 | `StartApp$5` 等启动/定时任务路径的字符串。 |
 | `d$MiJava$188$1.B(...)` | 1,346 | `jxbrowser` 相关大量业务/UI 路径字符串，后续按需筛选。 |
+| `AdsCallback$SGAICloudPanel$2.I(...)` | 126 | 广告浏览器 JS bridge action 与脚本片段，结构与现有 AES 表解码器相同。 |
 
-脚本实际抓到 4,473 条调用记录；当前 4,473 条均成功解码。授权相关候选从 225 条扩展到 362 条，第一版可作为 M3 检索输入。
+脚本实际抓到 4,599 条调用记录；当前 4,599 条均成功解码。授权相关候选扩展到 372 条，可作为 M3 检索输入。
 
 ## 入口类明文样本
 
@@ -77,6 +78,7 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 - `DTHelper` header/请求字段：`Authorization`、`User-Agent`、`cookie`、`headers`、`application/json`
 - `jxbrowser.n` 授权缓存字段：`result`、`header`、`data`、`expireTime`
 - `StartApp$5` 上报路径片段：`scpres/`、`.png`
+- `AdsCallback.getAction` 与 `MiJava.getAction` 的同构 action：`get_current_token`、`getLoingIsToken`
 
 ## 重要限制
 
@@ -112,10 +114,17 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 - `com.sbf.main.jxbrowser.n` 持有 `a:String`、`b:long expireTime`、`c/d:String`，`a()` 用 `System.currentTimeMillis()` 判断缓存是否接近过期，`c()` 会再次调用 `DTHelper.b(...)` 刷新 `result/header/data/expireTime`。
 - `StartApp$5.run()` 调用 `RobotHelper.a(false,null)` 截图，拼出 `scpres/...png`，上传到 `ALLOSSHelper.a(...)`，再调用 `SBFApi.a(int,int,String)` 上报；该 10 秒任务更像截图/状态上报，不是当前优先授权接缝。
 
+## M2 JS bridge token action 入口
+
+- `AdsCallback.getAction(String)` 与 `MiJava.getAction(String)` 的分支结构和 action 明文完全一致。
+- 两处均在 action 为 `get_current_token` 或 `getLoingIsToken` 时调用 `StartApp.f(String): String`。
+- bootstrap 描述符均为 `(Ljava/lang/String;)Ljava/lang/String;`，且 CFR 调用点把原始 `object` 直接作为唯一参数传入。
+- 当前可确认 `StartApp.f(String)` 的输入是 JS bridge action；尚不能把第 385 行最终拼接结果等同于完整远端 URL。
+
 ## 下一步
 
 继续 M2 第二阶段：
 
 1. 继续解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)` 等 invokedynamic/bootstrap 形态。
-2. 反查 `StartApp.f(String)` 的入参来源和 `com.sbf.main.jxbrowser.n.c()` 刷新路径，确认授权状态缓存的调用链入口。
+2. 还原 `StartApp.f(String)` 最终请求 URL，并追踪 `com.sbf.main.jxbrowser.n.c()` 刷新路径。
 3. 产出更接近 M3 的 `seam-candidates.md` 草稿，但不做 patch。

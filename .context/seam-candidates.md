@@ -19,12 +19,13 @@
 | 文件 | `com\sbf\main\StartApp.java` |
 | 行段 | 367-413 左右 |
 | 当前判断 | 高优先级候选，疑似授权/用户状态请求与响应解析点。 |
-| 已解明文 | `ecode`、`ename`、`loginName`、`userName`、`roles`、`timer`、`token`、`result`、`header`、`data`、`expireTime` |
+| 已解明文 | `ecode`、`ename`、`loginName`、`userName`、`roles`、`timer`、`token`、`result`、`header`、`data`、`expireTime`、`get_current_token`、`getLoingIsToken` |
 | 已还原动态调用 | `MD5Util2.c(String)`、`AESCBCHelper.a(String)`、`DTHelper.b(String,String): JSONObject`、`System.currentTimeMillis()`、`HashMap.get/containsKey/remove/put(...)`、`com.sbf.main.jxbrowser.n.a()/b()` |
 | 原逻辑观察 | 方法先用 `MD5Util2.c` 规范化入参，再查 `HashMap` 与 `n` 缓存；未命中时组装用户/角色/token JSON，经 `AESCBCHelper.a` 和 Base64 编码后传给 `DTHelper.b(String,String)`；随后解析返回 JSON 的 `result/header/data/expireTime`，并按 `expireTime` 写回 `n` 缓存。 |
+| 调用入口确认 | `AdsCallback.getAction(String)` 第 191-192 行与 `MiJava.getAction(String)` 第 1553-1554 行均在 action 等于 `get_current_token` 或 `getLoingIsToken` 时，将原始 `object` 直接传给静态 `StartApp.f(String): String`。这说明入参来源是 JS bridge action，而不是调用者预先组装好的 URL。 |
 | 补充确认 | `DTHelper.b(...)` 是通用 OkHttp 包装器，返回 `result/message/code/cookies`；`com.sbf.main.jxbrowser.n` 是带 `expireTime` 的本地状态缓存，`n.c()` 会调用 `DTHelper.b(...)` 刷新 `result/header/data/expireTime`。 |
-| 风险 | 不应在 `DTHelper` 通用网络层 patch，否则高概率误伤业务联网；`n` 缓存比 `DTHelper` 更接近授权状态，但仍需确认入参 URL/业务语义。 |
-| 下一步 | 反查 `StartApp.f(String)` 的调用者和入参来源，确认传入 URL 是否为授权/时效接口；同时跟踪 `n.c()` 的定时刷新触发点。 |
+| 风险 | 不应在 `DTHelper` 通用网络层 patch，否则高概率误伤业务联网；`n` 缓存比 `DTHelper` 更接近授权状态。当前已确认 action 入口，但第 385 行最终 URL 拼接结果和 `getLoingIsToken` 的具体语义仍待确认。 |
+| 下一步 | 还原 `StartApp.f(String)` 第 385 行的 URL 拼接常量与参数；同时跟踪 `n.c()` 的刷新触发点。 |
 | 回滚点 | 未 patch；回滚只需删除分析产物。 |
 
 ## 候选 2：`com.sbf.main.StartApp.i()`
@@ -76,6 +77,6 @@
 ## M3 前置缺口
 
 1. 需要继续还原 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 的目标类/方法/签名。
-2. 需要反查 `StartApp.f(String)` 的调用者、入参 URL 和 `com.sbf.main.jxbrowser.n.c()` 的刷新触发点。
+2. `StartApp.f(String)` 的调用者与入参来源已确认；仍需还原最终请求 URL，并追踪 `com.sbf.main.jxbrowser.n.c()` 的刷新触发点。
 3. 需要确认 `expireTime` 判断是服务端返回解析、缓存写入，还是 UI 展示。
 4. 需要在隔离环境中抓包验证哪些路径真的出网。

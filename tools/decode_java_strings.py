@@ -164,6 +164,11 @@ DECODERS = {
         [119, 30, 91, 109, -57, 97, 5, 115],
         [740895145, -1610822446, -544228048, 773248396],
     ),
+    "AdsCallback$SGAICloudPanel$2.I": build_decoder(
+        7474384408623362700,
+        [-26, 104, -88, -33, -61, 113, -100, 85],
+        [-1473982832, -746230665, 1493149019, -693720993],
+    ),
 }
 
 CALL_PATTERNS = {
@@ -175,6 +180,9 @@ CALL_PATTERNS = {
     "MiJava$MiJava$181.W": re.compile(r'MiJava\$MiJava\$181\.W\("((?:\\.|[^"\\])*)"\)'),
     "d$JTrayDialog.n": re.compile(r'd\$JTrayDialog\.n\("((?:\\.|[^"\\])*)"\)'),
     "d$MiJava$188$1.B": re.compile(r'd\$MiJava\$188\$1\.B\("((?:\\.|[^"\\])*)"\)'),
+    "AdsCallback$SGAICloudPanel$2.I": re.compile(
+        r'AdsCallback\$SGAICloudPanel\$2\.I\("((?:\\.|[^"\\])*)"\)'
+    ),
 }
 
 METHOD_DECL = re.compile(

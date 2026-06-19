@@ -50,3 +50,10 @@
 - 结果：已产出 .context/seam-candidates.md；StartApp.f(String) 被标记为高优先级候选，StartApp.i() 为中优先级候选；登录 UI 与工作区入口仅作为调用链入口。
 - 验证：通过已解明文字段 token/result/header/data/expireTime/user/tenantCode/userId 与源码行段交叉确认；未修改客户端产物；validate_context.py 待最终运行。
 - 下一步：提交接缝候选草稿；后续还原 StartApp.Sy/JLoginNew.vS/ClawWorkspace.vv 的动态调用目标。
+
+## 2026-06-20 02:49｜执行 M2 bootstrap 动态调用解码
+- 目标：还原 `StartApp.Sy(...)` 形态的 bootstrap 调用目标，支撑后续 M3 接缝定位。
+- 动作：新增 `tools/decode_bootstrap_calls.py`；复刻 `StartApp.Sy(...)` 的 payload 解码与 class/method/descriptor 解析逻辑；生成 `bootstrap_map.json`；按方法签名和源码行段筛出 `StartApp.f(String)`、`StartApp.i()`、`StartApp.k(String)` 的高价值候选；修正脚本以记录 `caller_signature`，避免重载方法混淆。
+- 结果：全量 bootstrap 记录 73,600 条，成功解码 73,597 条；`startapp_bootstrap_candidates.json` 包含 19 条高价值 `StartApp` 调用；`StartApp.f(String)` 的 `DTHelper.b(String,String): JSONObject`、`AESCBCHelper.a(String)`、`MD5Util2.c(String)` 与缓存链已明确。
+- 验证：`python -m py_compile tools\decode_bootstrap_calls.py` 退出码 0；`python tools\decode_bootstrap_calls.py --source-root ... --out ...` 退出码 0；抽样打印 19 条候选并核对源码行段；未修改客户端产物。
+- 下一步：反查 `DTHelper.b(...)`、`com.sbf.main.jxbrowser.n`、`StartApp$5`，并继续处理 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)`。

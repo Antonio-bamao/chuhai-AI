@@ -7,7 +7,10 @@
 - 源码树：`H:\项目\出海-AI\.artifacts\decompiled\cfr-app-20260620-0215`
 - 字符串映射：`H:\项目\出海-AI\.artifacts\analysis\string_map.json`
 - 授权候选：`H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json`
-- 解码脚本：`H:\项目\出海-AI\tools\decode_java_strings.py`
+- 静态字符串解码脚本：`H:\项目\出海-AI\tools\decode_java_strings.py`
+- bootstrap 调用解码脚本：`H:\项目\出海-AI\tools\decode_bootstrap_calls.py`
+- bootstrap 调用映射：`H:\项目\出海-AI\.artifacts\analysis\bootstrap_map.json`
+- `StartApp` 高价值动态调用候选：`H:\项目\出海-AI\.artifacts\analysis\startapp_bootstrap_candidates.json`
 
 ## 候选 1：`com.sbf.main.StartApp.f(String)`
 
@@ -17,9 +20,10 @@
 | 行段 | 367-413 左右 |
 | 当前判断 | 高优先级候选，疑似授权/用户状态请求与响应解析点。 |
 | 已解明文 | `ecode`、`ename`、`loginName`、`userName`、`roles`、`timer`、`token`、`result`、`header`、`data`、`expireTime` |
-| 原逻辑观察 | 方法组装一组用户/角色/token JSON，编码后发起动态调用；随后解析返回 JSON 的 `result/header/data/expireTime`，并根据条件返回字符串或 `null`。 |
-| 风险 | 该方法包含大量 `StartApp.Sy(...)` 动态调用，尚未完全还原真实被调用方法。直接 patch 风险高。 |
-| 下一步 | 先解析 `StartApp.Sy(...)` bootstrap 目标，确认网络调用、缓存读写、时间判断分别落在哪些调用上。 |
+| 已还原动态调用 | `MD5Util2.c(String)`、`AESCBCHelper.a(String)`、`DTHelper.b(String,String): JSONObject`、`System.currentTimeMillis()`、`HashMap.get/containsKey/remove/put(...)`、`com.sbf.main.jxbrowser.n.a()/b()` |
+| 原逻辑观察 | 方法先用 `MD5Util2.c` 规范化入参，再查 `HashMap` 与 `n` 缓存；未命中时组装用户/角色/token JSON，经 `AESCBCHelper.a` 和 Base64 编码后传给 `DTHelper.b(String,String)`；随后解析返回 JSON 的 `result/header/data/expireTime`，并按 `expireTime` 写回 `n` 缓存。 |
+| 风险 | `DTHelper.b(...)` 可能是通用网络 helper，不能在该层粗暴拦截；`n` 缓存可能同时服务业务流程。直接 patch 风险高。 |
+| 下一步 | 反查 `DTHelper.b(...)` 的 URL/请求语义和 `n` 的字段含义，确认这个方法是否为授权状态接缝，而不是业务数据接口。 |
 | 回滚点 | 未 patch；回滚只需删除分析产物。 |
 
 ## 候选 2：`com.sbf.main.StartApp.i()`
@@ -30,7 +34,8 @@
 | 行段 | 280-299 左右 |
 | 当前判断 | 中优先级候选，疑似用户状态读取与定时任务入口。 |
 | 已解明文 | `user`、`tenantCode`、`userId`、`gs` |
-| 原逻辑观察 | 从全局 JSON `m` 中取 `user` 对象，读取租户、用户 ID 和状态字段；若状态允许，创建 `Timer` 并每 10 秒调度一次任务。 |
+| 已还原动态调用 | `RobotHelper.a()`、`RobotHelper.b()`、`Timer.schedule(TimerTask, 0, 10000)` |
+| 原逻辑观察 | 从全局 JSON `m` 中取 `user` 对象，读取租户、用户 ID 和状态字段；若状态允许，创建 `Timer` 并每 10 秒调度 `StartApp$5`。 |
 | 风险 | 可能是登录后心跳或状态刷新，也可能是业务侧定时任务；需结合 `StartApp$5` 和动态调用还原。 |
 | 下一步 | 跟踪 `StartApp$5` 以及被调度方法，判断是否与授权时效或业务心跳相关。 |
 | 回滚点 | 未 patch；回滚只需删除分析产物。 |
@@ -69,7 +74,7 @@
 
 ## M3 前置缺口
 
-1. 需要还原 `StartApp.Sy(...)` 的目标类/方法/签名，至少覆盖 `StartApp.f/i/k` 中的高价值调用。
-2. 需要反查 `StartApp$5`、`StartApp$6`、`JProductSelectorHtml$a` 等内部类。
+1. 需要继续还原 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 的目标类/方法/签名。
+2. 需要反查 `DTHelper.b(...)`、`com.sbf.main.jxbrowser.n`、`StartApp$5`、`StartApp$6`、`JProductSelectorHtml$a` 等类。
 3. 需要确认 `expireTime` 判断是服务端返回解析、缓存写入，还是 UI 展示。
 4. 需要在隔离环境中抓包验证哪些路径真的出网。

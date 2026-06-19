@@ -19,3 +19,12 @@
 - 解决方案：将完整结果写入 UTF-8 JSON；控制台预览改用 ASCII/转义输出或只打印统计。
 - 预防措施：后续不要把未筛洗的 decoded 字段直接打印到控制台；报告引用 JSON 路径和统计。
 - 状态：resolved
+
+## bootstrap 候选初筛混淆 Java 重载方法
+- 现象：初版 `startapp_bootstrap_candidates.json` 把 `StartApp.i(String)` 第 478-479 行的 `HashMap` 缓存操作归到 `StartApp.i()` 候选里。
+- 触发条件：`tools/decode_bootstrap_calls.py` 只记录方法名，不记录参数签名；`StartApp` 同时存在 `i()` 与 `i(String)` 重载。
+- 影响：若直接进入 M3，会把不相关重载方法的缓存删除行为混入定时任务候选。
+- 根因：方法上下文模型粒度过粗，只用 `caller` 字段不足以区分 Java 重载。
+- 解决方案：为 bootstrap 解码结果新增 `caller_signature`、`caller_method`、`caller_method_line` 字段；重生成候选时按签名与行段过滤。
+- 预防措施：后续所有接缝候选引用动态调用时同时看方法签名和源码行段，不只看方法名。
+- 状态：resolved

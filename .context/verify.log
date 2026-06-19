@@ -66,3 +66,21 @@
 - UI/工作区入口：`JLoginHTML` 与 `ClawWorkspace` 已作为调用链入口记录，但不是优先 patch 点。
 - 限制：动态调用 `StartApp.Sy(...)` 尚未还原，候选仍需 M3 进一步确认。
 - 原始资产修改：未修改。
+
+## 2026-06-20 02:48｜M2 bootstrap 动态调用解码
+
+- 范围：只还原 CFR 源码中的 invokedynamic/bootstrap 调用目标，不 patch。
+- 脚本：`H:\项目\出海-AI\tools\decode_bootstrap_calls.py`。
+- 输入：`H:\项目\出海-AI\.artifacts\decompiled\cfr-app-20260620-0215`。
+- 全量输出：`H:\项目\出海-AI\.artifacts\analysis\bootstrap_map.json`。
+- `StartApp` 候选输出：`H:\项目\出海-AI\.artifacts\analysis\startapp_bootstrap_candidates.json`。
+- 输出统计：73,600 条 bootstrap 调用记录；73,597 条成功解码；3 条保留错误原因。
+- 抽样验证：
+  - `StartApp.f(String)` 第 369 行还原为 `com.sbf.util.MD5Util2.c(String): String`。
+  - `StartApp.f(String)` 第 380 行还原为 `com.sbf.util.http.AESCBCHelper.a(String): String`。
+  - `StartApp.f(String)` 第 386 行还原为 `com.sbf.util.http.DTHelper.b(String,String): JSONObject`。
+  - `StartApp.f(String)` 第 396-399 行还原为 `HashMap` 与 `com.sbf.main.jxbrowser.n` 缓存读写链。
+  - `StartApp.i()` 第 281-282 行还原为 `RobotHelper.a()/b()`；第 295 行还原为 `Timer.schedule(TimerTask, 0, 10000)`。
+  - `StartApp.k(String)` 第 534 行还原为 `HashMap.get(...)`。
+- 限制：本轮只确认调用目标；`DTHelper.b(...)` 的具体 URL/业务语义、`n` 的字段语义、`StartApp$5` 的定时任务行为仍需继续反查。
+- 原始资产修改：未修改。

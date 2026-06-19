@@ -69,13 +69,34 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 ## 重要限制
 
 - 当前脚本覆盖 `N(...)`、`k(...)` 与 `JLoginHTML$h.v(...)` 这一类静态字符串解密。
-- `StartApp.Sy(...)`、`JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 等是 invokedynamic/bootstrap 形态，不是同一类“密文直接变明文”调用，后续需单独处理。
+- `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 等是 invokedynamic/bootstrap 形态，不是同一类“密文直接变明文”调用，后续需单独处理。
 - 部分记录因调用点推断不准或本身不是文本，会出现低可读性结果；M3 使用时应优先引用高可读性字段和入口类上下文。
+
+## M2 bootstrap 动态调用解码
+
+- 时间：2026-06-20 02:47
+- 解码脚本：`H:\项目\出海-AI\tools\decode_bootstrap_calls.py`
+- 全量输出：`H:\项目\出海-AI\.artifacts\analysis\bootstrap_map.json`
+- `StartApp` 候选输出：`H:\项目\出海-AI\.artifacts\analysis\startapp_bootstrap_candidates.json`
+- 输出统计：73,600 条 bootstrap 调用记录；73,597 条成功解码；3 条保留错误原因。
+- 高价值 `StartApp` 候选：19 条，覆盖 `StartApp.f(String)`、`StartApp.i()`、`StartApp.k(String)`。
+
+`StartApp.f(String)` 中已还原的关键调用目标：
+
+| 行 | 目标 |
+| ---: | --- |
+| 369 | `com.sbf.util.MD5Util2.c(String): String` |
+| 370-371 | `HashMap.get(...)`、`com.sbf.main.jxbrowser.n.a()`、`n.b()`，疑似本地缓存读取与有效性判断 |
+| 379-385 | `System.currentTimeMillis()`、`AESCBCHelper.a(String): String`，参与请求体编码和时间参数组装 |
+| 386 | `com.sbf.util.http.DTHelper.b(String, String): JSONObject` |
+| 396-399 | `HashMap.containsKey/remove/put(...)` 与 `n.a(...)` 链式写入，疑似响应缓存 |
+
+`StartApp.i()` 中已还原 `RobotHelper.a()/b()` 和 `Timer.schedule(TimerTask, 0, 10000)`；`StartApp.k(String)` 还原为 `HashMap.get(...)` 包装器。
 
 ## 下一步
 
 继续 M2 第二阶段：
 
-1. 解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)`、`StartApp.Sy(...)` 等 invokedynamic/bootstrap 形态。
-2. 基于 `auth_string_candidates.json` 反查调用链，聚焦 `StartApp.f/i`、`JLoginNew`、`ext.j2026` 下登录和套餐选择路径。
+1. 继续解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)` 等 invokedynamic/bootstrap 形态。
+2. 反查 `DTHelper.b(...)`、`com.sbf.main.jxbrowser.n`、`StartApp$5`，确认网络、缓存和定时任务的边界。
 3. 产出更接近 M3 的 `seam-candidates.md` 草稿，但不做 patch。

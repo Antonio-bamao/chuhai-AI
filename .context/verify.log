@@ -56,3 +56,13 @@
   - `JLoginHTML.java` 第 40 行解出 `/html/Login.html`。
 - 限制：`ClawWorkspace.vv(...)` 属于 invokedynamic/bootstrap 形态，不纳入当前静态字符串解码器。
 - 原始资产修改：未修改。
+
+## 2026-06-20 02:37｜M3 预备接缝候选
+
+- 范围：只基于静态源码和字符串映射整理候选，不 patch。
+- 输出：`H:\项目\出海-AI\.context\seam-candidates.md`。
+- 高优先级候选：`com.sbf.main.StartApp.f(String)`，涉及 `token/result/header/data/expireTime`。
+- 中优先级候选：`com.sbf.main.StartApp.i()`，涉及 `user/tenantCode/userId/gs` 和定时任务。
+- UI/工作区入口：`JLoginHTML` 与 `ClawWorkspace` 已作为调用链入口记录，但不是优先 patch 点。
+- 限制：动态调用 `StartApp.Sy(...)` 尚未还原，候选仍需 M3 进一步确认。
+- 原始资产修改：未修改。

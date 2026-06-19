@@ -43,3 +43,10 @@
 - 结果：string_map 从 1,001 条增至 1,094 条；高可读记录从 943 条增至 1,034 条；授权候选从 132 条增至 225 条；j2026 路径解出 登录系统、/html/Login.html、ClawWorkspace、/html/ClawWorkspace.html。
 - 验证：python tools/decode_java_strings.py 退出码 0；python -m py_compile 退出码 0；抽样检查 JLoginHTML 与 ClawWorkspace 明文；validate_context.py 待最终运行。
 - 下一步：提交 j2026 静态字符串扩展检查点，然后继续分析 invokedynamic/bootstrap 形态。
+
+## 2026-06-20 02:36｜整理 M3 预备接缝候选
+- 目标：整理 M3 预备接缝候选
+- 动作：基于 string_map 和 auth_string_candidates 反查 StartApp、JLoginHTML、ClawWorkspace；整理 StartApp.f(String)、StartApp.i()、JLoginHTML、ClawWorkspace 四个候选；明确哪些区域当前不作为 patch 点。
+- 结果：已产出 .context/seam-candidates.md；StartApp.f(String) 被标记为高优先级候选，StartApp.i() 为中优先级候选；登录 UI 与工作区入口仅作为调用链入口。
+- 验证：通过已解明文字段 token/result/header/data/expireTime/user/tenantCode/userId 与源码行段交叉确认；未修改客户端产物；validate_context.py 待最终运行。
+- 下一步：提交接缝候选草稿；后续还原 StartApp.Sy/JLoginNew.vS/ClawWorkspace.vv 的动态调用目标。

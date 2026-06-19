@@ -78,3 +78,10 @@
 - 结果：确认 bridge 使用 contains 而非 equals；原始参数可为包含 token action 的完整 URL；StartApp.f 追加 RT，DTHelper 再追加 rdtime，随后直接交给 OkHttp。
 - 验证：两套 bridge 的比较目标均为 String.contains(CharSequence)；明文常量为 ?、&RT=、?RT=、&rdtime=、?rdtime=；DTHelper.java:322 调用 Request.Builder.url(String)。
 - 下一步：追踪 jxbrowser.n.c() 的刷新触发点，并在隔离环境中记录实际 token 请求域名和路径。
+
+## 2026-06-20 03:18｜确认 jxbrowser.n.c() 的刷新触发点与缓存实例字段
+- 目标：确认 jxbrowser.n.c() 的刷新触发点与缓存实例字段
+- 动作：从 bootstrap_map 反查 n.c() 唯一调用者；核对 n.a(long) 的 Timer.schedule 参数；直接解析 App.jar 中 n.class 的 Code 属性，验证 n.a(String,String) 对象构造与 putfield 指令。
+- 结果：n$1.run 是唯一刷新调用者；缓存写入时注册 1 小时首次、10 小时周期的刷新任务；URL 与请求体 c/d 写入同一返回实例。
+- 验证：bootstrap 目标为 n$1.run -> n.c()；调度参数为 3600000/36000000；字节码仅一次 new n，并依次 putfield c、putfield d 后 areturn。
+- 下一步：继续处理 ClawWorkspace.vv、JLoginNew.vS，并梳理 expireTime 对 UI/启动分支的实际影响。

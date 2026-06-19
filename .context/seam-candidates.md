@@ -25,8 +25,9 @@
 | 调用入口确认 | `AdsCallback.getAction(String)` 第 191-192 行与 `MiJava.getAction(String)` 第 1553-1554 行均使用 `String.contains(...)` 判断参数是否包含 `get_current_token` 或 `getLoingIsToken`，命中后将原始 `object` 直接传给静态 `StartApp.f(String): String`。因此入参可以是包含 action 片段的完整 URL，而不是只有 action 名。 |
 | URL 拼接确认 | `StartApp.f(String)` 第 385 行在原始 URL 已含 `?` 时追加 `&RT=<currentTimeMillis>`，否则追加 `?RT=<currentTimeMillis>`；`DTHelper.a(...)` 第 314 行随后以同样规则追加 `rdtime=<currentTimeMillis>`，最终由 `Request.Builder.url(String)` 使用。 |
 | 补充确认 | `DTHelper.b(...)` 是通用 OkHttp 包装器，返回 `result/message/code/cookies`；`com.sbf.main.jxbrowser.n` 是带 `expireTime` 的本地状态缓存，`n.c()` 会调用 `DTHelper.b(...)` 刷新 `result/header/data/expireTime`。 |
+| 刷新触发确认 | `n.a(long expireTime)` 在首次写入缓存时创建 `Timer` 与 `n$1`，调用 `Timer.schedule(task, 3600000, 36000000)`；即 1 小时后首次执行、之后每 10 小时调用 `n.c()`。原始字节码确认 `n.a(String url,String body)` 只创建一个实例并将参数分别写入 `c/d`，CFR 显示的第二个 `new n()` 是反编译栈复制错误。 |
 | 风险 | 不应在 `DTHelper` 通用网络层 patch，否则高概率误伤业务联网；`n` 缓存比 `DTHelper` 更接近授权状态。当前仍缺实际域名/路径样本和 `getLoingIsToken` 的具体语义。 |
-| 下一步 | 跟踪 `n.c()` 的刷新触发点，并在隔离环境抓包时记录实际 URL。 |
+| 下一步 | 继续确认 `expireTime` 对 UI/启动分支的实际影响，并在隔离环境抓包时记录实际 URL。 |
 | 回滚点 | 未 patch；回滚只需删除分析产物。 |
 
 ## 候选 2：`com.sbf.main.StartApp.i()`
@@ -78,6 +79,6 @@
 ## M3 前置缺口
 
 1. 需要继续还原 `JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 的目标类/方法/签名。
-2. `StartApp.f(String)` 的调用者、入参来源和时间参数拼接已确认；仍需追踪 `com.sbf.main.jxbrowser.n.c()` 的刷新触发点，并在隔离环境记录实际域名/路径。
+2. `StartApp.f(String)` 的调用者、入参来源、时间参数拼接与 `n.c()` 定时刷新触发点已确认；仍需在隔离环境记录实际域名/路径。
 3. 需要确认 `expireTime` 判断是服务端返回解析、缓存写入，还是 UI 展示。
 4. 需要在隔离环境中抓包验证哪些路径真的出网。

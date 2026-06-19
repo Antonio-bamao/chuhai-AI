@@ -110,3 +110,13 @@
 - URL 验证：`StartApp.f(String)` 追加 `RT` 时间参数，`DTHelper.a(...)` 再追加 `rdtime`，最终调用 `Request.Builder.url(String)`。
 - 边界结论：`StartApp.f(String)` 的调用者、入参来源和时间参数拼接已确认；实际域名/路径仍待隔离环境记录。
 - 原始资产修改：未修改。
+
+## 2026-06-20 03:17｜M2 token 缓存定时刷新触发确认
+
+- 范围：确认 `com.sbf.main.jxbrowser.n.c()` 的调用者、调度周期和缓存实例字段归属，不 patch。
+- 调用者：`n$1.run()` 是 `n.c()` 的唯一 bootstrap 调用者。
+- 调度：`n.a(long)` 调用 `Timer.schedule(TimerTask, 3600000, 36000000)`，首次延迟 1 小时，周期 10 小时。
+- 字节码验证：`n.a(String,String)` 指令序列为 `new n; dup; invokespecial; dup; astore_2; aload_0; putfield c; aload_2; aload_1; putfield d; aload_2; areturn`。
+- 反编译差异：CFR 显示的 `new n().c = string` 是对 `dup` 栈值的错误还原；原始字节码证明 URL 与请求体写入同一个返回实例。
+- 结论：`StartApp.f(String)` 首次响应写入缓存时即注册长期刷新任务，后续 `n.c()` 使用保存的 URL/请求体刷新 token/时效状态。
+- 原始资产修改：未修改。

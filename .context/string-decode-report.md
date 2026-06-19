@@ -121,11 +121,13 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 - bootstrap 描述符均为 `(Ljava/lang/String;)Ljava/lang/String;`，且 CFR 调用点把原始 `object` 直接作为唯一参数传入。
 - `StartApp.f(String)` 在原字符串后追加 `RT=<currentTimeMillis>`；`DTHelper.a(...)` 再追加 `rdtime=<currentTimeMillis>`，最终字符串直接传给 `Request.Builder.url(...)`。
 - 当前可确认输入是包含 token action 的 URL/参数字符串；本地资源未检索到实际域名/路径样本。
+- `jxbrowser.n` 在缓存写入时以 `Timer.schedule(task, 3600000, 36000000)` 启动刷新，即 1 小时后首次调用 `n.c()`，之后每 10 小时刷新一次。
+- `n.a(String,String)` 的原始字节码为单次 `new`、`dup`、写入 `c/d` 后返回；CFR 的“双重 new”输出不应作为对象归属证据。
 
 ## 下一步
 
 继续 M2 第二阶段：
 
 1. 继续解析 `ClawWorkspace.vv(...)`、`JLoginNew.vS(...)` 等 invokedynamic/bootstrap 形态。
-2. 追踪 `com.sbf.main.jxbrowser.n.c()` 刷新路径，并在隔离环境记录 token 请求的实际域名/路径。
+2. 梳理 `expireTime` 对 UI/启动分支的实际影响，并在隔离环境记录 token 请求的实际域名/路径。
 3. 产出更接近 M3 的 `seam-candidates.md` 草稿，但不做 patch。

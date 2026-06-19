@@ -37,3 +37,12 @@
 - 解决方案：核对 AdsCallback.java:191 与 MiJava.java:1553，确认比较目标均为 String.contains(CharSequence)；同步修正文档，并还原 RT/rdtime 拼接。
 - 预防措施：今后确认混淆分支语义时同时验证三项：明文字面量、比较函数 bootstrap 目标、被调用方法描述符。
 - 状态：resolved
+
+## CFR 将 dup 栈值误还原为第二次 new n()
+- 现象：n.a(String,String) 被反编译为创建两个 n 实例，看起来 URL 字段 c 被写入一个随后丢弃的对象。
+- 触发条件：追踪 n.c() 刷新时发现若按 CFR 输出理解，返回缓存实例没有 URL，和实际刷新设计矛盾。
+- 影响：可能错误判断定时刷新不可用，或把字段归属和补丁候选定位到错误对象。
+- 根因：混淆字节码使用 new/dup/dup/astore 的栈操作，CFR 0.152 在该方法上把同一对象引用错误展示为第二次构造。
+- 解决方案：直接解析 App.jar 中 n.class 的 Code 属性，确认只有一次 new，参数 c/d 写入同一返回实例。
+- 预防措施：遇到反编译结果与控制流不变量矛盾时，必须回到原始字节码核对 new/dup/astore/putfield 指令。
+- 状态：resolved

@@ -29,3 +29,15 @@
   - 已导出 `com\sbf\main\ext\j2026\ClawWorkspace.java`。
 - 工具偏离说明：计划名为 JADX，但输入实际是 Java `.class` JAR，采用 CFR 更适配；见 ADR-0002。
 - 原始资产修改：未修改。
+
+## 2026-06-20 02:29｜M2 第一阶段字符串解密
+
+- 范围：只处理 `JSetupDialog$JLoginNew.N(...)` 和 `JTestFrame$JLoginNew$2.k(...)` 两类字符串解密。
+- 脚本：`H:\项目\出海-AI\tools\decode_java_strings.py`。
+- 输入：`H:\项目\出海-AI\.artifacts\decompiled\cfr-app-20260620-0215`。
+- 输出：`H:\项目\出海-AI\.artifacts\analysis\string_map.json`。
+- 输出统计：1,001 条调用记录；943 条可读性评分 `>= 0.8`。
+- 授权候选：`H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json`，132 条。
+- 抽样验证：`StartApp.java` 第 75 行解出 `D:/aimirror/`；第 383 行附近解出 `token`；第 395 行解出 `expireTime`。
+- 限制：`StartApp.Sy(...)`、`JLoginNew.vS(...)`、`ClawWorkspace.vv(...)` 等 invokedynamic/bootstrap 形态尚未处理。
+- 原始资产修改：未修改。

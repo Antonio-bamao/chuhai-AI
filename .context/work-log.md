@@ -29,3 +29,10 @@
 - 结果：已产出 .context/decompile-report.md；源码树位于 .artifacts/decompiled/cfr-app-20260620-0215，共 4,226 个 .java 文件；Manifest Main-Class 为 com.sbf.main.StartApp。
 - 验证：CFR 命令退出码 0；输出统计为 4,226 个 Java 文件；StartApp.java 含 public static void main；JLoginNew.java 与 ext/j2026/ClawWorkspace.java 已存在；validate_context.py 待最终运行。
 - 下一步：提交 M1-02 文档检查点，然后进入 M2 字符串解密分析。
+
+## 2026-06-20 02:31｜执行 M2 第一阶段字符串解密
+- 目标：执行 M2 第一阶段字符串解密
+- 动作：复刻 JSetupDialog$JLoginNew.N 与 JTestFrame$JLoginNew$2.k 两类调用点相关解密算法；新增 tools/decode_java_strings.py；生成 .artifacts/analysis/string_map.json；筛选授权相关候选 auth_string_candidates.json；记录字符串解密报告。
+- 结果：已产出 1,001 条字符串解码记录，其中 943 条可读性评分 >= 0.8；StartApp 中已解出 user、tenantCode、userId、token、result、header、data、expireTime 等字段；授权候选 132 条。
+- 验证：python -m py_compile 已通过；脚本执行退出码 0；抽样 StartApp 第 75 行解出 D:/aimirror/，第 383 行解出 token，第 395 行解出 expireTime；validate_context.py 待最终运行。
+- 下一步：提交 M2 第一阶段检查点，然后继续处理 JLoginHTML$h.v、ClawWorkspace.vv、JLoginNew.vS、StartApp.Sy 等动态调用/字符串形态。

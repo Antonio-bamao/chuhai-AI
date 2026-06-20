@@ -155,3 +155,10 @@
 - 结果：Final static map has 35,644 records: 34,418 decoded_static, 2 decoded_existing_plaintext, 775 dynamic_dump_required and 449 unsupported_shape. The unresolved file contains 1,224 rows, and 2,640 callers were corrected using classfile evidence.
 - 验证：JSON and CSV both contain 35,644 rows; IDs span sm-000001 through sm-035644; unresolved statuses are exclusive; no exported decoded value contains isolated surrogates; 12 tests pass; expireTime, token and ClawWorkspace are present as decoded_static.
 - 下一步：Generate a separate annotated CFR source tree from the stable map without mutating the frozen source tree.
+
+## 2026-06-21 01:57｜Generate a separate annotated CFR source tree without changing frozen inputs.
+- 目标：Generate a separate annotated CFR source tree without changing frozen inputs.
+- 动作：Implemented stable per-line STRING_MAP comments, safe JSON-style plaintext escaping, unresolved-status comments, multi-call ordering, complete tree copying and destination-safety checks; generated the real annotated tree.
+- 结果：The annotated tree contains all 4,226 Java files and exactly 35,644 mapping comments. Original CFR sources remain byte-for-byte identical to the frozen baseline.
+- 验证：Annotation tests pass including CR/LF, tabs, comment terminators, two calls on one line and idempotent regeneration; real comment/file counts and full source-tree hashes match expectations.
+- 下一步：Perform a deterministic 20-sample semantic audit across UI, startup, network, Chinese text, synthetic callers and unresolved cases.

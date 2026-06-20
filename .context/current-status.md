@@ -1,8 +1,8 @@
 # 当前状态
 
-- 当前阶段：继续 M2，按外部 Phase 3 完整标准补齐全量字符串解密
-- 已完成：已阅读外部工程设计文档与 SOP 六件套；已初始化 `.context`；已将目标、边界、契约、里程碑和风险迁入仓库上下文；已完成资产清点、原始备份、备份完整性校验、静态启动线索记录和源码树导出；已记录 ADR-0002 说明用 CFR 替代 JADX 的原因；已实现 `tools/decode_java_strings.py` 并生成扩展版 `string_map.json`，覆盖 9 类静态字符串解码器；已产出并更新 `seam-candidates.md` 草稿；已新增 `tools/decode_bootstrap_calls.py`，生成 `bootstrap_map.json` 与 `startapp_bootstrap_candidates.json`。
-- 进行中：现有 9 类静态解密器已解码 4,599 条调用，但启发式全量扫描发现约 348 个候选调用族、35,642 个候选调用；尚缺全候选分类、CSV、带明文注释源码树、去花阅读副本和动态 dump 待办/runbook。已批准采用静态全量分类、注释副本、去花阅读副本、最后手动动态 dump 的分阶段方案。
-- 下一步：复核并批准 `docs/superpowers/specs/2026-06-21-m2-full-string-decryption-design.md`，随后编写逐步实施计划；暂不进入 M3。
-- 阻塞项：尚未确认隔离验证环境使用 VMware、VirtualBox 还是另一台机器；尚未确认授权以远端返回还是本地许可文件为主。
+- 当前阶段：M2 Phase 3 全量字符串静态解密已完成；动态 dump 保留为手动离线 Windows VM 步骤，暂不进入 M3。
+- 已完成：已阅读外部工程设计文档与 SOP 六件套；已初始化 `.context`；已完成资产清点、原始备份、备份完整性校验、静态启动线索记录和源码树导出；已记录 ADR-0002 说明用 CFR 替代 JADX 的原因；已解码 bootstrap 调用；已完成 348 个字符串 family 的全候选分类、35,644 行统一 JSON/CSV、1,224 行 unresolved、带 `STRING_MAP` 注释源码树、20 条语义抽检、只读 Threadtear 去花阅读副本，以及离线动态 dump ISO/runbook。
+- 进行中：动态 dump 尚未执行。当前准备包只用于 Windows 离线 VM，第一轮限定 5 个 critical family，第二轮 high 目标需根据第一轮截图和 dump 决定；本机没有把 agent 挂载到 `App.jar`。
+- 下一步：如要补齐动态证据，按 `.context/dynamic-dump-runbook.md` 手动创建断网 Windows VM 并逐步截图；若暂缓动态 dump，可在当前静态证据基础上进入 M3 接缝清单。
+- 阻塞项：动态 dump 需要用户手动准备 Windows 离线 VM 并回传截图；尚未确认授权以远端返回还是本地许可文件为主。
 - 当前活跃日志分片：work-log.md

@@ -160,3 +160,25 @@
 - M2 门槛：关键入口明文、动态调用、token 缓存与时效字段语义已足以支持 M3 接缝清单。
 - 全量错误复核：3 条错误均为空 bootstrap key，位于 `JPLTStatusBrowser` 与 `Weta365Helper`，不在当前关键路径。
 - 原始资产修改：未修改。
+
+## 2026-06-21｜M2 Phase 3 final static gate
+
+- 单测：`python -m unittest discover -s tests -v`，17/17 pass。
+- Python 工具语法：内存 `compile(...)` 覆盖 `tools/**/*.py`，14 个文件通过。
+- `git diff --check`：通过。
+- 统一字符串映射：`.artifacts/analysis/string_map.json` 与 CSV 均为 35,644 行；
+  状态为 `decoded_static=34418`、`decoded_existing_plaintext=2`、
+  `dynamic_dump_required=775`、`unsupported_shape=449`。
+- 未决输出：`.artifacts/analysis/unresolved_string_calls.json` 为 1,224 行，
+  仅包含 `dynamic_dump_required` 与 `unsupported_shape`。
+- family inventory：348 个 family，其中 `decoded_static=347`、
+  `unsupported_shape=1`。
+- 注释源码树：4,226 个 Java 文件，35,644 条 `STRING_MAP sm-` 注释。
+- 原始 JAR：SHA-256
+  `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。
+- Threadtear 阅读副本：ZIP 可打开，含 4,226 个 class 和
+  `com/sbf/main/StartApp.class`。
+- 动态 dump 准备：131 个目标（5 critical、9 high、117 normal）；
+  agent 合成 fixture smoke 记录 `cipher -> cipher-plain`；最终 ISO
+  SHA-256 `69C4B17704BFA2165C541FF16DDE4E288C73419D6CDE61DFDA0A7611A2A1D0C4`。
+- 上下文校验：`.context` 必需状态/报告/日志/手册文件存在。

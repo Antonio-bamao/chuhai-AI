@@ -109,3 +109,12 @@
 - 解决方案：The driver now creates the output parent first and verifies that the output is a non-empty file after saveAsJar.
 - 预防措施：Treat third-party void save APIs as untrusted; verify output existence, size, ZIP readability and required entries before reporting success.
 - 状态：resolved
+
+## Dynamic dump agent JAR hash changed after rebuild
+- 现象：复跑 javaagent 打包后，`dynamic-string-dump-agent.jar` 的 SHA-256 从早先记录的 `45CA60...` 变为 `DDB0DD...`。
+- 触发条件：使用 JDK `jar` 重新打包相同 class 文件。
+- 影响：若不复核，会导致 VM 手册中的 `certutil -hashfile` 期望值与实际 ISO 内容不一致。
+- 根因：标准 JAR 打包会写入 ZIP entry 时间戳等元数据，未配置可复现构建时哈希不稳定。
+- 解决方案：以复编译后合成 smoke 通过的 JAR 为准，更新 README/runbook 哈希，重新制作 ISO，并再次验证 ISO 内容与哈希。
+- 预防措施：每次重新打包 agent 后必须重新计算 agent 与 ISO SHA-256；不要复用旧哈希。
+- 状态：resolved

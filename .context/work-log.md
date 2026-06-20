@@ -183,3 +183,10 @@
 - 结果：Dynamic targets contain 131 families: 5 critical, 9 high and 117 normal. The first offline VM pass is limited to critical targets, with high targets gated by screenshot/dump review and normal targets disabled by default. The final ISO is `.artifacts/dynamic-dump-package.iso` with SHA-256 `69C4B17704BFA2165C541FF16DDE4E288C73419D6CDE61DFDA0A7611A2A1D0C4`.
 - 验证：Target builder test passed; generated verification targets matched the committed artifact outputs; agent compiled with the bundled JDK; synthetic-only javaagent smoke recorded `cipher -> cipher-plain`; ISO opened with Joliet long names and contains README, App.jar, agent, Threadtear jar, target JSON/TSV and `jre/bin/java.exe`; `git diff --check` passed.
 - 下一步：Run final M2 verification gate, update status/report logs, and keep the actual dynamic dump as a manual offline-VM procedure.
+
+## 2026-06-21 02:34｜Close the M2 full static string-decryption gate.
+- 目标：Run final M2 verification gate, update status/report logs, and keep the actual dynamic dump as a manual offline-VM procedure.
+- 动作：Updated current status, string decode report, verification log and bug log with the final static/dynamic boundary; re-ran the full unit suite, Python syntax compilation and artifact assertions after documentation changes.
+- 结果：M2 Phase 3 static deliverables are internally consistent and ready for M3 use; dynamic dump remains explicitly unexecuted on the host and is documented as a later stop-and-screenshot Windows offline VM workflow.
+- 验证：`python -m unittest discover -s tests -v` passed 17/17; in-memory compile covered 14 Python tool files; artifact gate asserted string-map, unresolved, inventory, dynamic targets and ISO hash; `git diff --check` exited 0.
+- 下一步：Either run the manual offline VM critical-target dump with screenshots, or proceed to M3 using the completed static evidence set.

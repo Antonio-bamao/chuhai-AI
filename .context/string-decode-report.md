@@ -138,9 +138,12 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 
 ## 下一步
 
-1. M2 关键入口明文和 bootstrap 目标已达到可检索门槛，可转入 M3 授权接缝清单。
-2. M3 继续追踪 `roles`、`overdue`、套餐/功能配置与“普通版”降级的关系。
-3. 在隔离环境记录 token 请求的实际域名/路径和真实出网行为，不做 patch。
+1. M2 静态 Phase 3 已达到全量可检索门槛，可用于 M3 授权接缝清单。
+2. 动态 dump 不在宿主机执行；若要补齐运行时 caller 证据，按
+   `.context/dynamic-dump-runbook.md` 在断网 Windows VM 中第一轮只跑
+   `critical` 目标并逐步截图。
+3. M3 继续追踪 `roles`、`overdue`、套餐/功能配置与“普通版”降级的关系；
+   动态 dump 的结果只能作为补充证据，不作为当前静态结论的前置条件。
 
 ## 2026-06-21 M2 Phase 3 全量静态解密收口
 
@@ -157,6 +160,10 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
   含 35,644 条稳定 `STRING_MAP` 注释；原始源码树哈希未改变。
 - 20 条 URL、字段、UI、启动/登录样本全部与上下文一致，详见
   `.context/string-map-sample-verification.md`。
+- 动态 dump 准备：`.artifacts/dynamic-dump-package.iso`
+  SHA-256 `69C4B17704BFA2165C541FF16DDE4E288C73419D6CDE61DFDA0A7611A2A1D0C4`；
+  目标共 131 个 family（5 critical、9 high、117 normal），本机只做合成
+  fixture smoke，未运行真实 `App.jar`。
 
 旧章节中的 4,599 条统计是 2026-06-20 的阶段性历史基线，不再代表当前
 全量覆盖结果。

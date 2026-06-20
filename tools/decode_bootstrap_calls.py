@@ -13,20 +13,18 @@ import json
 import re
 from pathlib import Path
 
-from decode_java_strings import i32, java_unescape
+try:
+    from tools.decode_java_strings import i32
+    from tools.java_source_scan import BOOTSTRAP_METHOD_DECL, iter_java_lines, java_unescape
+except ModuleNotFoundError:  # Direct execution: python tools/decode_bootstrap_calls.py
+    from decode_java_strings import i32
+    from java_source_scan import BOOTSTRAP_METHOD_DECL, iter_java_lines, java_unescape
 
 
 BOOTSTRAP_CALL = re.compile(
     r"(?P<owner>[A-Za-z_$][\w$]*)\.(?P<method>[A-Za-z_$][\w$]*)"
     r'\("(?P<key>(?:\\.|[^"\\])*)",\s*"(?P<payload>(?:\\.|[^"\\])*)"'
 )
-
-PACKAGE_DECL = re.compile(r"^\s*package\s+([\w.]+);")
-METHOD_DECL = re.compile(
-    r"^\s*(?:public|private|protected|static|final|synchronized|native|abstract|strictfp)\s+"
-    r".*?\s+(?P<name>[\w$<>]+)\s*\((?P<params>[^;{}]*)\)\s*(?:throws [^{]+)?\{"
-)
-
 
 def decode_payload(key_text: str, payload_text: str) -> str:
     key_chars = [ord(ch) for ch in key_text]
@@ -90,56 +88,11 @@ def parse_target(decoded: str) -> dict:
     }
 
 
-def class_name_for(source_root: Path, java_file: Path) -> str:
-    rel = java_file.relative_to(source_root).with_suffix("")
-    return ".".join(rel.parts)
-
-
-def package_name(lines: list[str]) -> str | None:
-    for line in lines[:20]:
-        match = PACKAGE_DECL.match(line)
-        if match:
-            return match.group(1)
-    return None
-
-
 def scan_file(source_root: Path, java_file: Path) -> list[dict]:
-    text = java_file.read_text(encoding="utf-8", errors="replace")
-    lines = text.splitlines()
-    cls = class_name_for(source_root, java_file)
-    pkg = package_name(lines)
-    if pkg and not cls.startswith(pkg + "."):
-        cls = f"{pkg}.{java_file.stem}"
-
-    current_method = "<clinit>"
-    current_signature = "<clinit>"
-    current_method_line = 0
-    brace_depth = 0
-    method_stack: list[tuple[int, str, str, int]] = []
     rows: list[dict] = []
 
-    for line_no, line in enumerate(lines, start=1):
-        while method_stack and brace_depth < method_stack[-1][0]:
-            method_stack.pop()
-            if method_stack:
-                _, current_method, current_signature, current_method_line = method_stack[-1]
-            else:
-                current_method = "<clinit>"
-                current_signature = "<clinit>"
-                current_method_line = 0
-
-        method_match = METHOD_DECL.match(line)
-        if method_match and not line.lstrip().startswith(("if", "for", "while", "switch", "catch")):
-            name = method_match.group("name")
-            if name == java_file.stem:
-                name = "<init>"
-            current_method = name
-            params = " ".join(method_match.group("params").split())
-            current_signature = f"{name}({params})"
-            current_method_line = line_no
-            method_stack.append((brace_depth + 1, current_method, current_signature, current_method_line))
-
-        for match in BOOTSTRAP_CALL.finditer(line):
+    for java_line in iter_java_lines(source_root, java_file, BOOTSTRAP_METHOD_DECL):
+        for match in BOOTSTRAP_CALL.finditer(java_line.text):
             owner = match.group("owner")
             method = match.group("method")
             if method in {"N", "k", "v"}:
@@ -157,11 +110,11 @@ def scan_file(source_root: Path, java_file: Path) -> list[dict]:
             rows.append(
                 {
                     "path": str(java_file),
-                    "line": line_no,
-                    "caller": f"{cls}{current_method}",
-                    "caller_method": current_method,
-                    "caller_signature": current_signature,
-                    "caller_method_line": current_method_line,
+                    "line": java_line.line_no,
+                    "caller": java_line.caller,
+                    "caller_method": java_line.method_name,
+                    "caller_signature": java_line.signature,
+                    "caller_method_line": java_line.method_line,
                     "bootstrap": f"{owner}.{method}",
                     "key": key,
                     "decoded_payload": decoded,
@@ -169,8 +122,6 @@ def scan_file(source_root: Path, java_file: Path) -> list[dict]:
                     **target,
                 }
             )
-
-        brace_depth += line.count("{") - line.count("}")
 
     return rows
 

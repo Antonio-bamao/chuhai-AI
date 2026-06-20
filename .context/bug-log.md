@@ -64,3 +64,12 @@
 - 解决方案：Verify syntax with Python compile(source, filename, exec), which performs the same parser/compiler check in memory without filesystem replacement.
 - 预防措施：Use in-memory compile checks for Python files in this managed workspace and reserve py_compile for an unrestricted environment.
 - 状态：resolved
+
+## Shared scanner changed bootstrap caller attribution
+- 现象：The first shared-scanner refactor kept 73,600 bootstrap rows but changed caller metadata in 16,123 rows.
+- 触发条件：Replacing decode_bootstrap_calls.py method tracking with the broader static-string method declaration parser.
+- 影响：Historical bootstrap output was no longer byte-for-byte reproducible, especially around constructors and method-line metadata.
+- 根因：The two legacy decoders used intentionally different method-declaration regexes; the bootstrap parser required a modifier and return type and therefore did not recognize constructors.
+- 解决方案：Added a legacy bootstrap method-detection profile to the shared scanner and made the bootstrap decoder select it explicitly.
+- 预防措施：Require exact JSON regression comparisons for every refactor of source-location or caller-attribution logic.
+- 状态：resolved

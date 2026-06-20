@@ -12,6 +12,11 @@ import json
 import re
 from pathlib import Path
 
+try:
+    from tools.java_source_scan import iter_java_lines, java_unescape
+except ModuleNotFoundError:  # Direct execution: python tools/decode_java_strings.py
+    from java_source_scan import iter_java_lines, java_unescape
+
 MASK32 = 0xFFFFFFFF
 
 
@@ -185,33 +190,6 @@ CALL_PATTERNS = {
     ),
 }
 
-METHOD_DECL = re.compile(
-    r"^\s*(?:public|private|protected|static|final|synchronized|native|abstract|/\*| "
-    r"|strictfp|transient|volatile|<)*[\w$<>\[\]., ?]+\s+([\w$<>]+)\s*\([^;]*\)\s*(?:throws [^{]+)?\{"
-)
-PACKAGE_DECL = re.compile(r"^\s*package\s+([\w.]+);")
-
-
-def java_unescape(text: str) -> str:
-    def repl(match: re.Match[str]) -> str:
-        token = match.group(0)
-        if token.startswith("\\u"):
-            return chr(int(token[2:], 16))
-        table = {
-            "\\b": "\b",
-            "\\t": "\t",
-            "\\n": "\n",
-            "\\f": "\f",
-            "\\r": "\r",
-            '\\"': '"',
-            "\\'": "'",
-            "\\\\": "\\",
-        }
-        return table.get(token, token[1:])
-
-    return re.sub(r"\\u[0-9a-fA-F]{4}|\\[btnfr\"'\\]", repl, text)
-
-
 def decode_string(encrypted: str, caller: str, decoder: tuple) -> str:
     sbox, t1, t2, t3, t4, schedule, constants = decoder
     h = java_hash(caller)
@@ -271,52 +249,16 @@ def decode_string(encrypted: str, caller: str, decoder: tuple) -> str:
     return "".join(chr(ch) for ch in chars)
 
 
-def class_name_for(source_root: Path, java_file: Path) -> str:
-    rel = java_file.relative_to(source_root).with_suffix("")
-    return ".".join(rel.parts)
-
-
-def package_name(lines: list[str]) -> str | None:
-    for line in lines[:20]:
-        match = PACKAGE_DECL.match(line)
-        if match:
-            return match.group(1)
-    return None
-
-
 def scan_file(source_root: Path, java_file: Path) -> list[dict]:
-    text = java_file.read_text(encoding="utf-8", errors="replace")
-    lines = text.splitlines()
-    cls = class_name_for(source_root, java_file)
-    pkg = package_name(lines)
-    if pkg and not cls.startswith(pkg + "."):
-        cls = f"{pkg}.{java_file.stem}"
-
-    current_method = "<clinit>"
-    brace_depth = 0
-    method_stack: list[tuple[int, str]] = []
     rows: list[dict] = []
 
-    for line_no, line in enumerate(lines, start=1):
-        while method_stack and brace_depth < method_stack[-1][0]:
-            method_stack.pop()
-            current_method = method_stack[-1][1] if method_stack else "<clinit>"
-
-        method_match = METHOD_DECL.match(line)
-        if method_match and not line.lstrip().startswith(("if", "for", "while", "switch", "catch")):
-            name = method_match.group(1)
-            if name == java_file.stem:
-                name = "<init>"
-            current_method = name
-            method_stack.append((brace_depth + 1, current_method))
-
+    for java_line in iter_java_lines(source_root, java_file):
         for decoder_name, pattern in CALL_PATTERNS.items():
-            for match in pattern.finditer(line):
+            for match in pattern.finditer(java_line.text):
                 encrypted_literal = match.group(1)
                 encrypted = java_unescape(encrypted_literal)
-                caller = f"{cls}{current_method}"
                 try:
-                    decoded = decode_string(encrypted, caller, DECODERS[decoder_name])
+                    decoded = decode_string(encrypted, java_line.caller, DECODERS[decoder_name])
                     error = None
                 except Exception as exc:  # pragma: no cover - defensive analysis output
                     decoded = ""
@@ -325,15 +267,13 @@ def scan_file(source_root: Path, java_file: Path) -> list[dict]:
                     {
                         "decoder": decoder_name,
                         "path": str(java_file),
-                        "line": line_no,
-                        "caller": caller,
+                        "line": java_line.line_no,
+                        "caller": java_line.caller,
                         "encrypted_literal": encrypted_literal,
                         "decoded": decoded,
                         "error": error,
                     }
                 )
-
-        brace_depth += line.count("{") - line.count("}")
 
     return rows
 

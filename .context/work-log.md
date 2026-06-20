@@ -120,3 +120,10 @@
 - 结果：Baseline frozen at 4,227 files / 4,226 Java files / 59,649,060 bytes, JAR SHA-256 9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B, 4,599 static-map rows and 73,600 bootstrap rows with 73,597 error-free decodes.
 - 验证：Unit test passed; in-memory Python compilation passed; baseline counts and hashes were recomputed from artifacts; git diff --check passed.
 - 下一步：Implement the shared Java source scanner and inventory extraction as Task 2.
+
+## 2026-06-21 01:00｜Extract one tested Java source scanner without changing existing analysis outputs.
+- 目标：Extract one tested Java source scanner without changing existing analysis outputs.
+- 动作：Added Java literal unescaping, package/class inference, brace-depth method tracking, caller metadata, fixture tests, and a compatibility profile for the legacy bootstrap parser; refactored both decoder scripts to consume the shared scanner.
+- 结果：The shared scanner handles static initializers, constructors, normal methods and multiple calls per line while preserving both prior maps exactly.
+- 验证：Four scanner/hash tests passed; all three Python modules compiled in memory; regenerated 4,599 static-string rows and 73,600 bootstrap rows were byte-for-byte equal as parsed JSON to the frozen outputs; context and diff checks passed.
+- 下一步：Separate the AES-like decoder algorithm from decoder-family registration in Task 3.

@@ -141,3 +141,22 @@ H:\项目\出海-AI\.artifacts\analysis\auth_string_candidates.json
 1. M2 关键入口明文和 bootstrap 目标已达到可检索门槛，可转入 M3 授权接缝清单。
 2. M3 继续追踪 `roles`、`overdue`、套餐/功能配置与“普通版”降级的关系。
 3. 在隔离环境记录 token 请求的实际域名/路径和真实出网行为，不做 patch。
+
+## 2026-06-21 M2 Phase 3 全量静态解密收口
+
+- 候选清单：348 个 family、35,642 个 Unicode 密文调用点。
+- 唯一同构静态 family：347 个；`a$5$0.Z` 因两个包内同名定义保留未决。
+- 最终统一映射：35,644 条，其中：
+  - `decoded_static`：34,418
+  - `decoded_existing_plaintext`：2
+  - `dynamic_dump_required`：775
+  - `unsupported_shape`：449
+- 原始 classfile 方法表纠正 CFR lambda/synthetic caller：2,640 条。
+- 未决输出：`.artifacts/analysis/unresolved_string_calls.json`，1,224 条。
+- 注释源码树：`.artifacts/decompiled/cfr-app-20260620-0215-annotated`，
+  含 35,644 条稳定 `STRING_MAP` 注释；原始源码树哈希未改变。
+- 20 条 URL、字段、UI、启动/登录样本全部与上下文一致，详见
+  `.context/string-map-sample-verification.md`。
+
+旧章节中的 4,599 条统计是 2026-06-20 的阶段性历史基线，不再代表当前
+全量覆盖结果。

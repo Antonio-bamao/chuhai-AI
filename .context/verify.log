@@ -4,6 +4,21 @@
 
 - 范围：M1-01 资产备份与原始启动记录。
 - 原始资产修改：未修改。
+
+## 2026-06-21｜M2 Phase 3 全量字符串映射语义抽检
+
+- 最终映射：35,644 条；JSON/CSV 行数一致。
+- 状态：34,418 `decoded_static`、2 `decoded_existing_plaintext`、
+  775 `dynamic_dump_required`、449 `unsupported_shape`。
+- classfile caller 纠正：2,640 条。
+- 20 条稳定 ID 样本覆盖 URL/路径、JSON/Cookie 字段、UI 文案、
+  StartApp/JLogin/JProductSelector/ClawWorkspace。
+- 抽检结果：20 coherent，0 rejected。
+- 核心样本：`StartApp.java:383 -> token`；
+  `StartApp.java:395 -> expireTime`；
+  `ClawWorkspace.java:29 -> ClawWorkspace`。
+- 原始 CFR 源码树：4,226 个 Java 文件，哈希与冻结基线一致。
+- 注释树：4,226 个 Java 文件，35,644 条 `STRING_MAP` 注释。
 - 备份目录：`H:\项目\出海-AI\.artifacts\backups\original-20260620-021044`
 - 备份验证：源与备份均为 772 个文件、1,706,314,191 bytes；`data\app\App.dll` 与 `data\app\HuoChaiAI.exe` 哈希抽检一致。
 - 静态启动线索：

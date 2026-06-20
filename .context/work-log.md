@@ -162,3 +162,10 @@
 - 结果：The annotated tree contains all 4,226 Java files and exactly 35,644 mapping comments. Original CFR sources remain byte-for-byte identical to the frozen baseline.
 - 验证：Annotation tests pass including CR/LF, tabs, comment terminators, two calls on one line and idempotent regeneration; real comment/file counts and full source-tree hashes match expectations.
 - 下一步：Perform a deterministic 20-sample semantic audit across UI, startup, network, Chinese text, synthetic callers and unresolved cases.
+
+## 2026-06-21 02:00｜Semantically verify 20 deterministic records from the final string map.
+- 目标：Semantically verify 20 deterministic records from the final string map.
+- 动作：Selected five URL/path, five JSON/Cookie field, five UI-message and five startup/login/workspace records; recorded full source, caller, ciphertext, plaintext and context evidence; updated the historical report and verification log with final coverage.
+- 结果：All 20 samples are coherent with their immediate Java usage; zero records were rejected or downgraded. StartApp token/expireTime and ClawWorkspace/JLogin/JProductSelector UI strings are explicitly included.
+- 验证：The embedded JSON summary contains 20 unique stable IDs, all exist in the final map with decoded_static status, and asserts coherent=20/rejected=0; context and diff checks pass.
+- 下一步：Run Threadtear preflight and only bytecode-only host cleanup on a copied JAR.

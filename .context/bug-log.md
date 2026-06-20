@@ -46,3 +46,21 @@
 - 解决方案：直接解析 App.jar 中 n.class 的 Code 属性，确认只有一次 new，参数 c/d 写入同一返回实例。
 - 预防措施：遇到反编译结果与控制流不变量矛盾时，必须回到原始字节码核对 new/dup/astore/putfield 指令。
 - 状态：resolved
+
+## Windows sandbox tempfile ACL breaks Python tests
+- 现象：TemporaryDirectory children reject writes, and Python cleanup of manually created test directories is denied under the managed workspace.
+- 触发条件：Running unit tests that create and delete temporary directories with tempfile or shutil.
+- 影响：Tests fail for sandbox-environment reasons unrelated to production behavior.
+- 根因：Managed Windows sandbox ACL behavior makes Python-created temporary directories and Python deletion unusable in this workspace.
+- 解决方案：Replaced runtime temporary directories with committed read-only fixtures and removed cleanup requirements.
+- 预防措施：Use committed fixtures or persistent artifact outputs for tests; avoid tempfile and Python recursive deletion in this managed workspace.
+- 状态：resolved
+
+## Windows sandbox blocks py_compile cache replacement
+- 现象：python -m py_compile writes a temporary .pyc but receives WinError 5 when atomically replacing the final __pycache__ file.
+- 触发条件：Compiling tools/hash_tree.py with python -m py_compile under the managed Windows workspace.
+- 影响：Bytecode-file verification fails despite valid Python syntax.
+- 根因：Managed sandbox ACL permits temporary creation but denies the os.replace operation used by py_compile.
+- 解决方案：Verify syntax with Python compile(source, filename, exec), which performs the same parser/compiler check in memory without filesystem replacement.
+- 预防措施：Use in-memory compile checks for Python files in this managed workspace and reserve py_compile for an unrestricted environment.
+- 状态：resolved

@@ -148,3 +148,10 @@
 - 结果：Static family coverage increased from 9 to 347 and encrypted call coverage from 4,599 baseline rows to 35,193 eligible calls. Only a.Z remains unresolved because two package-distinct definitions collapse to the same textual family.
 - 验证：Nine tests passed; the inventory reports 347 decoded_static and one unsupported family; expanded map contains exactly 35,193 rows, matching decoded-static inventory calls; ten representative new samples decode to coherent plaintext.
 - 下一步：Build the unified JSON/CSV exporter with explicit plaintext, unresolved, caller-confidence and decode-error statuses.
+
+## 2026-06-21 01:55｜Produce stable complete JSON/CSV maps with explicit unresolved and caller-confidence evidence.
+- 目标：Produce stable complete JSON/CSV maps with explicit unresolved and caller-confidence evidence.
+- 动作：Implemented deterministic normalization/IDs, UTF-8 JSON, multiline-safe CSV, unresolved export, existing-plaintext status, original-classfile method extraction, and conservative caller candidate resolution for lambda/synthetic methods.
+- 结果：Final static map has 35,644 records: 34,418 decoded_static, 2 decoded_existing_plaintext, 775 dynamic_dump_required and 449 unsupported_shape. The unresolved file contains 1,224 rows, and 2,640 callers were corrected using classfile evidence.
+- 验证：JSON and CSV both contain 35,644 rows; IDs span sm-000001 through sm-035644; unresolved statuses are exclusive; no exported decoded value contains isolated surrogates; 12 tests pass; expireTime, token and ClawWorkspace are present as decoded_static.
+- 下一步：Generate a separate annotated CFR source tree from the stable map without mutating the frozen source tree.

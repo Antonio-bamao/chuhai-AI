@@ -91,3 +91,12 @@
 - 解决方案：Require at least one \\uXXXX escape before static decryption; reserve plain literals for decoded_existing_plaintext export status.
 - 预防措施：Use one shared encrypted-literal eligibility rule and assert map counts equal decoded_static inventory call counts.
 - 状态：resolved
+
+## CFR lexical caller produced invalid surrogate plaintext
+- 现象：UTF-8 export failed because 660 initially decoded rows contained isolated UTF-16 surrogates; other rows contained random Unicode despite a verified decoder family.
+- 触发条件：Using the enclosing CFR method name as the runtime stack-trace caller for calls folded into lambda expressions.
+- 影响：The algorithm and constants were correct but the caller hash was wrong, so invalid output could be mislabeled decoded_static.
+- 根因：CFR folds synthetic lambda methods into lexical source scopes, while the original classfile retains obfuscated synthetic method names used by StackTraceElement.
+- 解决方案：Added a minimal classfile method reader and conservative caller resolver; high-confidence candidates are selected by text validity/score and ambiguous calls are downgraded to dynamic_dump_required.
+- 预防措施：Never accept caller-hash plaintext containing surrogates or control characters; retain lexical and selected caller evidence and export unresolved calls separately.
+- 状态：resolved

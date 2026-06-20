@@ -99,3 +99,10 @@
 - 结果：确认 expireTime 只控制 header 缓存，在到期前 60 秒失效，缺失/0 时默认约 1 小时；periodTime 只触发过期/临期提示并在 JReadme 展示，提示后仍继续创建产品选择器。M2 已达到转入 M3 的静态分析门槛。
 - 验证：string_map 中 periodTime 仅见 StartApp$1 与 JSBFMain，expireTime 仅见 StartApp.f 与 n.c；bootstrap_map 确认 JOptionPane、JProductSelectorHtml、JLoginHTML.dispose 调用顺序；i18.cnf 核对过期与临期中文文案；未修改客户端产物。
 - 下一步：进入 M3，生成正式 seams.md，追踪软件开通列表、token、SBFApi.h 结果码及 roles/overdue/套餐配置对普通版降级的影响。
+
+## 2026-06-21 00:39｜确定 M2 完整 Phase 3 补齐方案
+- 目标：确定 M2 完整 Phase 3 补齐方案
+- 动作：对照外部 Phase 3 要求与现有产物，明确全候选分类、JSON/CSV、注释源码树、去花阅读副本和后续手动动态 dump 的分阶段设计；新增正式规格并将当前阶段从准备 M3 调整回继续 M2。
+- 结果：已形成可审计的五阶段设计，规定所有候选族必须有状态，原始资产只读，动态 dump 不在当前主机执行，去花产物仅供阅读。
+- 验证：规格已明确文件边界、状态模型、测试策略、停止条件、十项验收标准和非目标；待用户复核后进入实施计划。
+- 下一步：用户复核规格；批准后使用 writing-plans 编写逐步实施计划。

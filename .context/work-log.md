@@ -169,3 +169,10 @@
 - 结果：All 20 samples are coherent with their immediate Java usage; zero records were rejected or downgraded. StartApp token/expireTime and ClawWorkspace/JLogin/JProductSelector UI strings are explicitly included.
 - 验证：The embedded JSON summary contains 20 unique stable IDs, all exist in the final map with decoded_static status, and asserts coherent=20/rejected=0; context and diff checks pass.
 - 下一步：Run Threadtear preflight and only bytecode-only host cleanup on a copied JAR.
+
+## 2026-06-21 02:08｜Run only source-verified bytecode-only Threadtear cleanup on an immutable JAR copy.
+- 目标：Run only source-verified bytecode-only Threadtear cleanup on an immutable JAR copy.
+- 动作：Implemented manifest preflight; verified official Threadtear 3.0.1 release and source; downloaded and fingerprinted Threadtear/JDK; source-audited RemoveUnusedVariables; compiled a minimal no-GUI driver; ran it on a hash-identical copy; re-decompiled output with CFR and compared structure/bootstrap semantics.
+- 结果：Threadtear produced a valid 4,226-class output JAR without loading target classes. CFR retained 4,226 Java files and identical bootstrap semantic multiset; warnings remained 5,757, with only small line-count reductions.
+- 验证：Preflight tests pass; official cleanup source contains no forbidden runtime-loading markers; input hashes match; output ZIP opens and contains StartApp.class; CFR completed successfully; bootstrap remains 73,600/73,597.
+- 下一步：Generate prioritized dynamic-dump targets and a stop-and-screenshot offline Windows VM runbook.

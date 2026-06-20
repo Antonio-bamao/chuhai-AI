@@ -100,3 +100,12 @@
 - 解决方案：Added a minimal classfile method reader and conservative caller resolver; high-confidence candidates are selected by text validity/score and ambiguous calls are downgraded to dynamic_dump_required.
 - 预防措施：Never accept caller-hash plaintext containing surrogates or control characters; retain lexical and selected caller evidence and export unresolved calls separately.
 - 状态：resolved
+
+## Threadtear JarIO silently swallowed missing output directory
+- 现象：The first bytecode-only run printed an output path even though JarIO.saveAsJar had caught FileNotFoundException and produced no JAR.
+- 触发条件：Running the minimal Threadtear driver before creating .artifacts/deobfuscated.
+- 影响：A wrapper could falsely report successful deobfuscation when no output exists.
+- 根因：Threadtear 3.0.1 JarIO.saveAsJar returns void and catches IOException internally instead of propagating failure.
+- 解决方案：The driver now creates the output parent first and verifies that the output is a non-empty file after saveAsJar.
+- 预防措施：Treat third-party void save APIs as untrusted; verify output existence, size, ZIP readability and required entries before reporting success.
+- 状态：resolved

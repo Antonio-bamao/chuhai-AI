@@ -176,3 +176,10 @@
 - 结果：Threadtear produced a valid 4,226-class output JAR without loading target classes. CFR retained 4,226 Java files and identical bootstrap semantic multiset; warnings remained 5,757, with only small line-count reductions.
 - 验证：Preflight tests pass; official cleanup source contains no forbidden runtime-loading markers; input hashes match; output ZIP opens and contains StartApp.class; CFR completed successfully; bootstrap remains 73,600/73,597.
 - 下一步：Generate prioritized dynamic-dump targets and a stop-and-screenshot offline Windows VM runbook.
+
+## 2026-06-21 02:25｜Prepare offline Windows VM dynamic-dump package without running App.jar on host.
+- 目标：Generate prioritized dynamic-dump targets and a stop-and-screenshot offline Windows VM runbook.
+- 动作：Implemented unresolved-family grouping and priority scoring; exported javaagent target TSV; added a minimal ASM javaagent that records only configured static `String -> String` decoder returns; built a synthetic fixture smoke test; packaged `App.jar`, agent, Threadtear dependency, target lists, README and JRE into a read-only-transfer ISO.
+- 结果：Dynamic targets contain 131 families: 5 critical, 9 high and 117 normal. The first offline VM pass is limited to critical targets, with high targets gated by screenshot/dump review and normal targets disabled by default. The final ISO is `.artifacts/dynamic-dump-package.iso` with SHA-256 `69C4B17704BFA2165C541FF16DDE4E288C73419D6CDE61DFDA0A7611A2A1D0C4`.
+- 验证：Target builder test passed; generated verification targets matched the committed artifact outputs; agent compiled with the bundled JDK; synthetic-only javaagent smoke recorded `cipher -> cipher-plain`; ISO opened with Joliet long names and contains README, App.jar, agent, Threadtear jar, target JSON/TSV and `jre/bin/java.exe`; `git diff --check` passed.
+- 下一步：Run final M2 verification gate, update status/report logs, and keep the actual dynamic dump as a manual offline-VM procedure.

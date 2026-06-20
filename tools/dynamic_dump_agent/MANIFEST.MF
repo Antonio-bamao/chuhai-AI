@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Premain-Class: codex.dumpagent.DynamicStringDumpAgent
+Can-Redefine-Classes: false
+Can-Retransform-Classes: false
+Class-Path: threadtear-gui-3.0.1-all.jar
+

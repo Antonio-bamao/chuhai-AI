@@ -33,6 +33,20 @@ class JavaSourceScanTests(unittest.TestCase):
         self.assertEqual(calls[1].caller, "com.example.Sample<clinit>")
         self.assertEqual(calls[2].caller, "com.example.Samplerun")
 
+    def test_does_not_treat_typed_method_named_like_class_as_constructor(self):
+        root = Path("tests/fixtures/java_sources")
+        rows = list(
+            iter_java_lines(
+                root,
+                root / "com/example/MethodNamedLikeClass.java",
+            )
+        )
+        call = next(row for row in rows if 'Decoder.x("plain")' in row.text)
+        self.assertEqual(
+            call.caller,
+            "com.example.MethodNamedLikeClassMethodNamedLikeClass",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

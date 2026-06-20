@@ -9,9 +9,13 @@ from typing import Iterator
 
 
 PACKAGE_DECL = re.compile(r"^\s*package\s+([\w.]+);")
+METHOD_MODIFIER = (
+    r"public|private|protected|static|final|synchronized|native|abstract|"
+    r"strictfp|transient|volatile"
+)
 METHOD_DECL = re.compile(
-    r"^\s*(?:public|private|protected|static|final|synchronized|native|abstract|/\*| "
-    r"|strictfp|transient|volatile|<)*[\w$<>\[\]., ?]+\s+"
+    rf"^\s*(?P<mods>(?:(?:{METHOD_MODIFIER})\s+)*)"
+    r"(?P<return>[\w$<>\[\]., ?]+?)\s+"
     r"(?P<name>[\w$<>]+)\s*\((?P<params>[^;]*)\)\s*(?:throws [^{]+)?\{"
 )
 BOOTSTRAP_METHOD_DECL = re.compile(
@@ -89,6 +93,10 @@ def iter_java_lines(
     current_method_line = 0
     brace_depth = 0
     method_stack: list[tuple[int, str, str, int]] = []
+    constructor_decl = re.compile(
+        rf"^\s*(?:(?:{METHOD_MODIFIER})\s+)*{re.escape(java_file.stem)}"
+        r"\s*\((?P<params>[^;{}]*)\)\s*(?:throws [^{]+)?\{"
+    )
 
     for line_no, text in enumerate(lines, start=1):
         while method_stack and brace_depth < method_stack[-1][0]:
@@ -100,12 +108,23 @@ def iter_java_lines(
                 current_signature = "<clinit>"
                 current_method_line = 0
 
+        constructor_match = (
+            constructor_decl.match(text) if method_decl is METHOD_DECL else None
+        )
         method_match = method_decl.match(text)
-        if method_match and not text.lstrip().startswith(CONTROL_PREFIXES):
-            method_name = method_match.group("name")
-            if method_name == java_file.stem:
+        declaration = constructor_match or method_match
+        if declaration and not text.lstrip().startswith(CONTROL_PREFIXES):
+            method_name = (
+                "<init>"
+                if constructor_match
+                else declaration.group("name")
+            )
+            if (
+                method_decl is not METHOD_DECL
+                and method_name == java_file.stem
+            ):
                 method_name = "<init>"
-            params = " ".join(method_match.group("params").split())
+            params = " ".join(declaration.group("params").split())
             current_method = method_name
             current_signature = f"{method_name}({params})"
             current_method_line = line_no

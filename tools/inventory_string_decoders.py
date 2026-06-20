@@ -11,9 +11,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 try:
+    from tools.decoder_spec_discovery import discover_decoder_specs
     from tools.java_source_scan import iter_java_lines
     from tools.string_decoder_registry import DECODER_SPECS
 except ModuleNotFoundError:  # Direct execution from tools/
+    from decoder_spec_discovery import discover_decoder_specs
     from java_source_scan import iter_java_lines
     from string_decoder_registry import DECODER_SPECS
 
@@ -192,7 +194,11 @@ def build_inventory(
     known_decoders: set[str] | None = None,
 ) -> dict[str, InventoryEntry]:
     source_root = Path(source_root)
-    known = set(DECODER_SPECS) if known_decoders is None else set(known_decoders)
+    known = (
+        set(discover_decoder_specs(source_root))
+        if known_decoders is None
+        else set(known_decoders)
+    )
     definitions = _scan_definitions(source_root)
     samples: dict[str, list[dict]] = {}
     counts: dict[str, int] = {}

@@ -9,14 +9,27 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 try:
+    from tools.decoder_spec_discovery import discover_decoder_specs
     from tools.java_source_scan import iter_java_lines, java_unescape
-    from tools.string_decoder_registry import DECODER_SPECS, decode_registered
+    from tools.string_decoder_registry import (
+        DECODER_SPECS,
+        decode_registered,
+        register_decoder_specs,
+    )
 except ModuleNotFoundError:  # Direct execution: python tools/decode_java_strings.py
+    from decoder_spec_discovery import discover_decoder_specs
     from java_source_scan import iter_java_lines, java_unescape
-    from string_decoder_registry import DECODER_SPECS, decode_registered
+    from string_decoder_registry import (
+        DECODER_SPECS,
+        decode_registered,
+        register_decoder_specs,
+    )
+
+UNICODE_ESCAPE = re.compile(r"\\u[0-9a-fA-F]{4}")
 
 
 def scan_file(source_root: Path, java_file: Path) -> list[dict]:
@@ -26,6 +39,8 @@ def scan_file(source_root: Path, java_file: Path) -> list[dict]:
         for decoder_name, spec in DECODER_SPECS.items():
             for match in spec.call_pattern.finditer(java_line.text):
                 encrypted_literal = match.group(1)
+                if not UNICODE_ESCAPE.search(encrypted_literal):
+                    continue
                 encrypted = java_unescape(encrypted_literal)
                 try:
                     decoded = decode_registered(
@@ -59,6 +74,7 @@ def main() -> int:
     args = parser.parse_args()
 
     source_root = args.source_root.resolve()
+    register_decoder_specs(discover_decoder_specs(source_root))
     rows: list[dict] = []
     for java_file in source_root.rglob("*.java"):
         rows.extend(scan_file(source_root, java_file))

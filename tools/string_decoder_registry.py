@@ -21,7 +21,7 @@ class DecoderSpec:
     constants: tuple[int, int, int, int]
 
 
-def _spec(
+def make_decoder_spec(
     name: str,
     pattern: str,
     seed_long: int,
@@ -40,63 +40,63 @@ def _spec(
 DECODER_SPECS: dict[str, DecoderSpec] = {
     spec.name: spec
     for spec in (
-        _spec(
+        make_decoder_spec(
             "JSetupDialog$JLoginNew.N",
             r'JSetupDialog\$JLoginNew\.N\("((?:\\.|[^"\\])*)"\)',
             -757823553775778407,
             (68, -97, 112, -7, -1, -62, -6, 5),
             (217755809, -516550560, 280491737, -783029300),
         ),
-        _spec(
+        make_decoder_spec(
             "JTestFrame$JLoginNew$2.k",
             r'JTestFrame\$JLoginNew\$2\.k\("((?:\\.|[^"\\])*)"\)',
             -2926258841240362302,
             (-14, -94, 64, -22, -25, -119, -36, -20),
             (1533495656, 711390347, -1942746190, 1457004211),
         ),
-        _spec(
+        make_decoder_spec(
             "JLoginHTML$h.v",
             r'JLoginHTML\$h\.v\("((?:\\.|[^"\\])*)"\)',
             -8144699472934638634,
             (72, -86, 84, 126, -19, 34, 36, -62),
             (654727986, -954217567, -1223823750, -1573023736),
         ),
-        _spec(
+        make_decoder_spec(
             "c$c$a.f",
             r'c\$c\$a\.f\("((?:\\.|[^"\\])*)"\)',
             -5558785855947409150,
             (26, -65, 17, -15, 61, -83, 24, -76),
             (1661124947, 84476174, 873636781, -113518219),
         ),
-        _spec(
+        make_decoder_spec(
             "Keepapi$AiBotHelper$1.C",
             r'Keepapi\$AiBotHelper\$1\.C\("((?:\\.|[^"\\])*)"\)',
             3937958849870418103,
             (33, -34, 57, -6, -63, -92, 92, -54),
             (-1492814596, -722234167, -1721848852, 484333427),
         ),
-        _spec(
+        make_decoder_spec(
             "MiJava$MiJava$181.W",
             r'MiJava\$MiJava\$181\.W\("((?:\\.|[^"\\])*)"\)',
             6681889125754537689,
             (106, -43, -43, -74, 74, 84, 24, 55),
             (877174110, -1316375260, -2059877297, -2090820588),
         ),
-        _spec(
+        make_decoder_spec(
             "d$JTrayDialog.n",
             r'd\$JTrayDialog\.n\("((?:\\.|[^"\\])*)"\)',
             787646961109417875,
             (-15, -63, -4, -14, 107, -116, -116, -95),
             (-924053382, 2117251666, -2025566316, -786342393),
         ),
-        _spec(
+        make_decoder_spec(
             "d$MiJava$188$1.B",
             r'd\$MiJava\$188\$1\.B\("((?:\\.|[^"\\])*)"\)',
             -5295390802134825839,
             (119, 30, 91, 109, -57, 97, 5, 115),
             (740895145, -1610822446, -544228048, 773248396),
         ),
-        _spec(
+        make_decoder_spec(
             "AdsCallback$SGAICloudPanel$2.I",
             r'AdsCallback\$SGAICloudPanel\$2\.I\("((?:\\.|[^"\\])*)"\)',
             7474384408623362700,
@@ -119,3 +119,12 @@ def _decoder_for(name: str) -> tuple:
 
 def decode_registered(name: str, caller: str, encrypted: str) -> str:
     return decode_string(encrypted, caller, _decoder_for(name))
+
+
+def register_decoder_specs(specs: dict[str, DecoderSpec]) -> None:
+    for name, spec in specs.items():
+        existing = DECODER_SPECS.get(name)
+        if existing is not None and existing != spec:
+            raise ValueError(f"conflicting decoder spec for {name}")
+        DECODER_SPECS[name] = spec
+    _decoder_for.cache_clear()

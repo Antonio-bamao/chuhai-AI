@@ -73,3 +73,21 @@
 - 解决方案：Added a legacy bootstrap method-detection profile to the shared scanner and made the bootstrap decoder select it explicitly.
 - 预防措施：Require exact JSON regression comparisons for every refactor of source-location or caller-attribution logic.
 - 状态：resolved
+
+## Typed method named like class misclassified as constructor
+- 现象：Calls inside a static void a(...) method in class a were attributed to caller <init>, producing random Unicode instead of plaintext.
+- 触发条件：The shared scanner converted every declaration whose method name equaled the source filename into <init> without checking for a return type.
+- 影响：Caller-hash string decryption was wrong for legal typed methods named like their class, including high-value family f.w.
+- 根因：Constructor detection relied only on name equality rather than a constructor-specific declaration grammar.
+- 解决方案：Added a separate constructor parser and retained typed same-name methods as ordinary methods; added a regression fixture.
+- 预防措施：Test constructor parsing separately from methods whose names equal their class, and require semantic plaintext samples for caller-hash decoders.
+- 状态：resolved
+
+## Plaintext arguments were passed through encrypted-literal decoder
+- 现象：Expanded decoding produced two more rows than the encrypted-call inventory because literal values ')' and 'w' were treated as ciphertext.
+- 触发条件：Per-family call regexes accepted any one-string argument while the inventory correctly required at least one Unicode escape.
+- 影响：Existing plaintext parameters could be transformed into meaningless output and inflate coverage counts.
+- 根因：decode_java_strings.py lacked the inventory's Unicode-escape eligibility guard.
+- 解决方案：Require at least one \\uXXXX escape before static decryption; reserve plain literals for decoded_existing_plaintext export status.
+- 预防措施：Use one shared encrypted-literal eligibility rule and assert map counts equal decoded_static inventory call counts.
+- 状态：resolved

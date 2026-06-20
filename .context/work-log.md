@@ -141,3 +141,10 @@
 - 结果：Inventory contains exactly 348 unique families and 35,642 call sites: 9 decoded_static, 337 dynamic_dump_required and 2 unsupported_shape. Every family has samples, definition evidence when available, and one allowed status.
 - 验证：Inventory fixture tests and shared-scanner tests passed; real output counts match the expected baseline; uniqueness/status assertions, context validation and diff checks passed.
 - 下一步：Inspect high-volume structurally identical families and expand the registry in deterministic verified batches.
+
+## 2026-06-21 01:46｜Expand all statically verifiable AES-table decoder families without guessing ambiguous definitions.
+- 目标：Expand all statically verifiable AES-table decoder families without guessing ambiguous definitions.
+- 动作：Implemented deterministic source-based spec discovery, verified it reproduces all nine original configurations, registered 347 unique families, added ten high-volume semantic samples, corrected typed same-name method caller attribution, and excluded pre-existing plaintext arguments from ciphertext decoding.
+- 结果：Static family coverage increased from 9 to 347 and encrypted call coverage from 4,599 baseline rows to 35,193 eligible calls. Only a.Z remains unresolved because two package-distinct definitions collapse to the same textual family.
+- 验证：Nine tests passed; the inventory reports 347 decoded_static and one unsupported family; expanded map contains exactly 35,193 rows, matching decoded-static inventory calls; ten representative new samples decode to coherent plaintext.
+- 下一步：Build the unified JSON/CSV exporter with explicit plaintext, unresolved, caller-confidence and decode-error statuses.

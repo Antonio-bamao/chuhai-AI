@@ -127,3 +127,10 @@
 - 结果：The shared scanner handles static initializers, constructors, normal methods and multiple calls per line while preserving both prior maps exactly.
 - 验证：Four scanner/hash tests passed; all three Python modules compiled in memory; regenerated 4,599 static-string rows and 73,600 bootstrap rows were byte-for-byte equal as parsed JSON to the frozen outputs; context and diff checks passed.
 - 下一步：Separate the AES-like decoder algorithm from decoder-family registration in Task 3.
+
+## 2026-06-21 01:06｜Separate the verified string decoder algorithm from decoder-family registration.
+- 目标：Separate the verified string decoder algorithm from decoder-family registration.
+- 动作：Moved 32-bit Java arithmetic, AES-style table construction and string decoding into string_decoder_core.py; moved all nine family patterns and constants into a typed registry; added cached decoder construction and verified-sample tests; redirected bootstrap arithmetic to the core module.
+- 结果：The decoding implementation is now reusable by later inventory and expansion stages, while all nine existing families retain their exact behavior.
+- 验证：Five unit tests passed including token, expireTime and ClawWorkspace samples; four modules compiled in memory; regenerated 4,599-row string map is exactly equal to the frozen map; bootstrap decoder imports successfully; diff checks passed.
+- 下一步：Build the complete candidate decoder-family inventory in Task 4.

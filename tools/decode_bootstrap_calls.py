@@ -14,11 +14,11 @@ import re
 from pathlib import Path
 
 try:
-    from tools.decode_java_strings import i32
     from tools.java_source_scan import BOOTSTRAP_METHOD_DECL, iter_java_lines, java_unescape
+    from tools.string_decoder_core import i32
 except ModuleNotFoundError:  # Direct execution: python tools/decode_bootstrap_calls.py
-    from decode_java_strings import i32
     from java_source_scan import BOOTSTRAP_METHOD_DECL, iter_java_lines, java_unescape
+    from string_decoder_core import i32
 
 
 BOOTSTRAP_CALL = re.compile(

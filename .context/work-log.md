@@ -134,3 +134,10 @@
 - 结果：The decoding implementation is now reusable by later inventory and expansion stages, while all nine existing families retain their exact behavior.
 - 验证：Five unit tests passed including token, expireTime and ClawWorkspace samples; four modules compiled in memory; regenerated 4,599-row string map is exactly equal to the frozen map; bootstrap decoder imports successfully; diff checks passed.
 - 下一步：Build the complete candidate decoder-family inventory in Task 4.
+
+## 2026-06-21 01:10｜Build a complete conservative inventory of encrypted-string call families.
+- 目标：Build a complete conservative inventory of encrypted-string call families.
+- 动作：Added a one-literal Unicode-call scanner, method-definition index, evidence features, conservative status assignment, JSON/CSV/Markdown exporters, and fixture tests covering known, non-string and missing definitions.
+- 结果：Inventory contains exactly 348 unique families and 35,642 call sites: 9 decoded_static, 337 dynamic_dump_required and 2 unsupported_shape. Every family has samples, definition evidence when available, and one allowed status.
+- 验证：Inventory fixture tests and shared-scanner tests passed; real output counts match the expected baseline; uniqueness/status assertions, context validation and diff checks passed.
+- 下一步：Inspect high-volume structurally identical families and expand the registry in deterministic verified batches.

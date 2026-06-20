@@ -8,6 +8,8 @@ public class Sample {
     }
 
     public String run(String value) {
+        Logger.log("\u0005");
+        Missing.z("\u0006");
         return Decoder.x("\u0003") + Decoder.x("\u0004");
     }
 }

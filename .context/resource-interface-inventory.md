@@ -92,6 +92,19 @@
 
 ## Phase 4 下一步
 
-1. 对解密后的 HTML/JS/JSON/CNF 跑关键词：`token`、`login`、`expire`、`vip`、`套餐`、`有效期`、`授权`、`license`、`pay`、`订单`、`支付`。
-2. 区分授权接缝、普通登录 UI、业务令牌和支付/订单入口，避免仅凭关键词归类。
-3. 将有效命中精确到 `文件:行`，补回 `.context/seams.md` 的前端/资源接缝段。
+## Step 3 明文关键词定位
+
+- `html/Login.html` 命中 23 行，精确入口为 `1582-1591`：短信/邮箱表单提交到 `htmljava`；邮箱路径对应 `JLoginHTML.java:56-73` 和 `JLoginHTML$4.java:42-56`。
+- `html/product-selector.html` 的直接“有效期”命中为 `243`、`256`、`270`；完整门槛位于 `234-299`，按 `status`、`remainingDays` 决定进入、过期、禁止使用或未开通。
+- `product-selector.html:422-429` 从 `getMySoftModules` 取得产品数组；Java 对应 `HtmlJava.java:67-70`、`HtmlJava$2.java:29-31`、`SBFApi.java:3373-3379`，接口路径 `/system/function_module/listmy/41`。
+- `master.html:5`、`msg.html:91` 的 `pay/vip` 仅来自 base64 图片串，排除。
+- `fm.js`、`country_ips.json`、`html/ClawWorkspace.html` 无目标关键词。
+- 外部 spider CNF 的 `token` 仍归类为业务采集字段，不是启动授权。
+
+有效命中和 Java 调用链已补入 `.context/seams.md`，均精确到 `文件:行`。Phase 4 已完成。
+
+## M4 交接
+
+1. 先设计 `/getInfo` 与 `/system/function_module/listmy/41` 两份最小兼容本地 JSON。
+2. 优先选择 `SBFApi.h(String)`、`SBFApi.C()` 方法级短路，保持登录窗口、产品选择器、`StartApp$1$3` 和 `JSBFMain` 生命周期不变。
+3. 在复制 JAR 上 patch，并以离线 VM 验证“登录页 -> 产品选择器 -> 主界面”，每个 patch 步骤独立提交和可回滚。

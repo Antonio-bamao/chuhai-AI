@@ -10,6 +10,7 @@
 - bootstrap 映射：`.artifacts/analysis/bootstrap_map.json`，73,600 条
 - critical 动态 dump：`.artifacts/analysis/strings-critical.jsonl`，35 条，命中 3/5 critical family
 - 动态 dump 摘要：`.artifacts/analysis/strings-critical-summary.json`
+- 解密资源：`.artifacts/analysis/resources-decrypted/`，7 个 HTML/JS/JSON，清单见 `manifest.json`
 
 ## 总体结论
 
@@ -19,9 +20,26 @@
 2. `data.token` 必须存在且长度大于 10。
 3. `SBFApi.h(token)` 调 `/getInfo` 后返回的 `result.code` 必须为 `200`。
 4. 通过后保存 `StartApp.m = result.data`，再创建 `JProductSelectorHtml`。
-5. 产品选择回调 `StartApp$1$3.a(JSONObject)` 创建 `JSBFMain(...)` 并进入主界面。
+5. 产品选择页另调 `SBFApi.C()` 的 `/system/function_module/listmy/41`；前端按每个模块的 `status`、`remainingDays` 决定是否允许点击“进入系统”。
+6. 允许进入后，产品选择回调 `StartApp$1$3.a(JSONObject)` 创建 `JSBFMain(...)` 并进入主界面。
 
 `expireTime` 只影响 `StartApp.f(String)` 的 token/header 缓存 TTL，不是启动门槛。`periodTime` 只触发过期/临期提示和主界面展示，静态代码中没有在提示后阻断主流程。
+
+因此 M4 不能只伪造 `/getInfo`：还必须提供可进入的产品模块数据，或在产品选择页对应 Java 接口层返回等价本地结果。
+
+## 接缝 S0：登录页面 JS bridge 入口
+
+| 字段 | 内容 |
+| --- | --- |
+| 级别 | 前端入口，高优先级证据 |
+| 明文资源 | `.artifacts/analysis/resources-decrypted/html/Login.html` |
+| 关键行 | `Login.html:1172-1191` 登录表单；`1582-1591` SMS/邮箱提交；`1872-1880` 记住账号初始化 |
+| Java bridge | `com.sbf.main.ext.j2026.ui.HtmlJava` |
+| Java 行 | `HtmlJava.java:38-45` 暴露 `doShowClawWorkspace`、`doLoginByEmail`、`doEnter`；`JLoginHTML.java:56-73` 校验邮箱/密码并调度登录任务；`JLoginHTML$4.java:42-56` 调 `SBFApi.k(email, passwd)`，成功后回调 `JLoginHTML` 外层监听器 |
+| 登录接口 | `SBFApi.java:3358-3369`，路径 `/api/v1/adesk.ai/login`，请求字段 `email`、`passwd`、`machineCode`、`appId` |
+| 结论 | `Login.html:1591` 是新版邮箱登录的精确前端入口，最终仍回到 S1 的登录成功回调。 |
+| 异常点 | `Login.html:1585` 调 `htmljava.doLoginBySMS(...)`，但 `HtmlJava` 类与实际 classfile 均未暴露该方法；短信 tab 不是当前可靠主路径。 |
+| M4 含义 | 不建议直接改 HTML 表单。S1/S2 的 Java 状态短路更集中，也能保留窗口与回调生命周期。 |
 
 ## 接缝 S1：登录回调启动门槛
 
@@ -73,6 +91,23 @@
 | 拟改动方向 | M4 不应首先 patch 这里；它依赖 `StartApp.m/l` 已正确初始化。可作为 S1/S2 patch 后的验证观察点。 |
 | 风险 | 直接跳过产品选择可能缺失 `JSBFMain` 需要的产品配置 `g`，导致主界面菜单或主题异常。 |
 | 回滚点 | `com/sbf/main/StartApp$1$3.class`。 |
+
+## 接缝 S3A：产品模块开通 / 有效期门槛
+
+| 字段 | 内容 |
+| --- | --- |
+| 级别 | 第二主门槛，高优先级 |
+| 明文资源 | `.artifacts/analysis/resources-decrypted/html/product-selector.html` |
+| 数据入口 | `product-selector.html:422-429` 调 `htmljava.getMySoftModules(...)`，读取返回 JSON 的 `data` 为 `productsData` |
+| Java bridge | `HtmlJava.java:67-70`；`HtmlJava$2.java:29-31` |
+| 远端接口 | `SBFApi.java:3373-3379`，`SBFApi.C()` 请求 `/system/function_module/listmy/41` 并返回 `result` |
+| 前端门槛 | `product-selector.html:234-280`：只有 `status == 0 || status == 1` 进入已开通分支；`status == 1 && remainingDays < 0` 显示“过期”且没有进入按钮；其他已开通状态显示“禁止使用”。 |
+| 未开通分支 | `product-selector.html:283-297` 显示“未开通”，按钮只打开官网。 |
+| 进入回调 | `product-selector.html:365-377` 将选中的完整 product JSON 传给 `htmljava.doEnter(...)`，随后进入 S3。 |
+| 关键字段 | `code`、`status`、`remainingDays`、`expirationTime`、`name`、`displayName`、主题色和菜单配置。 |
+| 结论 | 这是资源解密后新增确认的真实授权/套餐接缝。仅让 S1 `/getInfo` 成功，仍可能停在“过期 / 禁止使用 / 未开通”。 |
+| 拟改动方向 | M4 本地成功数据至少要让目标 product 的 `status` 与 `remainingDays` 可进入，并保留 S3 构造主界面所需的产品配置。优先考虑 `SBFApi.C()` 方法级本地返回。 |
+| 回滚点 | `com/sbf/util/http/SBFApi.class`；若只改前端资源，回滚 `html/product-selector.html`，但当前不推荐先改资源。 |
 
 ## 接缝 S4：主界面权限 / 功能配置消费
 
@@ -126,12 +161,27 @@
 - 未命中 critical family：`JProductSelectorHtml$d.L`、`g$JMainMaster$4.r`。
 - 当前判断：未命中两族对应产品选择器 / 主界面之后的运行阶段。由于 S1/S2/S3 已有静态与 bootstrap 证据，M3 接缝清单可以先推进；M4 前若需要更高把握，可在离线 VM 中触发到产品选择器/主界面后只跑 high/critical 扩展 dump。
 
+## Phase 4 明文关键词扫描结论
+
+扫描词：`token`、`login`、`expire`、`vip`、`套餐`、`有效期`、`授权`、`license`、`pay`、`订单`、`支付`。
+
+| 资源 | 命中行数 | 分类 |
+| --- | ---: | --- |
+| `html/Login.html` | 23 | 登录表单、邮箱登录 bridge、记住账号；隐私文本中的“支付处理”不是授权接缝。 |
+| `html/product-selector.html` | 3 个直接“有效期”命中；相关门槛位于 `234-299` | 有效授权/套餐门槛，形成 S3A。 |
+| `master.html` | 1 | `pay/vip` 仅出现在 base64 图片串，假阳性。 |
+| `msg.html` | 1 | `pay/vip` 仅出现在 base64 图片串，假阳性。 |
+| `fm.js`、`country_ips.json`、`html/ClawWorkspace.html` | 0 | 无目标关键词。 |
+
+外部 `data/app/res/spider/*.cnf` 的 `token` 命中属于 WhatsApp 等业务采集参数，不参与启动授权。Phase 4 没有发现本地 `license` 文件或独立离线授权校验。
+
 ## M4 最小 patch 候选排序
 
 1. `StartApp$1.a(JSONObject)` 内构造或保持成功状态，优先保证 `StartApp.l/m/q` 完整。
 2. `SBFApi.h(String)` 方法级本地返回 `/getInfo` 等价成功 JSON，供 S1 原逻辑自然通过。
-3. 如产品选择 JSON 缺失，再补 `StartApp$1$3.a(JSONObject)` 的产品配置输入；先不直接跳 `ClawWorkspace`。
-4. `StartApp.f(String)` / `jxbrowser.n` 只作为 token/header 后续修补点。
+3. `SBFApi.C()` 方法级本地返回 `/system/function_module/listmy/41` 等价产品数组，确保目标模块 `status`、`remainingDays` 可进入，并补齐产品主题/菜单字段。
+4. 如产品选择回调仍缺字段，再补 `StartApp$1$3.a(JSONObject)` 的产品配置输入；先不直接跳 `ClawWorkspace`。
+5. `StartApp.f(String)` / `jxbrowser.n` 只作为 token/header 后续修补点。
 
 ## 待验证问题
 
@@ -140,3 +190,4 @@
 3. `JProductSelectorHtml$d.L` 和 `g$JMainMaster$4.r` 在产品选择/主界面后的实际明文输出。
 4. 支付/订单路径在免登录启动后是否自动触发，还是仅由用户点击触发。
 5. 业务联网是否依赖 S5 的 token/header 刷新结果。
+6. `/system/function_module/listmy/41` 的真实 product JSON 字段全集；M4 需以 S3/S3A 已读字段构造最小兼容样本。

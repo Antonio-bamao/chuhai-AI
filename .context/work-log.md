@@ -253,3 +253,10 @@
 - 结果：All seven targets decode as readable UTF-8 HTML/JS/JSON; country_ips.json parses as a 30-item array; manifest.json records every decoded byte count and hash.
 - 验证：The resource decoder tests passed 2/2, including real resource content checks and traversal rejection; the standalone compile/run decoded all seven resources and their hashes were recorded in resource-interface-inventory.md.
 - 下一步：Search the plaintext resources for authorization/login/payment keywords, classify each hit by semantics, and add valid seams to seams.md with exact file:line locations.
+
+## 2026-06-21 23:55｜Complete M3 Phase 4 plaintext keyword mapping and close the Phase 5 seam inventory.
+- 目标：Classify decrypted resource keyword hits and connect each valid frontend seam to exact Java/interface lines.
+- 动作：Scanned seven decrypted resources and external plaintext CNF files for authorization/login/payment terms; removed base64 and business-token false positives; traced Login.html email submission through JLoginHTML to SBFApi.k; traced product-selector status/remainingDays gating through HtmlJava$2 to SBFApi.C.
+- 结果：A second real startup gate was confirmed: `/system/function_module/listmy/41` supplies product status and remaining days, and the frontend blocks expired, disabled or unopened modules before StartApp$1$3. seams.md now includes the login bridge and product entitlement seam with exact file:line evidence.
+- 验证：Keyword counts were recomputed from decoded UTF-8 files; Java bridge targets were cross-checked with bootstrap_map and annotated source; SBFApi paths `/api/v1/adesk.ai/login` and `/system/function_module/listmy/41` are statically decoded at exact lines.
+- 下一步：Start M4 by designing minimal compatible local JSON for `/getInfo` and the product module list, then patch one method at a time with separate commits and offline-VM verification.

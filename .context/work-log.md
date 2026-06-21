@@ -190,3 +190,52 @@
 - 结果：M2 Phase 3 static deliverables are internally consistent and ready for M3 use; dynamic dump remains explicitly unexecuted on the host and is documented as a later stop-and-screenshot Windows offline VM workflow.
 - 验证：`python -m unittest discover -s tests -v` passed 17/17; in-memory compile covered 14 Python tool files; artifact gate asserted string-map, unresolved, inventory, dynamic targets and ISO hash; `git diff --check` exited 0.
 - 下一步：Either run the manual offline VM critical-target dump with screenshots, or proceed to M3 using the completed static evidence set.
+
+## 2026-06-21 20:03｜Repackage offline dynamic dump ISO with runtime dependencies.
+- 目标：Fix the offline VM critical dump package after javaagent startup exposed missing App runtime dependencies.
+- 动作：Created `.artifacts/dynamic-dump-package-full` with original `app/` resources, full `lib/` dependency directory, JRE, agent, targets and `RUN-CRITICAL.cmd` / `RUN-HIGH.cmd`; generated `.artifacts/dynamic-dump-package-full.iso`.
+- 结果：The full ISO preserves the verified App and agent hashes while providing the manifest classpath layout needed by `app\App.jar`.
+- 验证：Full ISO size is 1,123,694,592 bytes; SHA-256 is `59BB024ADD397B74964E2C46854A8B3216EF516813E8E98C2FF41B70EBF4D559`; ISO contains `RUN-CRITICAL.cmd`, `RUN-HIGH.cmd`, `app`, `lib` and `jre`; App hash remains `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`, agent hash remains `DDB0DD9E4F4BAEBE238DADAB93784A698449A8BBFBBDD8A60C37E8E638D081A9`.
+- 下一步：Mount `.artifacts/dynamic-dump-package-full.iso` in the offline Windows VM, copy it to `C:\m2dump`, run `RUN-CRITICAL.cmd`, stop and screenshot before any login or credential entry.
+
+## 2026-06-21 20:37｜Harden dynamic dump agent after offline VM critical run.
+- 目标：Prevent javaagent observation failures from crashing the offline App run.
+- 动作：Added a regression test proving `DumpHooks.record(...)` must not propagate writer failures; wrapped dump record emission in a guarded block; rebuilt `dynamic-string-dump-agent.jar`; updated `RUN-CRITICAL.cmd` and `RUN-HIGH.cmd` to include `-noverify`; generated `.artifacts/dynamic-dump-package-full-v2.iso`.
+- 结果：The critical run package now tolerates null/recording failures and bytecode verifier friction while keeping the VM offline workflow unchanged.
+- 验证：`python -m unittest tests.test_dynamic_dump_agent_hooks -v` passes; rebuilt agent SHA-256 is `BE48399CFD98FF2A39821FC28C4D154F2E97FEC67F4716A8F359179E4233C665`; full v2 ISO SHA-256 is `568FD870A0BFF8BEE8491A44960817F42DF3F7D41A3FC70A582AFF127791BB13`; ISO contains `RUN-CRITICAL.cmd`, `app`, `lib` and `jre`, and javap confirms the `record failed` guard.
+- 下一步：Mount `.artifacts/dynamic-dump-package-full-v2.iso`, refresh `C:\m2dump` from `D:\`, run `RUN-CRITICAL.cmd`, then stop and screenshot the console and any app window.
+
+## 2026-06-21 21:02｜Rebuild dynamic dump agent with verifier-friendly return handling.
+- 目标：Fix the v2 offline VM JVM crash caused by stack-shuffle instrumentation.
+- 动作：Changed the ASM return hook from `DUP`/`SWAP` stack manipulation to `ASTORE 1` plus explicit `ALOAD` restoration; removed `-noverify` from the run scripts; rebuilt `dynamic-string-dump-agent.jar`; generated `.artifacts/dynamic-dump-package-full-v3.iso`.
+- 结果：The agent no longer relies on verifier bypass and the inserted bytecode records a saved return value before restoring it to the original `ARETURN`.
+- 验证：`python -m unittest tests.test_dynamic_dump_agent_hooks -v` passes; javap of `DynamicStringDumpAgent$Transformer$1$1` shows `visitVarInsn(ASTORE, 1)` / `visitVarInsn(ALOAD, 1)` and no `SWAP`; rebuilt agent SHA-256 is `E84287BD19EAEBB0444A4FF8EDD3E173D164793B6A2E17A515C1E8708E7D1E36`; full v3 ISO SHA-256 is `452EF7118A8FE2666804C6CFC853C1702A64F801F83F7EF12621BB955B34BB49`.
+- 下一步：Mount `.artifacts/dynamic-dump-package-full-v3.iso`, refresh `C:\m2dump`, run `RUN-CRITICAL.cmd`, then stop and screenshot output.
+
+## 2026-06-21 21:13｜Self-audit v3 verifier failure and generate output-only v4 agent.
+- 目标：Stop the repeated offline VM failures by removing the invalid assumption that target local slot 0 still contains the input string at return time.
+- 动作：Reviewed v3 bytecode and VM `VerifyError`; changed the return hook to duplicate only the return value and call `DumpHooks.recordOutput(output, family)`; stopped reading target method locals entirely; added a smoke test that compiles and runs the javaagent with verifier enabled from an ASCII path; generated `.artifacts/dynamic-dump-package-full-v4.iso`.
+- 结果：v4 trades away dynamic input capture for verifier safety; static artifacts already retain encrypted inputs, while dynamic output/family/caller evidence is the needed missing piece.
+- 验证：`python -m unittest tests.test_dynamic_dump_agent_hooks -v` passes and runs a real javaagent smoke; javap confirms the hook emits `DUP` + `recordOutput` and no target `ALOAD 0`, `ASTORE` or `SWAP`; rebuilt agent SHA-256 is `546F525CB28A84F7DCCAF8F941D1D2D87AEBBDB46A41B876420EB0FE37B14EDD`; full v4 ISO SHA-256 is `ADD3AAF110665D2855B507FCAF7D6E1C7B485CC27ED4FA79A70BA8AC423E1F90`.
+- 下一步：Mount `.artifacts/dynamic-dump-package-full-v4.iso`, refresh `C:\m2dump`, run `RUN-CRITICAL.cmd`, then stop and screenshot output.
+
+## 2026-06-21 21:28｜Complete offline critical dynamic dump and observer hash verification.
+- 目标：Export the first critical dynamic dump without enabling network or shared folders.
+- 动作：Ran v4 javaagent in the isolated Windows VM, stopped at the login page without credentials, wrote `C:\dump\strings.jsonl`, copied it to a one-time `DUMPXFER` virtual disk as `strings-critical.jsonl`, detached the disk from Windows, attached it to `lab-observer`, mounted `/dev/sdb1` read-only, and hashed the exported file.
+- 结果：Critical dump produced 35 JSONL records, including login UI/path outputs from `JSetupDialog$JLoginNew.N`, `JLoginHTML$h.V`, and `JTestFrame$JLoginNew$2.k`.
+- 验证：Windows VM hash and observer hash both equal `cecf8fab4cd92f6f8fed89edf743144d81eea1571127401880ec9b02dd83409`; observer mounted `DUMPXFER` as NTFS read-only at `/mnt/dumpxfer`.
+- 下一步：Unmount `/mnt/dumpxfer`, detach `dump-transfer.vdi` from `lab-observer`, restore the Windows VM to `windows-offline-clean`, then import/analyze the critical dump before deciding whether any high-priority pass is justified.
+
+## 2026-06-21 21:45｜Import observer-verified critical dump into host artifacts.
+- 目标：Bring the observer-verified `strings-critical.jsonl` back into the host project without trusting screenshots or manual retyping.
+- 动作：Decoded the pasted base64 payload from the observer terminal, stripped the trailing shell prompt, wrote `.artifacts/analysis/strings-critical.jsonl`, preserved `.artifacts/analysis/strings-critical.b64`, and generated `.artifacts/analysis/strings-critical-summary.json`.
+- 结果：The host artifact contains 35 JSONL records across three families: `JSetupDialog$JLoginNew.N` (29), `JTestFrame$JLoginNew$2.k` (4), and `JLoginHTML$h.v` (2). Two critical target families did not execute during the login-page stop point: `JProductSelectorHtml$d.L` and `g$JMainMaster$4.r`.
+- 验证：Host SHA-256 is `cec8fefab4cd92f6f8fed89edf743144d81eea1571127401880ec9b02dd83409`, matching both the Windows VM and observer hashes; JSON parsing counted 35 rows.
+- 下一步：Decide whether the two missed critical families require a second strictly offline trigger path, or whether current evidence is sufficient to start M3 interface mapping.
+
+## 2026-06-21 22:58｜Start M3 authorization seam/interface inventory from M2 static string decode and critical dynamic dump evidence.
+- 目标：Start M3 authorization seam/interface inventory from M2 static string decode and critical dynamic dump evidence.
+- 动作：Read current-status and work-log first; reviewed M2 string decode, bootstrap, semantic samples and critical dynamic dump summary; traced StartApp login callback, SBFApi /getInfo, product selector, JSBFMain permission/config consumption, token bridge cache and payment/order entrypoints; created .context/seams.md and updated current-status/INDEX.
+- 结果：M3 first-pass seam inventory identifies `StartApp$1.a(JSONObject)` as the main startup gate, `SBFApi.h(String)` `/getInfo` as the primary interface seam, `StartApp$1$3` as the product-selector-to-main transition, `JSBFMain` roles/ucf as downstream config consumption, `StartApp.f`/`jxbrowser.n` as token/header cache, and payment/order paths as later M5 classification targets.
+- 验证：Documentation-only step; evidence cross-checked against annotated CFR source, bootstrap map summary, strings-critical-summary.json and existing M2 reports; context validation passed; `git diff --check` exited cleanly with existing CRLF conversion warnings only.
+- 下一步：Use `.context/seams.md` to choose the M4 minimal patch strategy; optionally run a second strictly offline dynamic trigger only if the two missed critical families are needed before patching.

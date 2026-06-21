@@ -141,14 +141,12 @@ public final class DynamicStringDumpAgent {
               public void visitInsn(int opcode) {
                 if (opcode == Opcodes.ARETURN) {
                   super.visitInsn(Opcodes.DUP);
-                  super.visitVarInsn(Opcodes.ALOAD, 0);
-                  super.visitInsn(Opcodes.SWAP);
                   super.visitLdcInsn(family);
                   super.visitMethodInsn(
                       Opcodes.INVOKESTATIC,
                       "codex/dumpagent/DumpHooks",
-                      "record",
-                      "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+                      "recordOutput",
+                      "(Ljava/lang/String;Ljava/lang/String;)V",
                       false
                   );
                 }

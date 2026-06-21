@@ -30,3 +30,4 @@
 - current-status.md
 - task-breakdown.md
 - risk-register.md
+- seams.md

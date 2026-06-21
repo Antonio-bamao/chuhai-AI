@@ -33,18 +33,26 @@ public final class DumpHooks {
     if (writer == null) {
       return;
     }
-    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-    String callerClass = stack.length > 3 ? stack[3].getClassName() : "";
-    String callerMethod = stack.length > 3 ? stack[3].getMethodName() : "";
-    writer.println(
-        "{"
-            + "\"family\":\"" + escape(family) + "\","
-            + "\"caller_class\":\"" + escape(callerClass) + "\","
-            + "\"caller_method\":\"" + escape(callerMethod) + "\","
-            + "\"input\":\"" + escape(input) + "\","
-            + "\"output\":\"" + escape(output) + "\""
-            + "}"
-    );
+    try {
+      StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+      String callerClass = stack.length > 3 ? stack[3].getClassName() : "";
+      String callerMethod = stack.length > 3 ? stack[3].getMethodName() : "";
+      writer.println(
+          "{"
+              + "\"family\":\"" + escape(family) + "\","
+              + "\"caller_class\":\"" + escape(callerClass) + "\","
+              + "\"caller_method\":\"" + escape(callerMethod) + "\","
+              + "\"input\":\"" + escape(input) + "\","
+              + "\"output\":\"" + escape(output) + "\""
+              + "}"
+      );
+    } catch (Throwable throwable) {
+      System.err.println("[codex-dump-agent] record failed: " + throwable);
+    }
+  }
+
+  public static void recordOutput(String output, String family) {
+    record(null, output, family);
   }
 
   private static String escape(String value) {

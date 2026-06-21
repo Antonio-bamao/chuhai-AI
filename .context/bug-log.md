@@ -118,3 +118,39 @@
 - 解决方案：以复编译后合成 smoke 通过的 JAR 为准，更新 README/runbook 哈希，重新制作 ISO，并再次验证 ISO 内容与哈希。
 - 预防措施：每次重新打包 agent 后必须重新计算 agent 与 ISO SHA-256；不要复用旧哈希。
 - 状态：resolved
+
+## Offline dynamic dump ISO omitted App runtime libraries
+- 现象：离线 Windows VM 中 javaagent 已输出 `target classes=5` 和 `output=C:\dump\strings.jsonl`，随后 `App.jar` 启动失败：`NoClassDefFoundError: com/teamdev/jxbrowser/callback/Callback`。
+- 触发条件：使用只包含 `App.jar`、agent、targets、Threadtear 和 JRE 的瘦 ISO，直接运行 `java -jar App.jar`。
+- 影响：agent 已挂载但 App 主类依赖解析失败，critical 动态 dump 不能继续。
+- 根因：`App.jar` manifest 的 `Class-Path` 依赖原始 `../lib/...` 布局，尤其需要 `jxbrowser-7.41.3.jar`、`jxbrowser-swing-7.41.3.jar`、`jxbrowser-win64-7.41.3.jar` 等运行库；瘦 ISO 没有提供原始 `app/` + `lib/` 布局。
+- 解决方案：生成 `.artifacts/dynamic-dump-package-full.iso`，包含原始 `app/` 资源、完整 `lib/` 目录、JRE、agent、targets 和 `RUN-CRITICAL.cmd` / `RUN-HIGH.cmd`，并更新 runbook 使用 `app\App.jar`。
+- 预防措施：动态运行包必须保留原始 Java 启动布局；不要用只含主 JAR 的瘦包验证桌面 App。
+- 状态：resolved
+
+## Dynamic dump record hook propagated observer failures
+- 现象：离线 Windows VM critical run 在 `-noverify` 后成功 instrument `com/sbf/main/JSetupDialog$JLoginNew`，随后因 `DumpHooks.escape(...)` / record path 的 `NullPointerException` 终止主程序。
+- 触发条件：agent 在目标 decoder 返回路径记录输入/输出时遇到 null 或记录链异常。
+- 影响：观察逻辑反向影响被观察 App，导致 critical 动态 dump 不能继续到 UI 截图阶段。
+- 根因：`DumpHooks.record(...)` 原实现直接执行 JSON 输出，记录异常会传播回被插桩的目标方法；脚本也未默认使用 `-noverify`，需要用户手动输入长命令。
+- 解决方案：新增回归测试，保证 `record(...)` 不传播 writer failures；将 record emission 包在 guarded block 中；重建 agent；`RUN-CRITICAL.cmd` / `RUN-HIGH.cmd` 默认加入 `-noverify`；生成 `.artifacts/dynamic-dump-package-full-v2.iso`。
+- 预防措施：javaagent 观察代码必须 fail-open；运行脚本固化已验证的 JVM 参数，避免在 VM 手动拼长命令。
+- 状态：resolved
+
+## Dynamic dump stack-shuffle hook crashed JVM under noverify
+- 现象：离线 Windows VM v2 critical run 打印多条 `record failed: java.lang.NullPointerException` 后 JVM fatal crash：`EXCEPTION_ACCESS_VIOLATION`，problematic frame 指向 `java.lang.String.length()`。
+- 触发条件：使用 `-noverify` 运行含 `DUP`/`SWAP` 栈操作的返回值插桩。
+- 影响：VM 内 Java 进程直接崩溃，无法继续到 UI 截图或 dump 检查阶段。
+- 根因：原插桩依赖栈顶重排并跳过 verifier，在混淆目标方法返回路径上不够稳健；`-noverify` 将本应被 verifier 拦下的风险推迟成运行时 JVM 崩溃。
+- 解决方案：改为 verifier-friendly 的本地变量方案：`ASTORE 1` 保存返回值，加载原入参、保存的返回值和 family 调用记录函数，然后 `ALOAD 1` 恢复返回值并执行原 `ARETURN`；移除 run scripts 中的 `-noverify`；生成 `.artifacts/dynamic-dump-package-full-v3.iso`。
+- 预防措施：字节码插桩优先使用局部变量和正常 verifier 路径，禁止用 `-noverify` 掩盖 frame/stack 问题。
+- 状态：resolved
+
+## Dynamic dump v3 still assumed target local slot 0 held input
+- 现象：离线 Windows VM v3 critical run 仍报 `VerifyError: Incompatible argument to function`，位置在 `JSetupDialog$JLoginNew.N(String):String`。
+- 触发条件：v3 插桩在返回点读取 `ALOAD 0` 作为原始输入。
+- 影响：混淆方法若复用 local slot 0，返回点的 slot 0 不再保证是 `String`，verifier 继续拒绝目标类。
+- 根因：v3 自审不足，只移除了 `SWAP` / `-noverify`，但仍保留“local 0 等于入参”的错误假设；混淆器可以合法复用参数槽。
+- 解决方案：v4 改成 output-only hook：`DUP` 返回值，调用 `DumpHooks.recordOutput(output, family)`，不读取目标方法任何 local slot；新增 verifier-enabled javaagent smoke 测试。
+- 预防措施：对混淆字节码插桩时不要读取目标 locals，除非先用 LocalVariablesSorter/AdviceAdapter 在 method entry 保存并重算 frames；动态 dump 优先记录不破坏 verifier 的最小证据。
+- 状态：resolved

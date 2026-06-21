@@ -12,13 +12,13 @@
 - 唯一静态双定义 family `a$5$0.Z` 不在 javaagent 目标内，继续保守保留。
 
 离线包：
-`.artifacts/dynamic-dump-package`
+`.artifacts/dynamic-dump-package-full`
 
 离线包 ISO：
-`.artifacts/dynamic-dump-package.iso`
+`.artifacts/dynamic-dump-package-full-v4.iso`
 
 ```text
-SHA-256 69C4B17704BFA2165C541FF16DDE4E288C73419D6CDE61DFDA0A7611A2A1D0C4
+SHA-256 ADD3AAF110665D2855B507FCAF7D6E1C7B485CC27ED4FA79A70BA8AC423E1F90
 ```
 
 javaagent 已在本机用纯合成类做过 smoke test，成功记录：
@@ -95,16 +95,20 @@ windows-offline-clean
 
 ## 第 6 步：制作并挂载只读输入 ISO
 
-在宿主机把 `.artifacts/dynamic-dump-package` 制作成 ISO，然后作为虚拟光驱
+在宿主机把 `.artifacts/dynamic-dump-package-full` 制作成 ISO，然后作为虚拟光驱
 挂载。ISO 中应包含：
 
 - `App.jar`
+- `app/`
+- `lib/`
 - `dynamic-string-dump-agent.jar`
 - `threadtear-gui-3.0.1-all.jar`（agent 的 ASM 依赖）
 - `dynamic_dump_agent_targets.tsv`
 - `dynamic_dump_targets.json`
 - `jre/`
 - `README.txt`
+- `RUN-CRITICAL.cmd`
+- `RUN-HIGH.cmd`
 
 不要使用共享文件夹传入。
 
@@ -129,7 +133,7 @@ App.jar
 9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B
 
 dynamic-string-dump-agent.jar
-DDB0DD9E4F4BAEBE238DADAB93784A698449A8BBFBBDD8A60C37E8E638D081A9
+546F525CB28A84F7DCCAF8F941D1D2D87AEBBDB46A41B876420EB0FE37B14EDD
 ```
 
 **停止并截图：** 网络状态和两个哈希。
@@ -140,8 +144,7 @@ DDB0DD9E4F4BAEBE238DADAB93784A698449A8BBFBBDD8A60C37E8E638D081A9
 
 ```bat
 cd /d C:\m2dump
-mkdir C:\dump
-.\jre\bin\java.exe "-javaagent:dynamic-string-dump-agent.jar=targets=dynamic_dump_agent_targets.tsv,out=C:\dump\strings.jsonl,priorities=critical" -jar App.jar
+RUN-CRITICAL.cmd
 ```
 
 预期控制台先显示：
@@ -213,7 +216,7 @@ windows-offline-clean
 快照后重新执行：
 
 ```bat
-.\jre\bin\java.exe "-javaagent:dynamic-string-dump-agent.jar=targets=dynamic_dump_agent_targets.tsv,out=C:\dump\strings-high.jsonl,priorities=high" -jar App.jar
+RUN-HIGH.cmd
 ```
 
 仍然按第 7～11 步逐步截图。`normal` 默认不运行。

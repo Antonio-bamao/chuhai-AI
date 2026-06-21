@@ -55,9 +55,43 @@
 - `ch.r` 是资源解密/解压包装流：`r.java:27-71` 读取 16 字节头；当头部匹配内部 magic 时进入 `InflaterInputStream(..., new ua(this))` 或 `new zq(...)`。
 - 文件头 `d9 7b 30 c0/c1 ...` 与 `ch.r` 的 magic 分支吻合，下一步应复用或复刻 `ch.r` 流读取逻辑，而不是按普通文本读取。
 
+## Step 2 只读解密结果
+
+- 工具：`tools/resource_decoder/ResourceDecoder.java`
+- 测试：`tests/test_resource_decoder.py`
+- 输出目录：`.artifacts/analysis/resources-decrypted/`
+- 方式：用 `JarFile` 只读打开 `App.jar` 条目，再直接复用 `ch.r` 解密/解压流；不调用 `StartApp.main`，不写回 JAR。
+- 安全边界：拒绝绝对路径、反斜杠、空路径段、`.` 和 `..`，并再次校验输出路径仍位于指定输出目录。
+
+运行命令：
+
+```powershell
+& '.artifacts\tools\jdk8u492-b09\jdk8u492-b09\bin\javac.exe' `
+  -cp '.artifacts\working\m1-02\App.jar' `
+  -d '.artifacts\analysis\resource-decoder-classes' `
+  'tools\resource_decoder\ResourceDecoder.java'
+
+& '.artifacts\tools\jdk8u492-b09\jdk8u492-b09\bin\java.exe' `
+  -cp '.artifacts\analysis\resource-decoder-classes;.artifacts\working\m1-02\App.jar' `
+  ResourceDecoder `
+  '.artifacts\working\m1-02\App.jar' `
+  '.artifacts\analysis\resources-decrypted'
+```
+
+| 解密后路径 | 字节数 | SHA-256 | 内容验证 |
+| --- | ---: | --- | --- |
+| `master.html` | 183284 | `8e5633167d59e8de5b0ec94134d167b6f48d07e809e53f60870fe022a47551de` | `<html lang="en">` |
+| `msg.html` | 146263 | `405110bf0062425763f7bf20954d738a54b9783e2cb13d2a936743d9832c9879` | `<html lang="en">` |
+| `fm.js` | 10210 | `4e090e0b27db514f4b1a78ea0c79d0f195991b4617b9cd0fd407deaf8c414b02` | JavaScript IIFE |
+| `country_ips.json` | 4406 | `3c47d6c1f842033524d14af98215ae9018f587de4e1d714a24e3cbac1bd3c6f4` | 可解析 JSON 数组，30 项 |
+| `html/Login.html` | 64781 | `f475d1f2f660ef3eefba0a5b6801ec006fb7e397d75fa34c63d5bf4c5cae15fd` | `<!DOCTYPE html>`，`zh-CN` |
+| `html/product-selector.html` | 30296 | `6a7288e59ceb73cfb4b03e56724d66acbdeca632971fc6fe9e0383d2d0959a5a` | `<!DOCTYPE html>`，`zh-CN` |
+| `html/ClawWorkspace.html` | 35602 | `b2ba02b4bcaccf7516cd78e26f89f7024d6449661ce278ae5523fdd3d330d8e3` | `<!DOCTYPE html>`，`zh-CN` |
+
+工具同时生成 `manifest.json`，记录源 JAR、资源路径、解密后字节数和 SHA-256，供后续关键词扫描与复核。
+
 ## Phase 4 下一步
 
-1. 写一个只读资源解密工具，从 `App.jar` 中读取目标资源并经 `ch.r` 等价流程输出到 `.artifacts/analysis/resources-decrypted/`。
-2. 对解密后的 HTML/JS/JSON/CNF 跑关键词：`token`、`login`、`expire`、`vip`、`套餐`、`有效期`、`授权`、`license`、`pay`、`订单`、`支付`。
-3. 将命中结果精确到 `文件:行`，补回 `.context/seams.md` 的前端/资源接缝段。
-4. 若解密工具无法稳定复刻，改用最小 Java harness 调用 `ch.r`，仍保持只读读取 JAR 资源、不运行 `App.jar` 主程序。
+1. 对解密后的 HTML/JS/JSON/CNF 跑关键词：`token`、`login`、`expire`、`vip`、`套餐`、`有效期`、`授权`、`license`、`pay`、`订单`、`支付`。
+2. 区分授权接缝、普通登录 UI、业务令牌和支付/订单入口，避免仅凭关键词归类。
+3. 将有效命中精确到 `文件:行`，补回 `.context/seams.md` 的前端/资源接缝段。

@@ -246,3 +246,10 @@
 - 结果：Phase 4 Step 1 confirms JAR resources are encrypted/compressed with d9 7b 30 c0/c1 headers and loaded through ch.r; external spider cnf files are plaintext JSON and only business token fields matched keywords. The next step is a read-only resource decode tool or Java harness, followed by keyword search with file:line output.
 - 验证：Checked App.jar entries with Python zipfile; sampled encrypted resource headers and plaintext spider/i18 resources; cross-checked decoded resource paths from string_map and annotated source lines; context validation to run before this step commit.
 - 下一步：Run validation, commit Phase 4 Step 1, then implement the resource decode tool as the next separately committed step.
+
+## 2026-06-21 23:43｜Implement and verify the read-only encrypted resource decoder.
+- 目标：Decode the seven Phase 4 target resources without launching the application or modifying App.jar.
+- 动作：Added a Java harness that reads exact JarFile entries and reuses ch.r; added path traversal guards, SHA-256 manifest output and tests against the real App.jar; generated ignored plaintext artifacts under .artifacts/analysis/resources-decrypted.
+- 结果：All seven targets decode as readable UTF-8 HTML/JS/JSON; country_ips.json parses as a 30-item array; manifest.json records every decoded byte count and hash.
+- 验证：The resource decoder tests passed 2/2, including real resource content checks and traversal rejection; the standalone compile/run decoded all seven resources and their hashes were recorded in resource-interface-inventory.md.
+- 下一步：Search the plaintext resources for authorization/login/payment keywords, classify each hit by semantics, and add valid seams to seams.md with exact file:line locations.

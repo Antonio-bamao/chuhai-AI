@@ -31,3 +31,4 @@
 - task-breakdown.md
 - risk-register.md
 - seams.md
+- resource-interface-inventory.md

@@ -7,6 +7,7 @@
 - 进行中 M4B：`StartApp$3.run()` 保留登录前初始化，只在创建 `JLoginHTML` 前调用本地登录成功链；无需账号、密码或点击登录即可进入产品选择器。`StartApp$1` 对不存在的登录窗增加 null guard，避免自动登录后的 dispose NPE。
 - 下一步：在可控 VM 或具备管理员权限的环境补一次物理断网/网卡禁用验收，并制作最终可双击分发包；随后进入 M5A 业务依赖分类。
 - 阻塞项：当前会话无管理员权限，无法创建临时 Windows 出站防火墙规则。进程级 HTTP/HTTPS/SOCKS 黑洞代理下九产品选择器已正常显示，但该证据不等同于阻断所有 UDP 的物理断网。
+- 验收目标校正：用户桌面快捷方式 `C:\Users\m1591\Desktop\火柴AI.lnk` 指向用户本人安装的原始包 `H:\HuoChaiAI\app\HuoChaiAI.exe`，不作为本项目恢复产物验收目标。该原始安装包已恢复原 `App.dll` 哈希 `72689D3C96F28A9DFBDDCFFC3F14D082A174AC0FED153144CD2AA89D27C3D494`，后续不得再用它验证 M4B。
 - 当前活跃日志分片：work-log.md
 - v15 VM 证据：`M4_V14_RENDER_MODE=OFF_SCREEN`，包含 SwiftShader/D3D11 软件渲染开关；`M4_V13_LOAD_FINISHED` 成功；`C:\m2dump\m4-jxb-capture.png` 能完整渲染 `HuoChaiAI Offline Mode`，右侧空白问题被软件渲染解决。
 - 重要校正：v8-v15 的 `offline-home.html` 只是诊断页，用来区分菜单/加载/渲染问题；它不是最终业务目标。最终目标不是“业务离线化”，而是“授权/登录/时效/付费门槛本地通过 + 采集/群发/云手机/投屏/视频继续联网”。
@@ -61,7 +62,7 @@
 ### M4 尚未完成
 
 - 需要在可控 VM 或管理员环境补一次真正禁用网络后的启动、九产品选择器和主界面验收；当前仅完成进程级 HTTP/HTTPS/SOCKS 黑洞代理验收。
-- 需要制作并验证最终双击分发包；当前宿主验证使用 `java -cp ... com.sbf.main.StartApp` 启动，已经证明无需登录操作，但还不是最终安装/快捷方式交付。
+- 需要制作并验证最终双击分发包；当前宿主验证使用 `java -cp ... com.sbf.main.StartApp` 启动，已经证明无需登录操作，但还不是最终安装/快捷方式交付。项目内 `data\app\HuoChaiAI.exe` 在本次会话启动时被系统返回“操作已被用户取消”，未形成双击通过证据。
 - 76 个菜单当前统一使用恢复入口 `/pc/aicloud/my`；这是 M4 静态外壳入口，不代表各菜单业务已经恢复。业务分流和后端依赖属于 M5A/M5B。
 
 ### 用户提供的产品结构证据

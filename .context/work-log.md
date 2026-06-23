@@ -483,3 +483,10 @@
 - 断网边界：临时 Windows 防火墙规则因无管理员权限被拒绝且未创建；改用本次 Java 进程的 HTTP/HTTPS/SOCKS 黑洞代理，选择器仍可进入。该结果证明 M4 HTTP 启动链本地化，但真正禁用网卡后的验收仍待可控 VM/管理员环境补做。
 - 回滚：停止测试进程，并恢复 `C:\m2dump\app\App.jar` 为 v33 哈希 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
 - 下一步：补最终物理断网和双击分发包验收；通过后进入 M5A 业务依赖分类。
+
+## 2026-06-23 22:32｜校正双击验收目标，排除用户桌面原始安装包
+- 目标：按用户确认，避免把用户本人安装的原始桌面包误当作本项目逆向恢复产物验收。
+- 动作：确认 `C:\Users\m1591\Desktop\火柴AI.lnk` 指向 `H:\HuoChaiAI\app\HuoChaiAI.exe`，该目录属于用户原始安装，不作为项目恢复包。恢复该目录 `App.dll` 为备份原件；随后只在项目内 `data\app\App.dll` 做临时替换测试，并在测试后恢复。
+- 结果：原始桌面安装包 `H:\HuoChaiAI\app\App.dll` 已恢复为 SHA-256 `72689D3C96F28A9DFBDDCFFC3F14D082A174AC0FED153144CD2AA89D27C3D494`。项目内 `data\app\App.dll` 已恢复为 SHA-256 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。
+- 验证：项目内 `data\app\HuoChaiAI.exe` 启动返回“操作已被用户取消”，未进入窗口，因此不计为双击分发包通过。`git status` 保持干净，v40 可靠证据仍限定为 JAR/Java 直接启动、九产品卡、WhatsApp 主界面和进程级黑洞代理。
+- 下一步：单独制作本项目可双击分发包或在可控 VM/管理员环境中补做物理断网；在此之前不进入“最终 M4 完成”表述。

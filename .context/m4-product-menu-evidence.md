@@ -264,3 +264,10 @@ M4A 恢复规则：
 - v39 首次运行发现菜单 icon 被拼为 `/svg/svg/<name>.svg.svg`；v40 已按真实消费契约修复，stderr 不再出现该批 icon `Stream closed`。
 - Windows 防火墙临时出站规则因当前会话无管理员权限被拒绝，未留下规则。随后使用 JVM 级 HTTP/HTTPS/SOCKS 黑洞代理启动，九产品选择器仍正常显示；该证据证明 M4 授权、登录和产品目录不依赖远端 HTTP，但不等同于物理断网阻断全部 UDP。
 - 测试后已停止 v40 进程，并把 `C:\m2dump\app\App.jar` 恢复为 v33 SHA-256 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
+
+验收边界校正：
+
+- 用户桌面快捷方式 `C:\Users\m1591\Desktop\火柴AI.lnk` 指向用户本人安装的原始包 `H:\HuoChaiAI\app\HuoChaiAI.exe`，不是本项目逆向恢复产物；该路径不作为 M4B 交付验收目标。
+- 本次曾为确认目标临时备份并恢复该原始安装包的 `H:\HuoChaiAI\app\App.dll`，恢复后 SHA-256 为 `72689D3C96F28A9DFBDDCFFC3F14D082A174AC0FED153144CD2AA89D27C3D494`。后续不得再覆盖或借用该用户原始安装目录。
+- 项目内启动壳 `data\app\HuoChaiAI.exe` 存在，但在临时把 `data\app\App.dll` 替换为 v40 后启动返回“操作已被用户取消”，未进入客户端窗口，因此不能记录为双击分发包通过。随后已恢复 `data\app\App.dll` 为原 SHA-256 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`，Git 工作区保持干净。
+- 因此，当前 v40 可靠证据仍限定为 JAR/Java 直接启动、九产品卡、WhatsApp 主界面和进程级黑洞代理；最终双击分发包仍待单独制作和验证。

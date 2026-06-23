@@ -114,3 +114,19 @@
 
 - 采集类业务不应简单归为“客户端全丢”或“后端全丢”。当前更准确的拆法是：页面/脚本/第三方访问可部分保留，任务编排、持久化、OSS、验证码/AI 辅助和队列需要逐项验证。
 - 下一步可围绕 WhatsApp `AI采集/AI数据/AI筛选` 建立高置信只读入口候选，但必须把 `spiderCode/moduleCode/localCode/linkUrl` 中无法证明的值标注为“恢复值”。
+
+## 10. 2026-06-23 v41 WhatsApp AI采集只读候选
+
+| 项 | 结果 |
+| --- | --- |
+| 覆盖范围 | 仅 WhatsApp `C4749_006 / AI采集`。 |
+| 恢复入口 | `localCode=pc/dataCollect/collectionTask`，`linkUrl=/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`。 |
+| 证据属性 | `recovery-route:dataCollect:whatsapp_users_lists`，明确是恢复值，不是原始真实菜单响应值。 |
+| 测试 | 新增测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `27/27`。 |
+| 候选产物 | `.artifacts/working/m5a-whatsapp-collect-route-v41/App-m5a-v41-whatsapp-collect-route.jar`，SHA-256 `661AD0474127637FF3890DB61B95A6EAE66D09DA41C82C217BD334E3C5FA10FE`。 |
+
+分类影响：
+
+- WhatsApp `AI采集` 现在具备一个可点击验证的高置信候选入口，下一步可以从“菜单壳”进入“页面打开/请求分类”。
+- 这一步仍不证明采集任务提交、任务队列、结果保存、OSS 上传或验证码/代理辅助已恢复。
+- `AI数据`、`AI筛选` 暂不绑定 spider 配置，避免把结果页/筛选器误配成采集脚本。

@@ -518,3 +518,10 @@
 - 结果：确认 21 个本地 spider 配置存在，WhatsApp 包含 `whatsapp_users_lists`、`whatsapp_regional_collection`、`whatsapp_group_lists`、`wap_global_clue_users`，均含 `moduleCode=whatsapp` 和 Google/平台搜索采集逻辑；TikTok/Facebook 配置包含直连平台页面/API 证据。`JSpiderCloude` 构造 `/pc/cloud/task/myindex?spiderCode=...` 与 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...`；`SBFApi.H(String)` 先请求 `/cloud/spider/code/<code>`，失败后读取本地 `/res/spider/<code>.cnf`；spider v2 的状态、任务拉取、取消和新任务接口仍指向原后端。
 - 验证：本轮只做静态解析和证据归档，没有执行采集、群发、上传、登录第三方平台、创建任务或连接云设备。
 - 下一步：围绕 WhatsApp `AI采集/AI数据/AI筛选` 建立高置信只读入口候选；无法证明为原始值的 `spiderCode/moduleCode/localCode/linkUrl` 均标注“恢复值”，先只打开页面和记录请求，不提交任务。
+
+## 2026-06-23 23:59｜v41 WhatsApp AI采集只读入口候选
+- 目标：把已证明的 dataCollect 入口族落实为一个最小、可集中替换、显式标注的恢复候选，用于 M5A 下一轮只读页面打开验收。
+- 动作：使用 TDD 先新增 `C4749_006 / AI采集` 路由测试并确认失败；随后仅修改 `M4RecoveryCatalog`，把该菜单的 `localCode` 设为恢复值 `pc/dataCollect/collectionTask`，`linkUrl` 设为恢复值 `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，并把 `evidence` 标为 `recovery-route:dataCollect:whatsapp_users_lists`。`AI数据`、`AI筛选` 暂不修改。
+- 结果：生成候选产物 `.artifacts/working/m5a-whatsapp-collect-route-v41/App-m5a-v41-whatsapp-collect-route.jar`，大小 `31,880,904` 字节，SHA-256 `661AD0474127637FF3890DB61B95A6EAE66D09DA41C82C217BD334E3C5FA10FE`。
+- 验证：新增测试按预期先红后绿；受影响目录测试和补丁契约测试通过；完整 `python -m unittest discover -s tests -v` 通过 `27/27`；产物级检查确认 `SBFApi.class` 内含 `whatsapp_users_lists`、`/pc/dataCollect/collectionTask/data_index` 和 `recovery-route:dataCollect:whatsapp_users_lists`。
+- 下一步：在宿主机或 VM 覆盖项目测试 App.jar 后，只打开 WhatsApp `AI采集` 页面并记录 URL、XHR、控制台和错误；不得提交关键词、创建任务、批量采集、上传或群发。

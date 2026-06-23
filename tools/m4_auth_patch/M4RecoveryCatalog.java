@@ -20,7 +20,7 @@ public final class M4RecoveryCatalog {
             recovered("REC_WHATSAPP_AGENT_MODEL", "智能体模型", "svg/whatsapp_menu_icon_2.svg"),
             recovered("REC_WHATSAPP_CLAW", "AI龙虾", "svg/whatsapp_menu_icon_3.svg"),
             recovered("REC_WHATSAPP_SUPER", "超级号", "svg/whatsapp_menu_icon_4.svg"),
-            original("C4749_006", "AI采集", "svg/whatsapp_menu_icon_5.svg"),
+            spiderRoute("C4749_006", "AI采集", "svg/whatsapp_menu_icon_5.svg", "whatsapp_users_lists"),
             original("C4749_007", "AI数据", "svg/whatsapp_menu_icon_6.svg"),
             original("C4749_009", "AI筛选", "svg/whatsapp_menu_icon_7.svg"),
             original("C4749_005", "AI群发", "svg/whatsapp_menu_icon_8.svg"),
@@ -228,13 +228,13 @@ public final class M4RecoveryCatalog {
         appendString(json, "name", menu.name);
         appendString(json, "displayName", menu.name);
         appendString(json, "icon", iconResourceName(menu.icon));
-        appendString(json, "localCode", "JSinglepage");
-        appendString(json, "linkUrl", "/pc/aicloud/my");
+        appendString(json, "localCode", menu.localCode);
+        appendString(json, "linkUrl", menu.linkUrl);
         appendNumber(json, "webFlg", 1);
         appendNumber(json, "treeEndFlg", 1);
         appendNumber(json, "displayIndex", menuIndex);
         appendNumber(json, "sort", menuIndex);
-        appendString(json, "evidence", menu.recovered ? "recovery-value" : "original-i18n");
+        appendString(json, "evidence", menu.evidence);
         json.append("\"status\":1");
         json.append('}');
     }
@@ -294,11 +294,23 @@ public final class M4RecoveryCatalog {
     }
 
     private static MenuSpec original(String code, String name, String icon) {
-        return new MenuSpec(code, name, icon, false);
+        return new MenuSpec(code, name, icon, "JSinglepage", "/pc/aicloud/my", "original-i18n");
     }
 
     private static MenuSpec recovered(String code, String name, String icon) {
-        return new MenuSpec(code, name, icon, true);
+        return new MenuSpec(code, name, icon, "JSinglepage", "/pc/aicloud/my", "recovery-value");
+    }
+
+    private static MenuSpec spiderRoute(String code, String name, String icon, String spiderCode) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "pc/dataCollect/collectionTask",
+                "/pc/dataCollect/collectionTask/data_index?spiderCode="
+                        + spiderCode
+                        + "&moduleCode=whatsapp",
+                "recovery-route:dataCollect:" + spiderCode);
     }
 
     private static final class ProductSpec {
@@ -326,13 +338,23 @@ public final class M4RecoveryCatalog {
         private final String code;
         private final String name;
         private final String icon;
-        private final boolean recovered;
+        private final String localCode;
+        private final String linkUrl;
+        private final String evidence;
 
-        private MenuSpec(String code, String name, String icon, boolean recovered) {
+        private MenuSpec(
+                String code,
+                String name,
+                String icon,
+                String localCode,
+                String linkUrl,
+                String evidence) {
             this.code = code;
             this.name = name;
             this.icon = icon;
-            this.recovered = recovered;
+            this.localCode = localCode;
+            this.linkUrl = linkUrl;
+            this.evidence = evidence;
         }
     }
 }

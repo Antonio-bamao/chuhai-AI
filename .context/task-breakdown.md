@@ -87,7 +87,7 @@
 - 输出：业务依赖矩阵与可直连功能回归记录。第一版静态矩阵和只读验收记录见 `.context/m5a-business-dependency-inventory.md`，菜单真实路由发现见 `.context/m5a-menu-route-discovery.md`。
 - DoD（可自检的完成定义）：至少跑通一个直连或低风险流程；每个模块有依赖类别和下一步；不执行真实群发、支付、批量采集、上传或云设备创建等有副作用动作。
 - 明确不做：不把失败接口直接本地伪成功，不压测，不泛化代理全部 `/prod-api/*`。
-- 当前新前置：v40 统一 `/pc/aicloud/my` 菜单入口不足以验收 WhatsApp/GEO 真实业务。已确认菜单分发依赖 `localCode/linkUrl`，且原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；已进一步发现 `data/app/res/spider/*.cnf` 本地采集脚本、`SBFApi.H(String)` 远端优先/本地兜底配置契约，以及 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` 数据采集入口族。下一步应围绕 WhatsApp 采集做只读入口候选恢复，无法证明的 `spiderCode/moduleCode/localCode/linkUrl` 必须标注为“恢复值”，不能把打开器猜测写成原始路由。
+- 当前新前置：v40 统一 `/pc/aicloud/my` 菜单入口不足以验收 WhatsApp/GEO 真实业务。已确认菜单分发依赖 `localCode/linkUrl`，且原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；已进一步发现 `data/app/res/spider/*.cnf` 本地采集脚本、`SBFApi.H(String)` 远端优先/本地兜底配置契约，以及 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` 数据采集入口族。v41 已把 WhatsApp `C4749_006 / AI采集` 做成只读恢复候选入口，无法证明的 `spiderCode/moduleCode/localCode/linkUrl` 均已标注为“恢复值”；下一步是宿主机/VM 打开该页面并记录请求，不提交任务。
 - 规模（S·M·L）：L
 
 ### M5B：失效原后端接口兼容重建

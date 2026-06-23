@@ -170,7 +170,16 @@ class M4AuthPatchTests(unittest.TestCase):
                                 || item.getString("icon").endsWith(".svg")) {
                             throw new AssertionError("non-resource icon: " + item);
                         }
-                        if (!"JSinglepage".equals(item.getString("localCode"))
+                        boolean whatsappCollectCandidate =
+                                "C4749_006".equals(item.getString("code"));
+                        if (whatsappCollectCandidate) {
+                            if (!"pc/dataCollect/collectionTask".equals(item.getString("localCode"))
+                                    || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp collect recovery route: " + item);
+                            }
+                        } else if (!"JSinglepage".equals(item.getString("localCode"))
                                 || !"/pc/aicloud/my".equals(item.getString("linkUrl"))
                                 || item.getInt("webFlg") != 1) {
                             throw new AssertionError("recovery entry contract: " + item);
@@ -216,6 +225,51 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M4_RECOVERY_MENUS_OK", probe.stdout)
+
+    def test_recovery_catalog_marks_whatsapp_ai_collect_as_data_collect_recovery_route(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M4RecoveryWhatsAppCollectRouteProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M4RecoveryWhatsAppCollectRouteProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject target = null;
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("C4749_006".equals(item.optString("code"))) {
+                            target = item;
+                            break;
+                        }
+                    }
+                    if (target == null) {
+                        throw new AssertionError("missing WhatsApp AI collect menu");
+                    }
+                    if (target.optInt("productId") != 9101
+                            || !"AI采集".equals(target.optString("name"))) {
+                        throw new AssertionError("wrong WhatsApp collect menu: " + target);
+                    }
+                    if (!"pc/dataCollect/collectionTask".equals(target.optString("localCode"))) {
+                        throw new AssertionError("missing dataCollect localCode recovery value: " + target);
+                    }
+                    String expectedLink =
+                            "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp";
+                    if (!expectedLink.equals(target.optString("linkUrl"))) {
+                        throw new AssertionError("missing WhatsApp spider route: " + target);
+                    }
+                    if (!target.optString("evidence").contains("recovery-route")) {
+                        throw new AssertionError("route must be marked as recovered evidence: " + target);
+                    }
+                    System.out.println("M4_WHATSAPP_COLLECT_ROUTE_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M4_WHATSAPP_COLLECT_ROUTE_OK", probe.stdout)
 
     def run_patcher(self):
         return subprocess.run(
@@ -671,6 +725,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
+                            boolean whatsappCollectCandidate =
+                                    "C4749_006".equals(recoveredMenu.optString("code"));
                             if (recoveredMenu.optInt("productId") < 9101
                                     || recoveredMenu.optInt("productId") > 9108
                                     || recoveredMenu.optString("code").startsWith("C2850000")
@@ -678,10 +734,18 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || recoveredMenu.optString("name").contains("Graphic Video")
                                     || recoveredMenu.optString("icon").contains("/")
                                     || recoveredMenu.optString("icon").endsWith(".svg")
-                                    || !"JSinglepage".equals(recoveredMenu.optString("localCode"))
-                                    || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))
                                     || recoveredMenu.optString("linkUrl").contains("offline-home.html")) {
                                 throw new AssertionError("bad recovered menu: " + recoveredMenu);
+                            }
+                            if (whatsappCollectCandidate) {
+                                if (!"pc/dataCollect/collectionTask".equals(recoveredMenu.optString("localCode"))
+                                        || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route")) {
+                                    throw new AssertionError("bad WhatsApp collect recovery route: " + recoveredMenu);
+                                }
+                            } else if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                    || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))) {
+                                throw new AssertionError("bad recovered menu route: " + recoveredMenu);
                             }
                         }
                         String[] themeColorKeys = {

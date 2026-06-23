@@ -120,3 +120,28 @@ WhatsApp 重点配置摘要：
 - 可把 `pc/dataCollect/collectionTask` 作为高置信“数据采集入口族”证据。
 - 还不能把 v40 的某个 WhatsApp 菜单直接改成该入口并声明“原始真实路由”，因为当前没有原始菜单 JSON 绑定关系。
 - 后续若建立候选入口，应标注为“恢复值”，例如把 `spiderCode=whatsapp_users_lists`、`moduleCode=whatsapp` 作为可替换恢复参数，并只做页面打开/请求记录，不执行采集任务。
+
+## 8. 2026-06-23 v41 WhatsApp AI采集只读入口候选
+
+本轮按 TDD 建立了第一个可集中替换的恢复路由候选，只覆盖 WhatsApp 的 `AI采集` 菜单。
+
+| 字段 | v41 恢复值 | 证据等级 |
+| --- | --- | --- |
+| 菜单 `code` | `C4749_006` | 原包 i18n/菜单恢复 code，已在 M4A 使用。 |
+| 菜单名 | `AI采集` | 用户截图验收 + 原包菜单资源恢复。 |
+| `localCode` | `pc/dataCollect/collectionTask` | 恢复值；来源于 `sub.g`/`f.d`/`JSBFMain$4` 解码字符串和数据采集入口族证据，不声明为原始菜单响应值。 |
+| `linkUrl` | `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp` | 恢复值；`/pc/dataCollect/collectionTask/data_index` 来自 `JSpiderCloude`，`whatsapp_users_lists` 来自本地 spider 配置。 |
+| `evidence` | `recovery-route:dataCollect:whatsapp_users_lists` | 显式标注为恢复路由，避免误当原始真实值。 |
+
+验证：
+
+- 新增测试先失败，失败点为当前 `AI采集` 仍是 `JSinglepage + /pc/aicloud/my`。
+- 实现后完整 `python -m unittest discover -s tests -v` 通过 `27/27`。
+- 生成候选产物 `.artifacts/working/m5a-whatsapp-collect-route-v41/App-m5a-v41-whatsapp-collect-route.jar`，大小 `31,880,904` 字节，SHA-256 `661AD0474127637FF3890DB61B95A6EAE66D09DA41C82C217BD334E3C5FA10FE`。
+- 产物级检查确认 `SBFApi.class` 内含 `whatsapp_users_lists`、`/pc/dataCollect/collectionTask/data_index`、`recovery-route:dataCollect:whatsapp_users_lists`。
+
+边界：
+
+- v41 只恢复一个候选入口，不代表 WhatsApp 采集任务已可提交或结果已可保存。
+- 暂不修改 `AI数据`、`AI筛选`，因为当前证据不足以把它们分别绑定到结果页或筛选器实现。
+- 下一步只允许宿主机/VM 打开 `AI采集` 页面并记录请求、错误和渲染结果；不得提交关键词、创建采集任务、批量采集、上传或群发。

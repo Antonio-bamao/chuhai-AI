@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -171,11 +172,18 @@ public final class M4AuthPatch {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2) {
-            throw new IllegalArgumentException("usage: M4AuthPatch <input-jar> <output-jar>");
+        boolean realProductMenuLogging = false;
+        int argOffset = 0;
+        if (args.length == 3 && "--real-product-menu-logging".equals(args[0])) {
+            realProductMenuLogging = true;
+            argOffset = 1;
         }
-        Path input = Paths.get(args[0]).toAbsolutePath().normalize();
-        Path output = Paths.get(args[1]).toAbsolutePath().normalize();
+        if (args.length - argOffset != 2) {
+            throw new IllegalArgumentException(
+                    "usage: M4AuthPatch [--real-product-menu-logging] <input-jar> <output-jar>");
+        }
+        Path input = Paths.get(args[argOffset]).toAbsolutePath().normalize();
+        Path output = Paths.get(args[argOffset + 1]).toAbsolutePath().normalize();
         if (input.equals(output)) {
             throw new IllegalArgumentException("input and output must be different paths");
         }
@@ -186,7 +194,7 @@ public final class M4AuthPatch {
 
         Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
         Files.deleteIfExists(temp);
-        PatchResult result = patchJar(input, temp);
+        PatchResult result = patchJar(input, temp, realProductMenuLogging);
         if (!result.patchedLogin
                 || !result.patchedGetInfo
                 || !result.patchedProductModules
@@ -209,10 +217,16 @@ public final class M4AuthPatch {
                     "failed to patch SBFApi auth/menu methods and diagnostics");
         }
         Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        System.out.println("patched " + TARGET_CLASS + " -> " + output);
+        System.out.println(
+                "patched "
+                        + TARGET_CLASS
+                        + " -> "
+                        + output
+                        + (realProductMenuLogging ? " [real-product-menu-logging]" : ""));
     }
 
-    private static PatchResult patchJar(Path input, Path output) throws IOException {
+    private static PatchResult patchJar(Path input, Path output, boolean realProductMenuLogging)
+            throws IOException {
         PatchResult result = new PatchResult();
         Set<String> names = new HashSet<String>();
         try (JarFile jar = new JarFile(input.toFile());
@@ -230,7 +244,7 @@ public final class M4AuthPatch {
                     try (InputStream in = jar.getInputStream(entry)) {
                         byte[] bytes = readAll(in);
                         if (TARGET_CLASS.equals(entry.getName())) {
-                            bytes = patchSbfApi(bytes, result);
+                            bytes = patchSbfApi(bytes, result, realProductMenuLogging);
                         } else if (UPDATE_CHECKER_CLASS.equals(entry.getName())) {
                             bytes = patchUpdateChecker(bytes, result);
                         } else if (TREE_NODE_CLASS.equals(entry.getName())) {
@@ -1019,9 +1033,10 @@ public final class M4AuthPatch {
                 + "'";
     }
 
-    private static byte[] patchSbfApi(byte[] original, PatchResult result) {
+    private static byte[] patchSbfApi(byte[] original, PatchResult result, boolean realProductMenuLogging) {
         ClassReader reader = new ClassReader(original);
-        ClassWriter writer = new ClassWriter(reader, 0);
+        ClassWriter writer =
+                new ClassWriter(reader, realProductMenuLogging ? ClassWriter.COMPUTE_MAXS : 0);
         ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
             @Override
             public MethodVisitor visitMethod(
@@ -1041,10 +1056,28 @@ public final class M4AuthPatch {
                 }
                 if ("C".equals(name) && "()Lorg/json/JSONObject;".equals(descriptor)) {
                     result.patchedProductModules = true;
+                    if (realProductMenuLogging) {
+                        return wrapJsonObjectReturnWithEvidenceLog(
+                                access,
+                                name,
+                                descriptor,
+                                signature,
+                                exceptions,
+                                "M4_EVIDENCE_PRODUCT_MODULE_REAL_JSON=");
+                    }
                     return writeJsonReturn(access, name, descriptor, signature, exceptions, PRODUCT_MODULE_JSON, 0);
                 }
                 if ("k".equals(name) && "()Lorg/json/JSONObject;".equals(descriptor)) {
                     result.patchedPcMenus = true;
+                    if (realProductMenuLogging) {
+                        return wrapPcMenusRawAndReturnWithEvidenceLog(
+                                access,
+                                name,
+                                descriptor,
+                                signature,
+                                exceptions,
+                                "M4_EVIDENCE_PC_MENUS_REAL_JSON=");
+                    }
                     return writeJsonReturn(
                             access,
                             name,
@@ -1068,6 +1101,125 @@ public final class M4AuthPatch {
                             1);
                 }
                 return super.visitMethod(access, name, descriptor, signature, exceptions);
+            }
+
+            private MethodVisitor wrapPcMenusRawAndReturnWithEvidenceLog(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions,
+                    String returnLogPrefix) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    private boolean afterPcMenusRequestEncrypt;
+                    private boolean afterPcMenusResultOptString;
+                    private int rawBodyStringStores;
+
+                    @Override
+                    public void visitInvokeDynamicInsn(
+                            String dynamicName,
+                            String dynamicDescriptor,
+                            Handle bootstrapMethodHandle,
+                            Object... bootstrapMethodArguments) {
+                        super.visitInvokeDynamicInsn(
+                                dynamicName,
+                                dynamicDescriptor,
+                                bootstrapMethodHandle,
+                                bootstrapMethodArguments);
+                        if ("RSvgDpUx".equals(dynamicName)
+                                && "(Ljava/lang/Object;)Ljava/lang/String;"
+                                        .equals(dynamicDescriptor)) {
+                            afterPcMenusRequestEncrypt = true;
+                        }
+                    }
+
+                    @Override
+                    public void visitMethodInsn(
+                            int opcode,
+                            String owner,
+                            String methodName,
+                            String methodDescriptor,
+                            boolean isInterface) {
+                        super.visitMethodInsn(opcode, owner, methodName, methodDescriptor, isInterface);
+                        if (opcode == Opcodes.INVOKEVIRTUAL
+                                && "org/json/JSONObject".equals(owner)
+                                && "optString".equals(methodName)
+                                && "(Ljava/lang/String;)Ljava/lang/String;".equals(methodDescriptor)) {
+                            afterPcMenusResultOptString = true;
+                            rawBodyStringStores = 0;
+                        }
+                    }
+
+                    @Override
+                    public void visitVarInsn(int opcode, int varIndex) {
+                        super.visitVarInsn(opcode, varIndex);
+                        if (afterPcMenusRequestEncrypt && opcode == Opcodes.ASTORE && varIndex == 0) {
+                            emitStringLocalLog(this, "M4_EVIDENCE_PC_MENUS_REQUEST_URL=", 4);
+                            emitStringLocalLog(this, "M4_EVIDENCE_PC_MENUS_REQUEST_JSON=", 5);
+                            emitStringLocalLog(this, "M4_EVIDENCE_PC_MENUS_REQUEST_BODY=", 0);
+                            emitStaticFieldLog(
+                                    this,
+                                    "M4_EVIDENCE_PC_MENUS_STATIC_A=",
+                                    "com/sbf/util/http/SBFApi",
+                                    "a",
+                                    "Ljava/lang/String;");
+                            emitStaticFieldLog(
+                                    this,
+                                    "M4_EVIDENCE_PC_MENUS_STATIC_K=",
+                                    "com/sbf/util/http/SBFApi",
+                                    "k",
+                                    "Ljava/lang/String;");
+                            emitStaticFieldLog(
+                                    this,
+                                    "M4_EVIDENCE_PC_MENUS_STATIC_L=",
+                                    "com/sbf/util/http/SBFApi",
+                                    "l",
+                                    "Ljava/lang/String;");
+                            emitStaticFieldLog(
+                                    this,
+                                    "M4_EVIDENCE_PC_MENUS_HEADER_E=",
+                                    "com/sbf/main/JSBFMain",
+                                    "E",
+                                    "Ljava/lang/String;");
+                            afterPcMenusRequestEncrypt = false;
+                        }
+                        if (afterPcMenusResultOptString && opcode == Opcodes.ASTORE && varIndex == 0) {
+                            rawBodyStringStores++;
+                            if (rawBodyStringStores == 3) {
+                                emitStringLocalLog(this, "M4_EVIDENCE_PC_MENUS_RAW_BODY=", 0);
+                                afterPcMenusResultOptString = false;
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void visitInsn(int opcode) {
+                        if (opcode == Opcodes.ARETURN) {
+                            emitEvidenceJsonReturnLog(this, returnLogPrefix);
+                        }
+                        super.visitInsn(opcode);
+                    }
+                };
+            }
+
+            private MethodVisitor wrapJsonObjectReturnWithEvidenceLog(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions,
+                    String logPrefix) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitInsn(int opcode) {
+                        if (opcode == Opcodes.ARETURN) {
+                            emitEvidenceJsonReturnLog(this, logPrefix);
+                        }
+                        super.visitInsn(opcode);
+                    }
+                };
             }
 
             private MethodVisitor writeJsonReturn(
@@ -2328,6 +2480,113 @@ public final class M4AuthPatch {
         mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
         mv.visitLdcInsn(message);
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+    }
+
+    private static void emitEvidenceJsonReturnLog(MethodVisitor mv, String logPrefix) {
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        mv.visitInsn(Opcodes.SWAP);
+        mv.visitLdcInsn(logPrefix);
+        mv.visitInsn(Opcodes.SWAP);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "java/lang/String",
+                "valueOf",
+                "(Ljava/lang/Object;)Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "concat",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/io/PrintStream",
+                "println",
+                "(Ljava/lang/String;)V",
+                false);
+    }
+
+    private static void emitStringLocalLog(MethodVisitor mv, String logPrefix, int varIndex) {
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitLdcInsn(logPrefix);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESPECIAL,
+                "java/lang/StringBuilder",
+                "<init>",
+                "(Ljava/lang/String;)V",
+                false);
+        mv.visitVarInsn(Opcodes.ALOAD, varIndex);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "java/lang/String",
+                "valueOf",
+                "(Ljava/lang/Object;)Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "append",
+                "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "toString",
+                "()Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/io/PrintStream",
+                "println",
+                "(Ljava/lang/String;)V",
+                false);
+    }
+
+    private static void emitStaticFieldLog(
+            MethodVisitor mv,
+            String logPrefix,
+            String owner,
+            String fieldName,
+            String fieldDescriptor) {
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitLdcInsn(logPrefix);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESPECIAL,
+                "java/lang/StringBuilder",
+                "<init>",
+                "(Ljava/lang/String;)V",
+                false);
+        mv.visitFieldInsn(Opcodes.GETSTATIC, owner, fieldName, fieldDescriptor);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "java/lang/String",
+                "valueOf",
+                "(Ljava/lang/Object;)Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "append",
+                "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "toString",
+                "()Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/io/PrintStream",
+                "println",
+                "(Ljava/lang/String;)V",
+                false);
     }
 
     private static void emitCallerStack(MethodVisitor mv) {

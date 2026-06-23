@@ -23,6 +23,13 @@
 - v28 校正：v28 补 `im.udp.port` 后宿主机仍出现非致命 `JSBFMain.<init>` NPE。v29-v32 的分段诊断证明构造函数能正常返回，异常来自内部 IM 配置 catch；原字节码密文顺序确认实际读取 `im.port.udp`，不是 `im.udp.port`。临时 `JSBFMain` 诊断/托盘兜底均未进入正式版本。
 - v33 产物：`.artifacts/working/m5-im-shape-v33/App-m5-v33-im-shape.jar`，大小 `31,871,130` 字节，SHA-256 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
 - v33 ISO：`.artifacts/working/m5-im-shape-v33.iso`，大小 `31,936,512` 字节，SHA-256 `AE54073C1745E08164946814ABC949EB54894F67867705DD5F7143D09416C154`；ISO 只包含 v33 JAR 和 README，不包含 `offline-home.html`。
+- v34 取证产物：`.artifacts/working/m4-real-product-menu-logging-v34/App-m4-v34-real-product-menu-logging.jar`，大小 `31,870,641` 字节，SHA-256 `F0E39AFEF17D800B83F9C4066DE6D565C663AE3CB553FEBAAC8885A77B478150`。
+- v34 取证 ISO：`.artifacts/working/m4-real-product-menu-logging-v34.iso`，大小 `31,934,464` 字节，SHA-256 `44FBB3CA12534BD9F5C697B7D09F290908F7A00B72063EC3EFBD1466DB4B492C`；ISO 只包含 v34 JAR 和中文 README，不包含 `offline-home.html`。v34 使用 `--real-product-menu-logging` 模式，保留真实 `SBFApi.C()` 与 `SBFApi.k()` 返回路径，并在返回边界打印 `M4_EVIDENCE_PRODUCT_MODULE_REAL_JSON=` 与 `M4_EVIDENCE_PC_MENUS_REAL_JSON=`；默认补丁模式仍保持 v33 临时产品/菜单行为。宿主机实测中真实产品接口返回 `code=401` 令牌验证失败；菜单接口用反射探针触发时在返回前抛出 `JSONObject text must begin with '{'`，说明当前本地 token 下菜单原始响应不是 JSON 对象，单纯 `ARETURN` 返回边界日志不足以取得菜单 raw body。
+- v35 取证产物：`.artifacts/working/m4-real-menu-raw-logging-v35/App-m4-v35-real-menu-raw-logging.jar`，大小 `31,870,701` 字节，SHA-256 `02D912F0E2F3553374BFE5BDDFEBF34FA00E4A890D52F18B4F064F5542FDBF58`。
+- v35 取证 ISO：`.artifacts/working/m4-real-menu-raw-logging-v35.iso`，大小 `31,934,464` 字节，SHA-256 `8B5C4EC9E0E9CDB82170CC2AF52DD4667470F019BDAAB70A972CD83537D448C8`；ISO 只包含 v35 JAR 和中文 README，不包含 `offline-home.html`。v35 在 v34 基础上把无参 `SBFApi.k()` 菜单取证点前移到 `new JSONObject(raw)` 之前，新增 `M4_EVIDENCE_PC_MENUS_RAW_BODY=`。独立探针实测当前本地 token 下 raw body 为空串，随后原方法按预期抛出 `JSONObject text must begin with '{'`。
+- v36 取证产物：`.artifacts/working/m4-real-menu-request-logging-v36/App-m4-v36-real-menu-request-logging.jar`，大小 `31,870,823` 字节，SHA-256 `9DBC454856F9A09EEC35603404298EEB42D1BAAECBDF20E491D65C2F5269E66B`。
+- v36 取证 ISO：`.artifacts/working/m4-real-menu-request-logging-v36.iso`，大小 `31,934,464` 字节，SHA-256 `2EE09AD403123125677A2FC7690761B2AD9CF848C9FBE6119E4A3922A58D0F56`；ISO 只包含 v36 JAR 和中文 README，不包含 `offline-home.html`。v36 在 v35 基础上，于无参 `SBFApi.k()` 加密请求体生成后、真实 HTTP 调用前打印 `M4_EVIDENCE_PC_MENUS_REQUEST_URL/REQUEST_JSON/REQUEST_BODY/STATIC_A/STATIC_K/STATIC_L/HEADER_E`，用于确认菜单接口空体是否来自请求入参或授权态。
+- 宿主机 v36 证据：`C:\m2dump\m4-v36-real-menu-request-probe.log` 显示只手动设置 `SBFApi.a` 时，`k/l` 为空、`JSBFMain.E=null`、菜单 raw 为空；`C:\m2dump\m4-v36-initialized-menu-probe.log` 显示先调用 `SBFApi.j()` 后 `a/k/l` 已由硬件指纹链生成，且手动设置 `JSBFMain.E=offline-local-token-1234567890` 后，菜单请求仍返回空 raw body。结论：菜单空体不是单纯由 `k/l` 未初始化造成，更高置信是服务器不接受本地 fake token/header/signature；正式九产品仍需真实服务器登录态或继续定位真实登录态字段来源。宿主机 `C:\m2dump\app\App.jar` 已恢复 v33 哈希 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
 - 宿主机 v33 证据：`C:\m2dump\m5-v33-host.log` 显示真实 URL `https://app.xdxsoft.com/pc/aicloud/my?...`、四个定点 Web 初始化接口、`M4_V13_LOAD_FINISHED`；`C:\m2dump\m5-v33-host.err` 不再包含 `JSBFMain.<init>` NPE；`C:\m2dump\host-screen-v33-business.png` 显示 AiCloud 授权码表页面。stderr 仍有后台图标资源 `Stream closed`，但不影响主窗口和 Web 业务页。
 - 当前边界：v33 已实现“本地授权/登录/有效期/产品门槛 + 真实在线业务首屏”。当前仅对 Java 授权/产品初始化、Web 路由守卫、页面首屏空表/字典做本地补形状；后续增删改、采集、群发、云手机、投屏、视频等真实业务动作仍应继续联网验证，不应扩大成通用离线业务代理。
 
@@ -65,8 +72,8 @@
 ### 后续固定顺序
 
 1. 冻结 v33 技术基线。
-2. 继续闭合产品及菜单的真实 `id/code/logo/theme/localCode/linkUrl`：优先查原客户端缓存与日志；若无历史响应，只在 `/system/function_module/listmy/41` 和 `/api/v1/client/pc/menus` 的 Java 返回边界增加一次性结构日志，不改通用网络层。
-3. 恢复 8 个可进入系统和 1 个未开通系统的产品选择器。
+2. 下一步不要直接写正式九产品 JSON；v36 已证明当前本地 token 下产品接口为 401，菜单请求即使补齐 `SBFApi.j()` 生成的 `a/k/l` 并设置 `JSBFMain.E` 后 raw body 仍为空。需要拿到可用真实服务器登录态后复跑 v36，或继续定位真实登录态/header 来源字段。
+3. 只有拿到成功产品数组与菜单数组后，才生成脱敏证据 JSON，并恢复 8 个可进入系统和 1 个未开通系统的产品选择器。
 4. 恢复产品真实菜单拓扑，撤掉临时 AIGC 菜单。
 5. 完成双击免操作启动、断网进入和完整主界面验收，正式关闭 M4。
 6. 进入 M5，先选择一个只读或低风险真实业务动作，记录真实 API、状态码和请求头。

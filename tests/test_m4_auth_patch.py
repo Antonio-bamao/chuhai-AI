@@ -67,6 +67,23 @@ class M4AuthPatchTests(unittest.TestCase):
             stderr=subprocess.PIPE,
         )
 
+    def run_patcher_evidence_mode(self):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--real-product-menu-logging",
+                str(APP_JAR),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
     def javap_method_block(self, method_header, class_name="com.sbf.util.http.SBFApi"):
         result = subprocess.run(
             [
@@ -560,6 +577,39 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M4_DIAG_MENU_K_CALLED resp=", probe.stdout)
         self.assertIn("M4_DIAG_MENU_K_CALLER", probe.stdout)
         self.assertEqual(json.loads(probe.stdout.splitlines()[-1]), {"ok": True})
+
+    def test_real_product_menu_logging_mode_preserves_original_json_calls(self):
+        self.compile_patcher()
+
+        result = self.run_patcher_evidence_mode()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(self.output_jar.exists())
+        product_block = self.javap_method_block("public static org.json.JSONObject C();")
+        menu_block = self.javap_method_block("public static org.json.JSONObject k();")
+        login_block = self.javap_method_block(
+            "public static org.json.JSONObject k(java.lang.String, java.lang.String);"
+        )
+        get_info_block = self.javap_method_block("public static org.json.JSONObject h(java.lang.String);")
+
+        self.assertIn("M4_EVIDENCE_PRODUCT_MODULE_REAL_JSON=", product_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_REAL_JSON=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_RAW_BODY=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_REQUEST_URL=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_REQUEST_JSON=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_REQUEST_BODY=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_STATIC_A=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_STATIC_K=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_STATIC_L=", menu_block)
+        self.assertIn("M4_EVIDENCE_PC_MENUS_HEADER_E=", menu_block)
+        self.assertIn("invokedynamic", product_block)
+        self.assertIn("invokedynamic", menu_block)
+        self.assertNotIn("M4_DIAG_MENU_K_CALLED resp=", menu_block)
+        self.assertNotIn("C28500001", product_block)
+        self.assertNotIn("C28500001", menu_block)
+        self.assertIn("offline-local-token-1234567890", login_block)
+        self.assertIn("im", get_info_block)
+        self.assertIn("udp", get_info_block)
 
 
 if __name__ == "__main__":

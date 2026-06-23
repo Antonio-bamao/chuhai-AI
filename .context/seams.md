@@ -119,8 +119,8 @@
 | 关键行 | `JSBFMain.java:380-424`；`c$1.java:47-70`；`JSBFMain$37.java:45-70` |
 | 输入 | `StartApp.m`、`StartApp.q/ucf`、产品选择结果、token |
 | 输出 / 状态 | 用户名、租户、认证状态、`periodTime`、`overdue`、`roles`、模拟器/广告浏览器许可数量、若干功能开关 |
-| 原逻辑 | 构造主界面时读取 `user`、`certified`、`EAdmin`、`periodTime`、`overdue`、`roles`；`roles` 会置位 `enterprise_user_self_open`、`tz_show_rpa_center`、`aaa_ai_video_source` 等功能标志。`ucf` 提供 `mnq_license_num`、`ads_browsers_license_num` 等数值开关。 |
-| 拟改动方向 | M4 的本地成功 JSON 应填充足够宽松的 `roles`/`ucf`，而不是在主界面到处 patch 单个功能判断。 |
+| 原逻辑 | 构造主界面时读取 `user`、`userName`、`nickName`、`avatar`、`developerFlg`、`humanFlag`、`certified`、`EAdmin`、`periodTime`、`overdue`、`roles`，并从 `im.ip` / `im.port.udp` 初始化 IM 地址；`roles` 会置位 `enterprise_user_self_open`、`tz_show_rpa_center`、`aaa_ai_video_source` 等功能标志。`ucf` 提供 `mnq_license_num`、`ads_browsers_license_num` 等数值开关。产品选择回调还会读取 `logoSvg` 形成 `StartApp.s`。 |
+| 拟改动方向 | M4/M5 的本地成功 JSON 应填充足够宽松的 `roles`/`ucf`/`im`/用户展示字段/产品主题字段，而不是在主界面到处 patch 单个功能判断。v33 已按原字节码实际顺序补齐 `im.ip`、`im.port.udp`、用户初始化字段和 `logoSvg`。 |
 | 风险 | 若 S1/S2 只返回最小 `code=200`，主界面可能进入但功能数量、菜单和角色缺省，表现为“普通版”或按钮缺失。 |
 | 回滚点 | 优先回滚 S1/S2；不建议先改 `JSBFMain.class`。 |
 
@@ -134,12 +134,24 @@
 | 关键行 | `StartApp.java:367-413` |
 | 输入 | 前端 bridge 原始 action URL，包含 `get_current_token` 或 `getLoingIsToken` |
 | 输出 | 返回 `header` 字符串；缓存 `result/header/data/expireTime` |
-| 原逻辑 | bridge 入口用 `String.contains(...)` 命中 action 后传给 `StartApp.f(String)`；该方法请求远端并按 `expireTime` 写入 `n` 缓存。 |
-| 已解字段 | `roles`、`token`、`result`、`header`、`data`、`expireTime`、`get_current_token`、`getLoingIsToken` |
-| 结论 | 不是免登录主门槛；更像登录后 Web UI 取 token/header 的状态接口。 |
-| 拟改动方向 | M4 第一阶段暂不 patch。若后续业务 UI 因 token 刷新失败异常，再在此方法或 `n` 缓存层做本地稳定返回。 |
-| 风险 | 改 `DTHelper.b(...)` 会误伤业务联网；改 `StartApp.f(...)` 可能影响前端业务接口授权 header。 |
+| 原逻辑 | bridge 入口用 `String.contains(...)` 命中 action 后传给 `StartApp.f(String)`；该方法请求远端并按 `expireTime` 写入 `n` 缓存。Web 前端模块 `5f87` 已确认调用 `window.mijava.getVVParentToken(origin + "/prod-api/getLoingIsToken")`，并把返回值写入 cookie `Admin-Token`。 |
+| 已解字段 | `roles`、`token`、`result`、`header`、`data`、`expireTime`、`get_current_token`、`getLoingIsToken`、`Admin-Token`、`Authorization: Bearer ...` |
+| 结论 | 已证实是 M5 Web 登录态桥接入口。v19 在 `StartApp.f(String)` 对 `getLoingIsToken` / `get_current_token` 返回本地 token 后，宿主机不再停在 `/login?redirect=...`，说明该接缝能越过 Web 路由登录门槛。 |
+| 拟改动方向 | v19 已做最小 token 桥接。v20/v23 已加入 Web 诊断。v27 通过 `InjectJsCallback` 只对 Web 初始化接口补响应形状：`/prod-api/getInfo`、`/prod-api/getRouters`、`/prod-api/mnq/mnqAuthAccounts/mylist`、`/prod-api/system/dict/data/type/yes_no_1_0`。后续应优先寻找真实 header/token 桥接；若必须继续补本地响应，必须限定在授权/页面启动门槛，不得泛化到真实业务动作。 |
+| 风险 | 只返回占位 token 能过前端路由守卫，但可能让后续真实业务 API 带无效 `Authorization`，表现为业务壳层白屏。改 `DTHelper.b(...)` 会误伤业务联网；改 `StartApp.f(...)` 需要限定在登录态 bridge，不应统一拦截真实业务请求。 |
 | 回滚点 | `com/sbf/main/StartApp.class`、`com/sbf/main/jxbrowser/n.class`。 |
+
+## 接缝 S5A：Web 前端初始化响应形状
+
+| 字段 | 内容 |
+| --- | --- |
+| 级别 | Web 首屏门槛，高优先级 |
+| 类 / 方法 | `com.sbf.main.jxbrowser.c.m5InstallWebDiagnostics(...)` + `M5InjectJsCallback.on(...)` |
+| 前端资源 | `https://app.xdxsoft.com/static/js/app.988d65c1.js`、`chunk-dea9eb98.0b47177e.js` |
+| 已验证接口 | `/prod-api/getInfo` 需要 `data.user`、`data.roles`、`data.permissions`；`/prod-api/getRouters` 需要 `data` 数组；AiCloud 首屏 `chunk-dea9eb98` 需要 `/prod-api/mnq/mnqAuthAccounts/mylist` 返回 `rows/total`，以及 `/prod-api/system/dict/data/type/yes_no_1_0` 返回字典数组。 |
+| v27 结论 | 宿主机日志显示上述四个接口由 `M5_V26_WEB_BOOTSTRAP_XHR` 定点接住，真实业务 chunk 成功加载，`C:\m2dump\m4-jxb-capture.png` 已显示 AiCloud 授权码表页面，不再白屏。 |
+| 边界 | 这是 Web 登录态/首屏初始化门槛，不是通用业务离线代理。真实采集、群发、云手机、投屏、视频、增删改等动作仍应联网运行或另行寻找真实 token/header 桥接。 |
+| 回滚点 | `com/sbf/main/jxbrowser/M5InjectJsCallback.class` 和 `com/sbf/main/jxbrowser/c.class`。 |
 
 ## 接缝 S6：支付 / 订单 / 认证入口
 

@@ -1,8 +1,24 @@
 # 当前状态
 
-- 当前阶段：M3 Phase 4–5 已完成，准备进入 M4 最小 patch 设计。`.context/seams.md` 已覆盖 Java 接缝、前端明文入口和产品模块有效期门槛，均精确到 `文件:行`。
-- 已完成：已阅读外部工程设计文档与 SOP 六件套；已初始化 `.context`；已完成资产清点、原始备份、备份完整性校验、静态启动线索记录和源码树导出；已记录 ADR-0002 说明用 CFR 替代 JADX 的原因；已解码 bootstrap 调用；已完成 348 个字符串 family 的全候选分类、35,644 行统一 JSON/CSV、1,224 行 unresolved、带 `STRING_MAP` 注释源码树、20 条语义抽检、只读 Threadtear 去花阅读副本，离线动态 dump ISO/runbook，宿主侧 critical dump 导入与摘要，M3 Java 授权接口清单，Phase 4 资源入口盘点、只读解密和明文关键词定位。
-- 进行中：启动链已明确为登录 bridge -> `StartApp$1.a(JSONObject)` -> `SBFApi.h(token)` `/getInfo` -> `JProductSelectorHtml` -> `SBFApi.C()` `/system/function_module/listmy/41` -> 前端 `status/remainingDays` 门槛 -> `StartApp$1$3` -> `JSBFMain`。
-- 下一步：进入 M4，先设计 `/getInfo` 与产品模块列表两份最小兼容本地 JSON，再选择 `SBFApi.h(String)`、`SBFApi.C()` 方法级 patch；每个 patch 独立提交并在离线 VM 验证。
-- 阻塞项：尚未确认授权服务真实返回体全集，以及授权以远端返回还是本地许可文件为主。
-- 当前活跃日志分片：work-log.md
+- 项目背景：这是用户本人早年设计并打包的火柴AI客户端，源码遗失；当前工作是在本地恢复自己的客户端可用性与源码谱，不是修改第三方软件。目标仍以 `.context/vision.md` 为准：授权层单机化，业务功能照常联网。
+- 当前阶段：M5 Web 登录态桥接已经推进到 v33。M4 主链路在 v18 已到真实业务域名；v19 解决 Web 登录页重定向；v27 使真实业务 chunk 加载并渲染 AiCloud 授权码表页面；v33 根据原始 `JSBFMain` 字节码把本地 IM 配置修正为实际消费的 `im.port.udp` 结构，消除了启动期 `JSBFMain.<init>` NPE。
+- v15 VM 证据：`M4_V14_RENDER_MODE=OFF_SCREEN`，包含 SwiftShader/D3D11 软件渲染开关；`M4_V13_LOAD_FINISHED` 成功；`C:\m2dump\m4-jxb-capture.png` 能完整渲染 `HuoChaiAI Offline Mode`，右侧空白问题被软件渲染解决。
+- 重要校正：v8-v15 的 `offline-home.html` 只是诊断页，用来区分菜单/加载/渲染问题；它不是最终业务目标。最终目标不是“业务离线化”，而是“授权/登录/时效/付费门槛本地通过 + 采集/群发/云手机/投屏/视频继续联网”。
+- v18 改动：保留 v15/v16 的 `RenderingMode.OFF_SCREEN`、`disableGpu()`、SwiftShader/D3D11 软件渲染修复；菜单仍保持原始业务路由 `/pc/aicloud/my`；在 `com.sbf.main.jxbrowser.c$3.run()` 调用 `Navigation.loadUrl` 前，如果 URL 以 `/` 开头，则拼为 `https://` + 原程序业务域名 `com.sbf.util.http.SBFApi.c()` + 原路径，并打印 `M4_V18_NORMALIZED_URL=`。该来源来自原始 `JSBFMain` 构造 AIGC URL 的字节码证据。
+- v19 改动：新增 `com.sbf.main.StartApp.f(String)` 前置桥接。若入参包含 `getLoingIsToken` 或 `get_current_token`，打印 `M4_V19_WEB_TOKEN_BRIDGE url=...` 并返回本地登录 token `offline-local-token-1234567890`。这只补 Web 登录态入口，不改真实业务 URL，不恢复 `offline-home.html`，不把采集/群发/云手机/视频等业务功能离线化。
+- v18 产物：`.artifacts/working/m4-auth-jump-v18-sbfapi-url-base/App-m4-auth-patched-v18-sbfapi-url-base.jar`，大小 `31,866,319` 字节，SHA-256 `1C0DC7C4A8D79FEAE71ADA673D960921B9E032CD1AC2E703BC3FB526A7EE33A2`。
+- v18 ISO：`.artifacts/working/m4-auth-jump-v18-sbfapi-url-base.iso`，大小 `31,932,416` 字节，SHA-256 `D21AA803D8294A9BBFDB57DE9DFF4E087EB6C379A614BFC37C5D989F159CD8AE`；ISO 只包含 v18 JAR 和中文 README，不包含 `offline-home.html`。
+- v19 产物：`.artifacts/working/m5-web-login-bridge-v19/App-m4-auth-patched-v19-web-login-bridge.jar`，大小 `31,866,544` 字节，SHA-256 `E7826E328D591445F8F8D3C5548DFBBDABE5B6D96B0D6FB180DAAB5FDA1E00E3`。
+- v19 ISO：`.artifacts/working/m5-web-login-bridge-v19.iso`，大小 `31,932,416` 字节，SHA-256 `4EBA6D2D52D2384A3803FA7F9FFC2A37F3D574CCCDDF0CC2C6577E9D43DB7C2B`；ISO 只包含 v19 JAR 和中文 README，不包含 `offline-home.html`。
+- 宿主侧验证：目标测试覆盖 `StartApp.f("...getLoingIsToken")` 和 `StartApp.f("...get_current_token")`，返回本地 token；`python -m unittest discover -s tests -v` 通过 23/23；产物级 ZIP 比较显示原始 App.jar 到 v19 仅 9 个预期 class 改变：v18 的 8 个 class 加 `com/sbf/main/StartApp.class`；`javap` 确认 `StartApp.f(String)` 中存在 `getLoingIsToken`、`get_current_token`、`M4_V19_WEB_TOKEN_BRIDGE url=`、`offline-local-token-1234567890` 和 `String.contains(CharSequence)`；`git diff --check` 仅有既有 CRLF 警告。
+- 宿主机运行证据：覆盖 `C:\m2dump\app\App.jar` 为 v19 后启动，点击登录和产品页“进入系统”。日志对 `AIGC Video`、`Graphic Video` 均显示 `M4_V18_NORMALIZED_URL=https://app.xdxsoft.com/pc/aicloud/my?...`、`M4_V13_NAV_FINISHED ... error=OK`，且多次出现 `M4_V19_WEB_TOKEN_BRIDGE url=https://app.xdxsoft.com/prod-api/getLoingIsToken`；未再出现 v18 的 `login?redirect=...` 终态。截图 `C:\m2dump\host-screen-v19-business.png` 显示在线业务壳层和 `AIGC Video` / `Graphic Video` Tab，说明 Web 登录页重定向已越过。
+- v27 产物：`.artifacts/working/m5-js-page-bootstrap-v27/App-m5-v27-js-page-bootstrap.jar`，大小 `31,871,018` 字节，SHA-256 `35F72D6A1C5CC4B9A1C47E38AF2028DA219ED98577261C2A515A17878FB2FDA8`。
+- v27 ISO：`.artifacts/working/m5-js-page-bootstrap-v27.iso`，大小 `31,936,512` 字节，SHA-256 `3B32737E36DC6C00DA9CAA040D22EEFC3A3C779BAA60690625E91525E1F178C4`；ISO 只包含 v27 JAR 和中文 README，不包含 `offline-home.html`。
+- 宿主机 v27 证据：`C:\m2dump\m5-v27-host.log` 显示 `M4_V18_NORMALIZED_URL=https://app.xdxsoft.com/pc/aicloud/my?...`、`M5_V26_WEB_BOOTSTRAP_XHR url=/prod-api/getInfo`、`/prod-api/getRouters`、`/prod-api/system/dict/data/type/yes_no_1_0`、`/prod-api/mnq/mnqAuthAccounts/mylist?pageNum=1&pageSize=10`，并加载真实业务 chunk `chunk-dea9eb98.0b47177e.js`。`C:\m2dump\m4-jxb-capture.png` 已显示 AiCloud 授权码表页面和“暂无数据”，右侧不再白屏。
+- v28 产物：`.artifacts/working/m5-js-page-bootstrap-v28-init-shape/App-m5-v28-init-shape.jar`，大小 `31,871,132` 字节，SHA-256 `4AB22FF9AA1063E0CA3C74AFC057D83798DE76B9BB1554D59BD056D9DB7A25B1`。
+- v28 ISO：`.artifacts/working/m5-js-page-bootstrap-v28-init-shape.iso`，大小 `31,936,512` 字节，SHA-256 `61B77F2512AC7A7042F9C537C90C2F556FCF741C5B29097ECE04BFBC67912BCC`；ISO 只包含 v28 JAR 和中文 README，不包含 `offline-home.html`。
+- v28 校正：v28 补 `im.udp.port` 后宿主机仍出现非致命 `JSBFMain.<init>` NPE。v29-v32 的分段诊断证明构造函数能正常返回，异常来自内部 IM 配置 catch；原字节码密文顺序确认实际读取 `im.port.udp`，不是 `im.udp.port`。临时 `JSBFMain` 诊断/托盘兜底均未进入正式版本。
+- v33 产物：`.artifacts/working/m5-im-shape-v33/App-m5-v33-im-shape.jar`，大小 `31,871,130` 字节，SHA-256 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
+- v33 ISO：`.artifacts/working/m5-im-shape-v33.iso`，大小 `31,936,512` 字节，SHA-256 `AE54073C1745E08164946814ABC949EB54894F67867705DD5F7143D09416C154`；ISO 只包含 v33 JAR 和 README，不包含 `offline-home.html`。
+- 宿主机 v33 证据：`C:\m2dump\m5-v33-host.log` 显示真实 URL `https://app.xdxsoft.com/pc/aicloud/my?...`、四个定点 Web 初始化接口、`M4_V13_LOAD_FINISHED`；`C:\m2dump\m5-v33-host.err` 不再包含 `JSBFMain.<init>` NPE；`C:\m2dump\host-screen-v33-business.png` 显示 AiCloud 授权码表页面。stderr 仍有后台图标资源 `Stream closed`，但不影响主窗口和 Web 业务页。
+- 当前边界：v33 已实现“本地授权/登录/有效期/产品门槛 + 真实在线业务首屏”。当前仅对 Java 授权/产品初始化、Web 路由守卫、页面首屏空表/字典做本地补形状；后续增删改、采集、群发、云手机、投屏、视频等真实业务动作仍应继续联网验证，不应扩大成通用离线业务代理。

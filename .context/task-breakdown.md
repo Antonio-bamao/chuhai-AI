@@ -81,13 +81,13 @@
 
 ### M5A：业务依赖分类与直连回归
 
-- 状态：进行中（第一版静态依赖分类与第一轮只读验收已完成；真实业务动作尚未执行）。
+- 状态：进行中（第一版静态依赖分类、第一轮只读验收和菜单路由发现已完成；真实业务动作尚未执行）。
 - 目标：逐项判定业务属于客户端直连第三方、原后端代理、原后端数据库、云资源/算力或 native 依赖。
 - 输入：M4B 产物、抓包、调用链和低风险业务流程。
-- 输出：业务依赖矩阵与可直连功能回归记录。第一版静态矩阵和只读验收记录见 `.context/m5a-business-dependency-inventory.md`。
+- 输出：业务依赖矩阵与可直连功能回归记录。第一版静态矩阵和只读验收记录见 `.context/m5a-business-dependency-inventory.md`，菜单真实路由发现见 `.context/m5a-menu-route-discovery.md`。
 - DoD（可自检的完成定义）：至少跑通一个直连或低风险流程；每个模块有依赖类别和下一步；不执行真实群发、支付、批量采集、上传或云设备创建等有副作用动作。
 - 明确不做：不把失败接口直接本地伪成功，不压测，不泛化代理全部 `/prod-api/*`。
-- 当前新前置：v40 统一 `/pc/aicloud/my` 菜单入口不足以验收 WhatsApp/GEO 真实业务。下一步必须先做高优先菜单真实 `localCode/linkUrl` 路由发现或恢复。
+- 当前新前置：v40 统一 `/pc/aicloud/my` 菜单入口不足以验收 WhatsApp/GEO 真实业务。已确认菜单分发依赖 `localCode/linkUrl`，且原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；下一步必须继续从 Web chunk、资源和缓存找高优先菜单真实 URL/打开器证据，不能把打开器猜测写成原始路由。
 - 规模（S·M·L）：L
 
 ### M5B：失效原后端接口兼容重建

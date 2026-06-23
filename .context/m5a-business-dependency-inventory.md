@@ -79,3 +79,20 @@
 - 现在可以确认“本地工具和 AiCloud 首屏”具备继续验收基础。
 - 现在不能把 WhatsApp/GEO 菜单点击当作真实业务验收，因为 M4A 为保护主界面统一使用了保守入口 `/pc/aicloud/my`。
 - M5A 的下一步应是“真实业务入口恢复/路由发现”：从原始菜单响应残留、反编译分发代码和 i18n key 反查每个高优先菜单的 `localCode/linkUrl`，先恢复只读页面入口，再做低风险联网验证。
+
+## 8. 2026-06-23 菜单路由发现记录
+
+详见 `.context/m5a-menu-route-discovery.md`。
+
+| 发现项 | 证据 | 结论 | 对 M5A 的影响 |
+| --- | --- | --- | --- |
+| 菜单模型字段 | `com.sbf.main.tree.i` 与 `string_map.json` | 菜单项读取 `localCode`、`code`、`name`、`icon`、`linkUrl`、`webFlg` 等字段 | 后续恢复真实入口必须围绕 `localCode/linkUrl`，不能只看显示 code |
+| 主侧边栏点击分发器 | `com.sbf.main.sub.b.a(i)` 与 `string_map.json` | 已解出 `ZWBrowser`、`AiBotChat`、`ai_mnq_manager`、`ai_arm_box`、`TkSpiderPanel`、`JBigDataMaster`、`JRealAndroidMaster`、`PhoneFission`、`JSinglepage` 等打开器 | 证明原客户端存在多类业务入口；v40 统一 AiCloud 是保守恢复值，不是最终业务路由 |
+| 产品级入口 | `JSBFMain` 解码值 | `wskefu` 会映射到 `kefu`；还存在 `getcustomer`、`rpa`、`aicloud`、`rpamarkting` 等产品/命令级入口 | 产品 code 不等于菜单路由；WhatsApp/GEO 需要独立恢复侧边栏入口 |
+| WhatsApp/GEO 具体 code | 全局检索 `C4749_*`、`C4134_*`、`C4137_*` | 目前只在恢复目录和证据文档中出现，未发现原始 `localCode/linkUrl` 残留 | 暂不修改 v40 菜单；继续从 Web chunk/资源/缓存找可证明 URL |
+
+本轮边界：
+
+- 已确认为什么 v40 能显示菜单却不能用于真实业务验收。
+- 已确认下一步应优先找真实 URL/打开器证据，而不是直接开始群发、采集或 GEO 查询。
+- 没有把 `JBigDataMaster`、`ZWBrowser`、`PhoneFission` 等打开器强行绑定到未知菜单。

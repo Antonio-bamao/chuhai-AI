@@ -504,3 +504,10 @@
 - 结果：AiCloud 首屏仍是当前唯一已验证 Web 业务壳；WhatsApp/GEO 当前只能证明产品与侧边栏存在，不能证明真实业务页面可打开。ADB 输出 `Android Debug Bridge version 1.0.36`，FFmpeg 输出 `N-87130-g2b9fd15`，本机 native 基础工具可执行。
 - 验证：本轮无外发业务动作、无批量采集、无支付、无上传、无云设备创建。证据已写入 `.context/m5a-business-dependency-inventory.md` 第 7 节。
 - 下一步：进入真实业务入口恢复/路由发现，优先 WhatsApp 与 GEO 的 `localCode/linkUrl`；找到只读页面入口后再联网打开并记录请求。
+
+## 2026-06-23 23:34｜M5A 菜单真实路由发现：确认 localCode/linkUrl 边界
+- 目标：解释 v40 为什么能显示九产品和侧边栏但不能用于 WhatsApp/GEO 真实业务页面验收，并找出原客户端菜单点击的真实分发字段。
+- 动作：复核 `com.sbf.main.tree.i` 菜单模型、`com.sbf.main.sub.b` 主侧边栏点击分发器、`JSBFMain` 产品/命令级入口和 `string_map.json` 解码值；全局检索 WhatsApp/GEO 重点菜单 code 的原始 `localCode/linkUrl` 残留。
+- 结果：确认菜单模型消费 `localCode`、`code`、`name`、`icon`、`linkUrl`、`webFlg` 等字段；主分发器已解出 `ZWBrowser`、`AiBotChat`、`ai_mnq_manager`、`ai_arm_box`、`TkSpiderPanel`、`JBigDataMaster`、`JRealAndroidMaster`、`PhoneFission`、`JSinglepage` 等打开器；v40 当前统一 `JSinglepage + /pc/aicloud/my` 是保守恢复值，不是原始真实业务路由。
+- 验证：`C4749_*`、`C4134_*`、`C4137_*` 重点 code 当前只在恢复目录和证据文档出现，未发现可直接绑定的原始 `localCode/linkUrl`。本步骤未修改补丁代码、未执行业务动作、未连接远端业务接口。
+- 下一步：从 Web 前端 chunk、资源包和缓存目录继续找可证明的 WhatsApp/GEO 业务 URL；若只能建立候选入口，必须标注为恢复值并保持可集中替换。

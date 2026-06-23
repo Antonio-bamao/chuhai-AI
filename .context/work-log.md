@@ -413,3 +413,10 @@
 - 结果：生成 `.artifacts/working/m5-im-shape-v33/App-m5-v33-im-shape.jar`，大小 `31,871,130` 字节，SHA-256 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`；生成 `.artifacts/working/m5-im-shape-v33.iso`，大小 `31,936,512` 字节，SHA-256 `AE54073C1745E08164946814ABC949EB54894F67867705DD5F7143D09416C154`。
 - 验证：完整测试 23/23；v33 与 v27 entry 集合一致且仅 `com/sbf/util/http/SBFApi.class` 不同；正式 v33 不含 `M5_V29` / `M5_V30` 标记，也不修改 `JSBFMain.class`。宿主机日志显示真实业务 URL、四个 Web 初始化响应和 `LOAD_FINISHED`；stderr 不再有 `JSBFMain.<init>` NPE；`host-screen-v33-business.png` 显示 AiCloud 授权码表页面。
 - 下一步：进入真实业务动作联网验证。优先选择一个只读或低风险动作，观察 fake Web token 下真实 API 的 401/403 与所需 Java header/token bridge；不要泛化拦截 `/prod-api/*`。
+
+## 2026-06-23 14:30｜校准 v33 后的项目进度与后续顺序
+- 目标：结合用户补充的原软件产品结构、当前 v33 实际能力和项目原始里程碑 DoD，消除“首屏可见等于 M4/M5 完成”的错误理解。
+- 动作：重新核对 `vision.md`、`master-plan.md`、`task-breakdown.md`、`current-status.md`、`seams.md` 和 v1-v33 工作记录；将当前状态区分为“技术链路基线”和“正式里程碑验收”；记录用户提供的 8 个可进入系统、1 个未开通独立站系统，以及 WhatsApp 产品真实侧边栏结构。
+- 结果：确认 M1-M3 完成；v33 作为技术基线保留；M4 约完成 75%，仍缺完整产品选择器、真实菜单拓扑、双击免操作启动和断网验收；M5 仅完成约 25% 的 Web 首屏前置验证，尚未跑通真实业务动作；M6 尚未正式开始。
+- 决策：不因用户询问产品全貌而临时跳去开发八套业务。固定顺序为“冻结 v33 -> 收口 M4 产品结构与断网启动 -> M5 真实业务联网回归 -> M6 模块文档和最终交付”。
+- 下一步：从原始资源、接口响应消费点和字节码中提取产品及菜单真实字段，先恢复产品选择器和菜单输入契约；不得根据截图猜内部 `id/code/localCode/linkUrl`，不得恢复 `offline-home.html` 作为业务入口。

@@ -325,3 +325,21 @@
 - 解决方案：在 compile_patcher 的 javac 参数中显式加入 -encoding UTF-8，并保留目录探针同样的编码参数。
 - 预防措施：后续所有含中文 Java 源码的编译命令和测试夹具必须显式使用 -encoding UTF-8。
 - 状态：resolved
+
+## M4B 自动登录回调关闭空登录窗
+- 现象：v38 已直接显示产品选择器，但 stderr 在 `StartApp$1.a -> StartApp$3.run` 报 `NullPointerException`。
+- 根因：原成功回调最后会 dispose `StartApp.t`；自动登录没有创建 `JLoginHTML`，因此该字段为空。
+- 解决方案：保留原成功链，只在读取 `StartApp.t` 后对 dispose 调用增加 null guard，并记录 `M4B_SKIP_LOGIN_DISPOSE`。
+- 状态：resolved-by-v39
+
+## M4B 产品 logo 使用资源 URL 而不是原始内联 SVG
+- 现象：v38 九产品卡可见，但卡片 logo 全部显示破图。
+- 根因：`product-selector.html` 直接把 `product.logoSvg` 插入 DOM，字段契约是 SVG markup；恢复值却写成了 `<img src="/svg/...">`。
+- 解决方案：补丁生成时通过原包 `ch.r` 解密九个 `main_logo_<code>.svg`，去掉 XML 声明后以内联 SVG 写入产品 JSON。
+- 状态：resolved-by-v39
+
+## M4A 菜单 icon 字段被重复拼接路径和扩展名
+- 现象：v39 WhatsApp 菜单文字已显示，但 icon 为空；日志路径为 `/svg/svg/whatsapp_menu_icon_1.svg.svg`。
+- 根因：本地目录把 icon 写成 `svg/<name>.svg`，而原客户端 `IconUtil` 会自行添加 `/svg/` 和 `.svg`。
+- 解决方案：兼容目录只返回资源 basename，例如 `whatsapp_menu_icon_1`；v40 宿主截图确认 11 项菜单 icon 正常显示。
+- 状态：resolved-by-v40

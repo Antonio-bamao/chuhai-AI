@@ -474,3 +474,12 @@
 - 结果：生成 v37 M4A JAR；九产品与产品特定菜单进入默认补丁，未知 ID 和部分显示 code 集中标记为恢复值；v33 技术能力相关修改类集合保持一致。
 - 验证：目录测试先红后绿；补丁主测试先因仍返回单一 AIGC 产品而红，接入目录后转绿；完整 unittest 26/26；Java 8 -Xverify:all 通过；v37 SHA-256=406B4E73990B2C03C3483B81368B2EB053F67C81EB3C25EA962573329F7E018C；v33 JAR/ISO 哈希未变。
 - 下一步：提交并推送 M4A 静态恢复检查点，然后进入 M4B 免操作启动和运行时九产品/侧边栏验收。
+
+## 2026-06-23 22:18｜完成 v40 免操作启动、九产品和 WhatsApp 侧边栏宿主验收
+- 目标：在冻结 v33 的前提下完成 M4B 免登录启动，并对 M4A 静态目录做真实界面验收。
+- 动作：按 TDD 要求 `StartApp$3` 自动调用原登录成功回调；运行 v38 后发现回调末尾关闭空登录窗导致 NPE，增加 `StartApp$1` null guard。运行时又发现产品 logo 路径失效，改为在补丁生成时从原始 JAR 解密并内联九个真实 SVG。进入 WhatsApp 后发现 icon 字段被 `IconUtil` 二次拼接，按真实消费契约去除 `svg/` 与 `.svg`，生成 v40。
+- 结果：客户端启动后无需账号、密码或点击登录，直接显示九产品选择器；前八可进入，aishope 未开通；WhatsApp 主界面显示 11 项菜单及原包 icon。v40 JAR SHA-256=`4D3EA48E3D103D183D92619B96E2F3F2593FE92B4F274FD66E9649DBDA5D3046`。
+- 验证：所有新增行为均先红后绿；完整 unittest 26/26；Java 8 `-Xverify:all` 宿主启动成功；日志包含 `M4B_AUTO_LOGIN`、`M4B_SKIP_LOGIN_DISPOSE`；截图为 `C:\m2dump\host-screen-v39-auto-login.png`、`host-screen-v40-whatsapp-main.png`、`host-screen-v40-offline-proxy-selector.png`。
+- 断网边界：临时 Windows 防火墙规则因无管理员权限被拒绝且未创建；改用本次 Java 进程的 HTTP/HTTPS/SOCKS 黑洞代理，选择器仍可进入。该结果证明 M4 HTTP 启动链本地化，但真正禁用网卡后的验收仍待可控 VM/管理员环境补做。
+- 回滚：停止测试进程，并恢复 `C:\m2dump\app\App.jar` 为 v33 哈希 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
+- 下一步：补最终物理断网和双击分发包验收；通过后进入 M5A 业务依赖分类。

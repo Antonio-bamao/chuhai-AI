@@ -114,13 +114,17 @@ public final class M4RecoveryCatalog {
     }
 
     public static String productModulesJson() {
+        return productModulesJson(null);
+    }
+
+    public static String productModulesJson(java.util.Map<String, String> productLogos) {
         StringBuilder json = new StringBuilder(32768);
         json.append("{\"code\":200,\"msg\":\"offline ok\",\"data\":[");
         for (int index = 0; index < PRODUCTS.length; index++) {
             if (index > 0) {
                 json.append(',');
             }
-            appendProduct(json, PRODUCTS[index], PRODUCT_ID_BASE + index);
+            appendProduct(json, PRODUCTS[index], PRODUCT_ID_BASE + index, productLogos);
         }
         json.append("]}");
         return json.toString();
@@ -148,7 +152,11 @@ public final class M4RecoveryCatalog {
         return json.toString();
     }
 
-    private static void appendProduct(StringBuilder json, ProductSpec product, int id) {
+    private static void appendProduct(
+            StringBuilder json,
+            ProductSpec product,
+            int id,
+            java.util.Map<String, String> productLogos) {
         json.append('{');
         appendNumber(json, "id", id);
         appendNumber(json, "sid", id);
@@ -159,14 +167,15 @@ public final class M4RecoveryCatalog {
         appendNumber(json, "status", product.enterable ? 1 : 2);
         appendNumber(json, "remainingDays", product.enterable ? 99999 : 0);
         appendString(json, "expirationTime", product.enterable ? EXPIRATION : "");
-        appendString(
-                json,
-                "logoSvg",
-                "<img class=\"product-logo\" src=\"/svg/main_logo_"
-                        + product.code
-                        + ".svg\" alt=\""
-                        + product.displayName
-                        + "\"/>");
+        String logoSvg = productLogos == null ? null : productLogos.get(product.code);
+        if (logoSvg == null || logoSvg.trim().length() == 0) {
+            logoSvg =
+                    "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\">"
+                            + "<circle cx=\"12\" cy=\"12\" r=\"11\" fill=\""
+                            + product.primaryColor
+                            + "\"/></svg>";
+        }
+        appendString(json, "logoSvg", logoSvg);
         appendString(json, "themeStyle", "recovery-default");
         appendString(json, "themeColor", product.primaryColor);
         appendString(json, "primaryColor", product.primaryColor);
@@ -218,7 +227,7 @@ public final class M4RecoveryCatalog {
         appendString(json, "code", menu.code);
         appendString(json, "name", menu.name);
         appendString(json, "displayName", menu.name);
-        appendString(json, "icon", menu.icon);
+        appendString(json, "icon", iconResourceName(menu.icon));
         appendString(json, "localCode", "JSinglepage");
         appendString(json, "linkUrl", "/pc/aicloud/my");
         appendNumber(json, "webFlg", 1);
@@ -228,6 +237,18 @@ public final class M4RecoveryCatalog {
         appendString(json, "evidence", menu.recovered ? "recovery-value" : "original-i18n");
         json.append("\"status\":1");
         json.append('}');
+    }
+
+    private static String iconResourceName(String iconPath) {
+        String icon = iconPath;
+        int slash = icon.lastIndexOf('/');
+        if (slash >= 0) {
+            icon = icon.substring(slash + 1);
+        }
+        if (icon.endsWith(".svg")) {
+            icon = icon.substring(0, icon.length() - 4);
+        }
+        return icon;
     }
 
     private static void appendString(StringBuilder json, String key, String value) {

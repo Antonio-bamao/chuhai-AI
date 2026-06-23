@@ -193,7 +193,7 @@ Run:
 AE54073C1745E08164946814ABC949EB54894F67867705DD5F7143D09416C154
 ```
 
-- [ ] **Step 3: 更新上下文并验证**
+- [x] **Step 3: 更新上下文并验证**
 
 记录每个产品的恢复 ID、菜单 code 来源、恢复入口边界和待运行 UI 验收项。运行：
 
@@ -203,7 +203,7 @@ git diff --check
 git status --short
 ```
 
-- [ ] **Step 4: 提交并推送**
+- [x] **Step 4: 提交并推送**
 
 ```powershell
 git add tools/m4_auth_patch/M4RecoveryCatalog.java tools/m4_auth_patch/M4AuthPatch.java tests/test_m4_auth_patch.py docs/superpowers/plans/2026-06-23-m4a-product-menu-recovery.md .context

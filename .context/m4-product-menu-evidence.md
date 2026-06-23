@@ -237,3 +237,30 @@ M4A 恢复规则：
 - v37 JAR SHA-256：`406B4E73990B2C03C3483B81368B2EB053F67C81EB3C25EA962573329F7E018C`
 - 原始 JAR 到 v37 的修改/新增类集合与 v33 能力集合一致：修改 10 个既有类，新增 3 个 M5 观察/注入类。
 - v33 JAR/ISO 哈希复核保持不变。
+
+## 11. M4B v40 免操作启动与运行时验收
+
+实现变化：
+
+- `StartApp$3.run()` 继续执行原登录前初始化；到创建 `JLoginHTML` 的边界时，改为构造本地登录 JSON并调用原始 `StartApp$1.a(JSONObject)` 成功链，然后直接返回。
+- `StartApp$1.a(JSONObject)` 仍负责写入 `StartApp.l`、`JSBFMain.E`、创建产品选择器和后续主界面；仅对自动登录场景下为空的 `StartApp.t` 增加 dispose null guard。
+- 补丁生成时从原始 JAR 解密 `svg/main_logo_<code>.svg`，把九个原始产品 logo 以内联 SVG 写入产品 JSON。
+- 菜单 icon 字段按原客户端 `IconUtil` 消费契约恢复为不含 `svg/` 前缀和 `.svg` 后缀的资源名，避免运行时形成 `/svg/svg/<name>.svg.svg`。
+
+测试与产物：
+
+- `python -m unittest discover -s tests -v`：26/26 通过。
+- Java 8 以 `-Xverify:all` 启动 v40 成功。
+- v40 JAR：`.artifacts/working/m4b-auto-login-v40/App-m4b-v40-auto-login.jar`
+- v40 JAR 大小：`31,880,827` 字节。
+- v40 JAR SHA-256：`4D3EA48E3D103D183D92619B96E2F3F2593FE92B4F274FD66E9649DBDA5D3046`
+- 相对原始 JAR，新增 3 个 M5 观察/注入类；修改类集合在 v37 基础上增加 `StartApp$1.class` 和 `StartApp$3.class`，用于登录窗 null guard 与自动登录。
+
+宿主运行证据：
+
+- `C:\m2dump\m4-v40-host.log` 出现 `M4B_AUTO_LOGIN`、`/html/product-selector.html`、`M4B_SKIP_LOGIN_DISPOSE`；无需填写账号或点击登录。
+- `C:\m2dump\host-screen-v39-auto-login.png` / `host-screen-v40-offline-proxy-selector.png` 显示九产品卡、原始 logo、前八“进入系统”和 aishope“进入官网了解”。
+- `C:\m2dump\host-screen-v40-whatsapp-main.png` 显示 WhatsApp 主界面、11 项菜单文字和原包 icon。
+- v39 首次运行发现菜单 icon 被拼为 `/svg/svg/<name>.svg.svg`；v40 已按真实消费契约修复，stderr 不再出现该批 icon `Stream closed`。
+- Windows 防火墙临时出站规则因当前会话无管理员权限被拒绝，未留下规则。随后使用 JVM 级 HTTP/HTTPS/SOCKS 黑洞代理启动，九产品选择器仍正常显示；该证据证明 M4 授权、登录和产品目录不依赖远端 HTTP，但不等同于物理断网阻断全部 UDP。
+- 测试后已停止 v40 进程，并把 `C:\m2dump\app\App.jar` 恢复为 v33 SHA-256 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。

@@ -166,7 +166,8 @@ class M4AuthPatchTests(unittest.TestCase):
                                 || item.getString("name").contains("Graphic Video")) {
                             throw new AssertionError("temporary AIGC menu: " + item);
                         }
-                        if (!item.getString("icon").startsWith("svg/")) {
+                        if (item.getString("icon").contains("/")
+                                || item.getString("icon").endsWith(".svg")) {
                             throw new AssertionError("non-resource icon: " + item);
                         }
                         if (!"JSinglepage".equals(item.getString("localCode"))
@@ -328,6 +329,8 @@ class M4AuthPatchTests(unittest.TestCase):
             changed,
             [
                 "com/sbf/main/JSBFMain$4.class",
+                "com/sbf/main/StartApp$1.class",
+                "com/sbf/main/StartApp$3.class",
                 "com/sbf/main/StartApp.class",
                 "com/sbf/main/jxbrowser/c$3.class",
                 "com/sbf/main/jxbrowser/c.class",
@@ -368,6 +371,14 @@ class M4AuthPatchTests(unittest.TestCase):
         web_token_bridge_block = self.javap_method_block(
             "public static java.lang.String f(java.lang.String);",
             "com.sbf.main.StartApp",
+        )
+        auto_login_block = self.javap_method_block(
+            "public final void run();",
+            "com.sbf.main.StartApp$3",
+        )
+        login_success_block = self.javap_method_block(
+            "public final void a(org.json.JSONObject);",
+            "com.sbf.main.StartApp$1",
         )
         browser_load_block = self.javap_method_block(
             "public final void run();",
@@ -452,6 +463,15 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M4_V19_WEB_TOKEN_BRIDGE url=", web_token_bridge_block)
         self.assertIn("offline-local-token-1234567890", web_token_bridge_block)
         self.assertIn("String.contains:(Ljava/lang/CharSequence;)Z", web_token_bridge_block)
+        self.assertIn("M4B_AUTO_LOGIN", auto_login_block)
+        self.assertIn("com/sbf/main/StartApp$1", auto_login_block)
+        self.assertIn("org/json/JSONObject", auto_login_block)
+        self.assertIn(
+            "com/sbf/main/StartApp$1.a:(Lorg/json/JSONObject;)V",
+            auto_login_block,
+        )
+        self.assertIn("M4B_SKIP_LOGIN_DISPOSE", login_success_block)
+        self.assertIn("com/sbf/main/StartApp.t", login_success_block)
         self.assertIn("M4_V13_BROWSER_CONSTRUCTOR url=", browser_constructor_block)
         self.assertIn("M4_V13_BROWSER_CREATED=", browser_constructor_block)
         self.assertIn("m5InstallWebDiagnostics", browser_constructor_block)
@@ -612,8 +632,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!product.has("name") || !product.has("displayName") || !product.has("themeStyle")) {
                             throw new AssertionError("product shape: " + product);
                         }
-                        if (product.optString("logoSvg").length() == 0) {
-                            throw new AssertionError("missing product logoSvg: " + product);
+                        if (!product.optString("logoSvg").trim().startsWith("<svg")) {
+                            throw new AssertionError("product logoSvg must be inline SVG: " + product);
                         }
                         String[] productCodes = {
                             "whatsapp", "tiktok", "facebook", "instagram", "twitter",
@@ -656,7 +676,8 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || recoveredMenu.optString("code").startsWith("C2850000")
                                     || recoveredMenu.optString("name").contains("AIGC Video")
                                     || recoveredMenu.optString("name").contains("Graphic Video")
-                                    || !recoveredMenu.optString("icon").startsWith("svg/")
+                                    || recoveredMenu.optString("icon").contains("/")
+                                    || recoveredMenu.optString("icon").endsWith(".svg")
                                     || !"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                     || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))
                                     || recoveredMenu.optString("linkUrl").contains("offline-home.html")) {

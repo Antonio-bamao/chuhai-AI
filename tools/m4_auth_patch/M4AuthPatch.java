@@ -2,12 +2,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -18,6 +24,13 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 
 public final class M4AuthPatch {
     private static final String TARGET_CLASS = "com/sbf/util/http/SBFApi.class";
@@ -26,6 +39,8 @@ public final class M4AuthPatch {
     private static final String MENU_DISPATCH_CLASS = "com/sbf/main/sub/b.class";
     private static final String MODERN_MENU_DISPATCH_CLASS = "com/sbf/main/JSBFMain$4.class";
     private static final String START_APP_CLASS = "com/sbf/main/StartApp.class";
+    private static final String START_APP_LOGIN_CALLBACK_CLASS = "com/sbf/main/StartApp$1.class";
+    private static final String START_APP_UI_CLASS = "com/sbf/main/StartApp$3.class";
     private static final String MIJAVA_CLASS = "com/sbf/main/jxbrowser/MiJava.class";
     private static final String JXBROWSER_CLASS = "com/sbf/main/jxbrowser/c.class";
     private static final String JXBROWSER_LOAD_THREAD_CLASS = "com/sbf/main/jxbrowser/c$3.class";
@@ -67,8 +82,6 @@ public final class M4AuthPatch {
                     + "\"open_mnq_ndk_license\":1,\"kefu_whatsapp_mass_sending_flg\":1},"
                     + "\"im\":{\"ip\":\"127.0.0.1\",\"port\":{\"udp\":7901}}"
                     + "}}}";
-
-    private static final String PRODUCT_MODULE_JSON = M4RecoveryCatalog.productModulesJson();
 
     private static final String PC_MENUS_JSON = M4RecoveryCatalog.pcMenusJson();
 
@@ -128,7 +141,9 @@ public final class M4AuthPatch {
 
         Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
         Files.deleteIfExists(temp);
-        PatchResult result = patchJar(input, temp, realProductMenuLogging);
+        String productModuleJson =
+                M4RecoveryCatalog.productModulesJson(decodeRecoveryProductLogos(input));
+        PatchResult result = patchJar(input, temp, realProductMenuLogging, productModuleJson);
         if (!result.patchedLogin
                 || !result.patchedGetInfo
                 || !result.patchedProductModules
@@ -139,6 +154,8 @@ public final class M4AuthPatch {
                 || !result.patchedMenuDispatchDiagnostics
                 || !result.patchedModernMenuDispatchDiagnostics
                 || !result.patchedStartAppWebTokenBridge
+                || !result.patchedStartAppLoginDisposeGuard
+                || !result.patchedStartAppAutoLogin
                 || !result.patchedJxBrowserDiagnostics
                 || !result.patchedJxBrowserLoadDiagnostics
                 || !result.patchedJxBrowserEngine
@@ -159,7 +176,11 @@ public final class M4AuthPatch {
                         + (realProductMenuLogging ? " [real-product-menu-logging]" : ""));
     }
 
-    private static PatchResult patchJar(Path input, Path output, boolean realProductMenuLogging)
+    private static PatchResult patchJar(
+            Path input,
+            Path output,
+            boolean realProductMenuLogging,
+            String productModuleJson)
             throws IOException {
         PatchResult result = new PatchResult();
         Set<String> names = new HashSet<String>();
@@ -178,7 +199,12 @@ public final class M4AuthPatch {
                     try (InputStream in = jar.getInputStream(entry)) {
                         byte[] bytes = readAll(in);
                         if (TARGET_CLASS.equals(entry.getName())) {
-                            bytes = patchSbfApi(bytes, result, realProductMenuLogging);
+                            bytes =
+                                    patchSbfApi(
+                                            bytes,
+                                            result,
+                                            realProductMenuLogging,
+                                            productModuleJson);
                         } else if (UPDATE_CHECKER_CLASS.equals(entry.getName())) {
                             bytes = patchUpdateChecker(bytes, result);
                         } else if (TREE_NODE_CLASS.equals(entry.getName())) {
@@ -189,6 +215,10 @@ public final class M4AuthPatch {
                             bytes = patchModernMenuDispatchDiagnostics(bytes, result);
                         } else if (START_APP_CLASS.equals(entry.getName())) {
                             bytes = patchStartAppWebTokenBridge(bytes, result);
+                        } else if (START_APP_LOGIN_CALLBACK_CLASS.equals(entry.getName())) {
+                            bytes = patchStartAppLoginDisposeGuard(bytes, result);
+                        } else if (START_APP_UI_CLASS.equals(entry.getName())) {
+                            bytes = patchStartAppAutoLogin(bytes, result);
                         } else if (MIJAVA_CLASS.equals(entry.getName())) {
                             bytes = patchMiJavaDictBridge(bytes, result);
                         } else if (JXBROWSER_CLASS.equals(entry.getName())) {
@@ -220,6 +250,40 @@ public final class M4AuthPatch {
             }
         }
         return result;
+    }
+
+    private static Map<String, String> decodeRecoveryProductLogos(Path input) throws IOException {
+        String[] productCodes = {
+            "whatsapp", "tiktok", "facebook", "instagram", "twitter",
+            "telegram", "geo", "wskefu", "aishope"
+        };
+        Map<String, String> logos = new LinkedHashMap<String, String>();
+        URL[] classPath = {input.toUri().toURL()};
+        try (URLClassLoader loader =
+                        new URLClassLoader(classPath, M4AuthPatch.class.getClassLoader());
+                JarFile jar = new JarFile(input.toFile())) {
+            Class<?> decoderClass = Class.forName("ch.r", true, loader);
+            Constructor<?> constructor = decoderClass.getConstructor(InputStream.class);
+            for (String productCode : productCodes) {
+                String resource = "svg/main_logo_" + productCode + ".svg";
+                JarEntry entry = jar.getJarEntry(resource);
+                if (entry == null) {
+                    throw new IOException("missing product logo resource: " + resource);
+                }
+                try (InputStream raw = jar.getInputStream(entry);
+                        InputStream decoded = (InputStream) constructor.newInstance(raw)) {
+                    String svg = new String(readAll(decoded), StandardCharsets.UTF_8);
+                    int svgStart = svg.indexOf("<svg");
+                    if (svgStart < 0) {
+                        throw new IOException("decoded product logo is not SVG: " + resource);
+                    }
+                    logos.put(productCode, svg.substring(svgStart));
+                }
+            }
+        } catch (ReflectiveOperationException error) {
+            throw new IOException("failed to decode product logo resources", error);
+        }
+        return logos;
     }
 
     private static void writeGeneratedClass(JarOutputStream jarOut, String name, byte[] bytes)
@@ -967,7 +1031,11 @@ public final class M4AuthPatch {
                 + "'";
     }
 
-    private static byte[] patchSbfApi(byte[] original, PatchResult result, boolean realProductMenuLogging) {
+    private static byte[] patchSbfApi(
+            byte[] original,
+            PatchResult result,
+            boolean realProductMenuLogging,
+            String productModuleJson) {
         ClassReader reader = new ClassReader(original);
         ClassWriter writer =
                 new ClassWriter(reader, realProductMenuLogging ? ClassWriter.COMPUTE_MAXS : 0);
@@ -999,7 +1067,14 @@ public final class M4AuthPatch {
                                 exceptions,
                                 "M4_EVIDENCE_PRODUCT_MODULE_REAL_JSON=");
                     }
-                    return writeJsonReturn(access, name, descriptor, signature, exceptions, PRODUCT_MODULE_JSON, 0);
+                    return writeJsonReturn(
+                            access,
+                            name,
+                            descriptor,
+                            signature,
+                            exceptions,
+                            productModuleJson,
+                            0);
                 }
                 if ("k".equals(name) && "()Lorg/json/JSONObject;".equals(descriptor)) {
                     result.patchedPcMenus = true;
@@ -1258,6 +1333,163 @@ public final class M4AuthPatch {
                     public void visitCode() {
                         super.visitCode();
                         emitWebTokenBridgeFastPath(this);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, ClassReader.EXPAND_FRAMES);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchStartAppAutoLogin(byte[] original, PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassNode classNode = new ClassNode(Opcodes.ASM9);
+        reader.accept(classNode, ClassReader.EXPAND_FRAMES);
+        for (MethodNode method : classNode.methods) {
+            if (!"run".equals(method.name) || !"()V".equals(method.desc)) {
+                continue;
+            }
+            org.objectweb.asm.tree.AbstractInsnNode loginWindow = null;
+            for (org.objectweb.asm.tree.AbstractInsnNode instruction =
+                            method.instructions.getFirst();
+                    instruction != null;
+                    instruction = instruction.getNext()) {
+                if (instruction.getOpcode() == Opcodes.NEW
+                        && instruction instanceof TypeInsnNode
+                        && "com/sbf/main/ext/j2026/JLoginHTML"
+                                .equals(((TypeInsnNode) instruction).desc)) {
+                    loginWindow = instruction;
+                    break;
+                }
+            }
+            if (loginWindow == null) {
+                continue;
+            }
+            while (loginWindow != null) {
+                org.objectweb.asm.tree.AbstractInsnNode next = loginWindow.getNext();
+                method.instructions.remove(loginWindow);
+                loginWindow = next;
+            }
+            InsnList autoLogin = new InsnList();
+            autoLogin.add(
+                    new org.objectweb.asm.tree.FieldInsnNode(
+                            Opcodes.GETSTATIC,
+                            "java/lang/System",
+                            "out",
+                            "Ljava/io/PrintStream;"));
+            autoLogin.add(new LdcInsnNode("M4B_AUTO_LOGIN"));
+            autoLogin.add(
+                    new MethodInsnNode(
+                            Opcodes.INVOKEVIRTUAL,
+                            "java/io/PrintStream",
+                            "println",
+                            "(Ljava/lang/String;)V",
+                            false));
+            autoLogin.add(new TypeInsnNode(Opcodes.NEW, "com/sbf/main/StartApp$1"));
+            autoLogin.add(new InsnNode(Opcodes.DUP));
+            autoLogin.add(
+                    new MethodInsnNode(
+                            Opcodes.INVOKESPECIAL,
+                            "com/sbf/main/StartApp$1",
+                            "<init>",
+                            "()V",
+                            false));
+            autoLogin.add(new TypeInsnNode(Opcodes.NEW, "org/json/JSONObject"));
+            autoLogin.add(new InsnNode(Opcodes.DUP));
+            autoLogin.add(new LdcInsnNode(LOGIN_JSON));
+            autoLogin.add(
+                    new MethodInsnNode(
+                            Opcodes.INVOKESPECIAL,
+                            "org/json/JSONObject",
+                            "<init>",
+                            "(Ljava/lang/String;)V",
+                            false));
+            autoLogin.add(
+                    new MethodInsnNode(
+                            Opcodes.INVOKEVIRTUAL,
+                            "com/sbf/main/StartApp$1",
+                            "a",
+                            "(Lorg/json/JSONObject;)V",
+                            false));
+            autoLogin.add(new InsnNode(Opcodes.RETURN));
+            method.instructions.add(autoLogin);
+            result.patchedStartAppAutoLogin = true;
+            break;
+        }
+        ClassWriter writer = computeFramesWriter(reader);
+        classNode.accept(writer);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchStartAppLoginDisposeGuard(byte[] original, PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = computeFramesWriter(reader);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"a".equals(name) || !"(Lorg/json/JSONObject;)V".equals(descriptor)) {
+                    return mv;
+                }
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    private boolean guardNextDynamicCall;
+                    private org.objectweb.asm.Label nullLoginWindow;
+                    private org.objectweb.asm.Label afterDispose;
+
+                    @Override
+                    public void visitFieldInsn(
+                            int opcode, String owner, String fieldName, String fieldDescriptor) {
+                        super.visitFieldInsn(opcode, owner, fieldName, fieldDescriptor);
+                        if (opcode == Opcodes.GETSTATIC
+                                && "com/sbf/main/StartApp".equals(owner)
+                                && "t".equals(fieldName)
+                                && "Lcom/sbf/main/ext/j2026/JLoginHTML;"
+                                        .equals(fieldDescriptor)) {
+                            nullLoginWindow = new org.objectweb.asm.Label();
+                            afterDispose = new org.objectweb.asm.Label();
+                            super.visitInsn(Opcodes.DUP);
+                            super.visitJumpInsn(Opcodes.IFNULL, nullLoginWindow);
+                            guardNextDynamicCall = true;
+                        }
+                    }
+
+                    @Override
+                    public void visitInvokeDynamicInsn(
+                            String dynamicName,
+                            String dynamicDescriptor,
+                            Handle bootstrapMethodHandle,
+                            Object... bootstrapMethodArguments) {
+                        super.visitInvokeDynamicInsn(
+                                dynamicName,
+                                dynamicDescriptor,
+                                bootstrapMethodHandle,
+                                bootstrapMethodArguments);
+                        if (!guardNextDynamicCall) {
+                            return;
+                        }
+                        super.visitJumpInsn(Opcodes.GOTO, afterDispose);
+                        super.visitLabel(nullLoginWindow);
+                        super.visitInsn(Opcodes.POP);
+                        super.visitFieldInsn(
+                                Opcodes.GETSTATIC,
+                                "java/lang/System",
+                                "out",
+                                "Ljava/io/PrintStream;");
+                        super.visitLdcInsn("M4B_SKIP_LOGIN_DISPOSE");
+                        super.visitMethodInsn(
+                                Opcodes.INVOKEVIRTUAL,
+                                "java/io/PrintStream",
+                                "println",
+                                "(Ljava/lang/String;)V",
+                                false);
+                        super.visitLabel(afterDispose);
+                        guardNextDynamicCall = false;
+                        result.patchedStartAppLoginDisposeGuard = true;
                     }
                 };
             }
@@ -2727,6 +2959,8 @@ public final class M4AuthPatch {
         boolean patchedMenuDispatchDiagnostics;
         boolean patchedModernMenuDispatchDiagnostics;
         boolean patchedStartAppWebTokenBridge;
+        boolean patchedStartAppLoginDisposeGuard;
+        boolean patchedStartAppAutoLogin;
         boolean patchedMiJavaDictBridge;
         boolean patchedJxBrowserDiagnostics;
         boolean patchedJxBrowserLoadDiagnostics;

@@ -2,6 +2,9 @@
 
 - 项目背景：这是用户本人早年设计并打包的火柴AI客户端，源码遗失；当前工作是在本地恢复自己的客户端可用性与源码谱，不是修改第三方软件。目标仍以 `.context/vision.md` 为准：授权层单机化，业务功能照常联网。
 - 当前阶段：v33 已形成可回滚的技术基线，但按项目原始 DoD 重新校准后，M4 尚未正式完成。M4 主链路在 v18 已到真实业务域名；v19 解决 Web 登录页重定向；v27 使真实业务 chunk 加载并渲染 AiCloud 授权码表页面；v33 根据原始 `JSBFMain` 字节码把本地 IM 配置修正为实际消费的 `im.port.udp` 结构，消除了启动期 `JSBFMain.<init>` NPE。下一步先完成 M4 产品结构、免操作启动和断网验收，再进入 M5 真实业务联网回归。
+- M4 产品取证进展：已新增 `.context/m4-product-menu-evidence.md`。原包主 logo 与菜单 icon 资源已确认 8 个可进入系统的内部 code 为 `whatsapp/tiktok/facebook/instagram/twitter/telegram/geo/wskefu`；独立站高置信候选为 `aishope`，并有 `43_head_title/subtitle` 的 Shopify 对标文案支持，但尚缺接口响应或明确字节码把 `43` 与 `aishope` 直接关联。九产品真实 `id/sid/fid/logoSvg/themeStyle/theme colors` 及菜单 `id/parentId/code/localCode/linkUrl/webFlg` 仍需从两个精确接口的历史响应或一次性定点日志闭合，当前不得沿用 v33 的 `41/aigc/C28500001/C28500002` 临时值。
+- 阻塞项：原始 `/system/function_module/listmy/41` 与 `/api/v1/client/pc/menus` 响应尚未在现有日志/缓存中找到；在闭合真实数值 ID、主题和菜单路由前，不进入正式九产品 JSON 实现。
+- 当前活跃日志分片：work-log.md
 - v15 VM 证据：`M4_V14_RENDER_MODE=OFF_SCREEN`，包含 SwiftShader/D3D11 软件渲染开关；`M4_V13_LOAD_FINISHED` 成功；`C:\m2dump\m4-jxb-capture.png` 能完整渲染 `HuoChaiAI Offline Mode`，右侧空白问题被软件渲染解决。
 - 重要校正：v8-v15 的 `offline-home.html` 只是诊断页，用来区分菜单/加载/渲染问题；它不是最终业务目标。最终目标不是“业务离线化”，而是“授权/登录/时效/付费门槛本地通过 + 采集/群发/云手机/投屏/视频继续联网”。
 - v18 改动：保留 v15/v16 的 `RenderingMode.OFF_SCREEN`、`disableGpu()`、SwiftShader/D3D11 软件渲染修复；菜单仍保持原始业务路由 `/pc/aicloud/my`；在 `com.sbf.main.jxbrowser.c$3.run()` 调用 `Navigation.loadUrl` 前，如果 URL 以 `/` 开头，则拼为 `https://` + 原程序业务域名 `com.sbf.util.http.SBFApi.c()` + 原路径，并打印 `M4_V18_NORMALIZED_URL=`。该来源来自原始 `JSBFMain` 构造 AIGC URL 的字节码证据。
@@ -62,7 +65,7 @@
 ### 后续固定顺序
 
 1. 冻结 v33 技术基线。
-2. 从原始资源、接口和字节码提取产品及菜单的真实 `id/code/logo/theme/localCode/linkUrl`，不凭截图猜内部字段。
+2. 继续闭合产品及菜单的真实 `id/code/logo/theme/localCode/linkUrl`：优先查原客户端缓存与日志；若无历史响应，只在 `/system/function_module/listmy/41` 和 `/api/v1/client/pc/menus` 的 Java 返回边界增加一次性结构日志，不改通用网络层。
 3. 恢复 8 个可进入系统和 1 个未开通系统的产品选择器。
 4. 恢复产品真实菜单拓扑，撤掉临时 AIGC 菜单。
 5. 完成双击免操作启动、断网进入和完整主界面验收，正式关闭 M4。

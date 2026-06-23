@@ -32,3 +32,4 @@
 - risk-register.md
 - seams.md
 - resource-interface-inventory.md
+- m4-product-menu-evidence.md

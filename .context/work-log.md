@@ -420,3 +420,10 @@
 - 结果：确认 M1-M3 完成；v33 作为技术基线保留；M4 约完成 75%，仍缺完整产品选择器、真实菜单拓扑、双击免操作启动和断网验收；M5 仅完成约 25% 的 Web 首屏前置验证，尚未跑通真实业务动作；M6 尚未正式开始。
 - 决策：不因用户询问产品全貌而临时跳去开发八套业务。固定顺序为“冻结 v33 -> 收口 M4 产品结构与断网启动 -> M5 真实业务联网回归 -> M6 模块文档和最终交付”。
 - 下一步：从原始资源、接口响应消费点和字节码中提取产品及菜单真实字段，先恢复产品选择器和菜单输入契约；不得根据截图猜内部 `id/code/localCode/linkUrl`，不得恢复 `offline-home.html` 作为业务入口。
+
+## 2026-06-23 13:56｜执行 M4 收口第一步，建立九产品与真实菜单字段的原包证据矩阵。
+- 目标：执行 M4 收口第一步，建立九产品与真实菜单字段的原包证据矩阵。
+- 动作：核验 main/7cc5503 与 v33 JAR/ISO 基线；通读指定项目上下文；扫描原始 App.dll 的 main_logo 与平台菜单 SVG 资源族；核对 product-selector.html、StartApp$1$3、JSBFMain、string_map.json 和 i18.cnf；区分已确认、高置信推断与未确认字段；新增 m4-product-menu-evidence.md。
+- 结果：确认 8 个可进入系统内部 code 为 whatsapp、tiktok、facebook、instagram、twitter、telegram、geo、wskefu；独立站高置信候选为 aishope，并有 43_head_title/subtitle 独立站商城文案支持。确认各平台真实菜单 icon 资源族存在。九产品数值 ID、logoSvg、主题和菜单 localCode/linkUrl 等仍无原始响应证据，未写入补丁。
+- 验证：Git 基线为 7cc5503/3853d0d；v33 JAR SHA-256 24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5，ISO SHA-256 AE54073C1745E08164946814ABC949EB54894F67867705DD5F7143D09416C154；原包资源枚举与字符串/i18 文案交叉核对；未修改代码与 v33 产物。
+- 下一步：优先搜索原客户端缓存、日志和 JxBrowser profile 中两个精确接口的历史响应；若不存在，设计一次性 Java 返回边界结构日志，闭合真实产品 ID/主题和菜单路由后再进入实现。

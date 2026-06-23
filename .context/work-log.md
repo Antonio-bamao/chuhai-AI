@@ -497,3 +497,10 @@
 - 结果：形成第一版矩阵：WhatsApp/多平台采集属于“直连第三方 + 后端任务/结果存储”混合；GEO/大数据高概率依赖外部数据服务或原后端代理；云手机拆分为本地 ADB/scrcpy 与云设备池；视频/投屏拆分为本机 FFmpeg/VECore/OpenCV 与上传/云合成；支付/审核/套餐继续排除为业务门槛。
 - 验证：本步骤仅做静态分类和证据归档，没有执行真实群发、支付、批量采集、上传或云设备创建。
 - 下一步：按清单做只读验收，优先 WhatsApp/AiCloud/GEO：只打开页面、记录请求、区分 401/403/空体/native 缺失/云资源缺失。
+
+## 2026-06-23 23:10｜M5A 第一轮只读验收：确认统一 AiCloud 入口限制
+- 目标：开始 M5A 低风险验收，先判断 WhatsApp/AiCloud/GEO 是否具备真实业务入口，避免把菜单外壳误判为业务可用。
+- 动作：核对 `M4RecoveryCatalog` 和测试契约，确认 76 个菜单当前统一 `localCode=JSinglepage`、`linkUrl=/pc/aicloud/my`；复核 v33/v27 日志中的 AiCloud 首屏请求；只运行 `adb.exe version` 与 `ffmpeg.exe -version`，列出 JxBrowser/Selenium/Playwright 依赖，不启动 VECore 服务、不连接设备、不执行群发或采集。
+- 结果：AiCloud 首屏仍是当前唯一已验证 Web 业务壳；WhatsApp/GEO 当前只能证明产品与侧边栏存在，不能证明真实业务页面可打开。ADB 输出 `Android Debug Bridge version 1.0.36`，FFmpeg 输出 `N-87130-g2b9fd15`，本机 native 基础工具可执行。
+- 验证：本轮无外发业务动作、无批量采集、无支付、无上传、无云设备创建。证据已写入 `.context/m5a-business-dependency-inventory.md` 第 7 节。
+- 下一步：进入真实业务入口恢复/路由发现，优先 WhatsApp 与 GEO 的 `localCode/linkUrl`；找到只读页面入口后再联网打开并记录请求。

@@ -145,3 +145,21 @@ WhatsApp 重点配置摘要：
 - v41 只恢复一个候选入口，不代表 WhatsApp 采集任务已可提交或结果已可保存。
 - 暂不修改 `AI数据`、`AI筛选`，因为当前证据不足以把它们分别绑定到结果页或筛选器实现。
 - 下一步只允许宿主机/VM 打开 `AI采集` 页面并记录请求、错误和渲染结果；不得提交关键词、创建采集任务、批量采集、上传或群发。
+
+## 9. 2026-06-23 v41 宿主只读点击结果
+
+本轮按“只打开页面、不提交任务”的边界，在项目内直接运行 v41 候选 JAR 做宿主机点击验证。没有覆盖 `data/app/App.dll`，没有触碰桌面原始安装包。
+
+| 检查点 | 证据 | 结论 |
+| --- | --- | --- |
+| 候选菜单是否进入运行时 JSON | `stdout.log` 的 `M4_DIAG_MENU_K_CALLED` 中，`C4749_006 / AI采集` 含 `localCode=pc/dataCollect/collectionTask`、`linkUrl=/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`、`evidence=recovery-route:dataCollect:whatsapp_users_lists` | v41 菜单字段下发成功。 |
+| 点击后 UI 状态 | `.artifacts/runtime/m5a-v41-host-readonly/screen-04-ai-collect-after-click.png` | 左侧 `AI采集` 高亮，右侧仍为空白，没有采集页首屏、表格或表单。 |
+| JxBrowser 导航 | 日志计数 `M4_V13_LOAD_URL=0`、`M4_V18_NORMALIZED_URL=0`、`M5_V26_WEB_BOOTSTRAP_XHR=0` | 点击没有触发当前已验证的 Web 加载路径；无法记录最终 URL/XHR，因为没有导航发生。 |
+| 任务/副作用接口 | 日志计数 `getNewTask=0`、`upstatus=0`、`cancelAllRun=0`、`submit/save=0` | 未提交关键词、未创建采集任务、未触发 spider 队列或状态接口。 |
+| 测试恢复 | 停止 Java 进程后删除运行生成的 `data/app/activemq-data/`；复核 `data/app/App.dll` SHA-256 为 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B` | 项目测试环境已恢复，未改原始项目 JAR。 |
+
+结论：
+
+- `pc/dataCollect/collectionTask` 更像某个二级/子分发器或页面族标识，直接放进当前主侧边栏 `localCode` 后没有打开页面。
+- 不能把 v41 认定为 WhatsApp `AI采集` 页面层恢复；当前仅证明恢复字段可在菜单 JSON 中被消费并显示为可点击项。
+- 下一轮应回到 `com.sbf.main.sub.b`、`sub.g`、`f.d`、`JSBFMain$4` 的分发链，确认 `pc/dataCollect/collectionTask` 应放在 `localCode`、`linkUrl`、`code` 还是某个 `JSinglepage`/默认 JxBrowser 组合里，再生成 v42 候选。

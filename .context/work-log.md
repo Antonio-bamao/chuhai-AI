@@ -525,3 +525,10 @@
 - 结果：生成候选产物 `.artifacts/working/m5a-whatsapp-collect-route-v41/App-m5a-v41-whatsapp-collect-route.jar`，大小 `31,880,904` 字节，SHA-256 `661AD0474127637FF3890DB61B95A6EAE66D09DA41C82C217BD334E3C5FA10FE`。
 - 验证：新增测试按预期先红后绿；受影响目录测试和补丁契约测试通过；完整 `python -m unittest discover -s tests -v` 通过 `27/27`；产物级检查确认 `SBFApi.class` 内含 `whatsapp_users_lists`、`/pc/dataCollect/collectionTask/data_index` 和 `recovery-route:dataCollect:whatsapp_users_lists`。
 - 下一步：在宿主机或 VM 覆盖项目测试 App.jar 后，只打开 WhatsApp `AI采集` 页面并记录 URL、XHR、控制台和错误；不得提交关键词、创建任务、批量采集、上传或群发。
+
+## 2026-06-23 23:34｜v41 WhatsApp AI采集只读宿主验收
+- 目标：v41 WhatsApp AI采集只读宿主验收
+- 动作：在项目内 data/app 工作目录用项目自带 Java 8 直接启动 v41 候选 JAR，未覆盖 data/app/App.dll，未触碰桌面原始安装包；进入 WhatsApp 后只点击 AI采集；保存截图、stdout/stderr 和 filtered-evidence.log；停止进程并删除运行生成的 data/app/activemq-data。
+- 结果：菜单 JSON 中 C4749_006 已下发 pc/dataCollect/collectionTask、data_index、whatsapp_users_lists 和 recovery-route 证据；点击后 AI采集高亮但右侧空白，没有页面首屏。
+- 验证：截图 screen-03-whatsapp-main-entered.png 与 screen-04-ai-collect-after-click.png 已保存；日志计数 LoadUrl=0、Normalized=0、BootstrapXHR=0、getNewTask/upstatus/cancelAllRun/submit/save=0；data/app/App.dll SHA-256 保持 9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B；git status 运行前仅出现并已清理 activemq-data。
+- 下一步：定位 pc/dataCollect/collectionTask 在 sub.g、f.d、JSBFMain$4 或默认 JxBrowser 分发中的真实入口条件，生成 v42 候选后再做只读页面打开验收。

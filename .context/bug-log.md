@@ -343,3 +343,12 @@
 - 根因：本地目录把 icon 写成 `svg/<name>.svg`，而原客户端 `IconUtil` 会自行添加 `/svg/` 和 `.svg`。
 - 解决方案：兼容目录只返回资源 basename，例如 `whatsapp_menu_icon_1`；v40 宿主截图确认 11 项菜单 icon 正常显示。
 - 状态：resolved-by-v40
+
+## v41 WhatsApp AI采集候选未触发页面打开
+- 现象：宿主只读点击 WhatsApp AI采集后左侧菜单高亮，但右侧内容区域保持空白；日志没有 M4_V13_LOAD_URL、M4_V18_NORMALIZED_URL 或 XHR。
+- 触发条件：将 C4749_006 的 localCode 设为 pc/dataCollect/collectionTask，linkUrl 设为 /pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp 后，用 v41 候选 JAR 直接启动并点击菜单。
+- 影响：不能把 v41 认定为 AI采集页面层恢复；M5A 仍不能进入采集页面请求分类，更不能进入任务提交或结果保存验证。
+- 根因：当前证据表明 pc/dataCollect/collectionTask 可能不是主侧边栏可直接消费的 localCode，或需要 sub.g/f.d/JSBFMain$4 的额外分发前置条件；直接绑定到主菜单字段只让菜单高亮，没有走到 JxBrowser 加载边界。
+- 解决方案：记录 v41 为失败候选：菜单 JSON 下发成功但页面未打开；下一步回到分发链定位正确 localCode/linkUrl/code 组合，生成 v42 只读候选。
+- 预防措施：每个恢复路由候选除测试字段外，必须宿主验证是否触发 M4_V13/M4_V18 Web 加载日志；没有导航日志时不得宣称页面恢复。
+- 状态：open

@@ -130,3 +130,19 @@
 - WhatsApp `AI采集` 现在具备一个可点击验证的高置信候选入口，下一步可以从“菜单壳”进入“页面打开/请求分类”。
 - 这一步仍不证明采集任务提交、任务队列、结果保存、OSS 上传或验证码/代理辅助已恢复。
 - `AI数据`、`AI筛选` 暂不绑定 spider 配置，避免把结果页/筛选器误配成采集脚本。
+
+## 11. 2026-06-23 v41 WhatsApp AI采集宿主只读验收
+
+| 验收项 | 动作 | 结果 | 分类影响 |
+| --- | --- | --- | --- |
+| 启动方式 | 在项目内 `data/app` 工作目录下，用项目自带 Java 8 直接启动 v41 候选 JAR；未覆盖 `data/app/App.dll`，未触碰桌面原始安装包 | 自动进入九产品选择器，`data/app/App.dll` 保持 SHA-256 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B` | 本次证据属于项目内 JAR 直接启动，不是最终双击包验收 |
+| 进入 WhatsApp | 点击 WhatsApp `进入系统` | 主界面显示 WhatsApp 11 项侧边栏，`AI采集` 菜单可见 | WhatsApp 外壳和菜单仍可进入 |
+| 点击 `AI采集` | 只点击左侧 `AI采集`，不输入关键词、不创建任务、不上传、不群发 | 菜单高亮到 `AI采集`，但右侧内容区域保持空白；没有出现采集任务页、表单、表格或错误提示 | v41 只证明菜单字段可下发，尚不能证明页面层恢复 |
+| 日志筛查 | 过滤 `stdout.log` 中的 `dataCollect/collectionTask/whatsapp_users_lists/M4_V13_LOAD_URL/M4_V18_NORMALIZED_URL/M5_V26_WEB_BOOTSTRAP_XHR/getNewTask/upstatus/cancelAllRun/submit/save` | `dataCollect=6`、`collectionTask=4`、`whatsapp_users_lists=4` 均只来自菜单 JSON；`LoadUrl=0`、`Normalized=0`、`BootstrapXHR=0`、`getNewTask/upstatus/cancelAllRun/submit/save=0` | 没有触发 JxBrowser 导航、Web XHR 或 spider 任务接口；未产生副作用请求 |
+| 测试产物 | 截图和日志保存在 `.artifacts/runtime/m5a-v41-host-readonly/` | `screen-03-whatsapp-main-entered.png` 显示 WhatsApp 主界面；`screen-04-ai-collect-after-click.png` 显示 `AI采集` 高亮但右侧空白；`filtered-evidence.log` 只含菜单 JSON 证据 | 后续可复核 UI 状态和日志计数；`.artifacts` 仍为本地忽略产物 |
+
+本轮结论：
+
+- v41 的 `localCode=pc/dataCollect/collectionTask` 与 `linkUrl=/pc/dataCollect/collectionTask/data_index?...` 进入了运行时菜单 JSON，但当前主侧边栏点击后没有走到已验证的 JxBrowser 加载边界。
+- 该候选不能作为“WhatsApp AI采集页面已恢复”的验收结果，只能作为“菜单字段恢复值已下发”的证据。
+- 下一步应优先定位 `pc/dataCollect/collectionTask` 在 `sub.g`、`f.d` 或 `JSBFMain$4` 中的真实分发前置条件，或改用能触发普通 Web 加载器的候选组合继续只读验证。

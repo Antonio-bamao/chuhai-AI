@@ -198,3 +198,46 @@ v42 将 v41 的失败假设向已验证 Web 加载边界收敛：保留 dataColl
 - v42 不是页面恢复成功，只证明字段候选可以按 `JSinglepage + data_index` 下发。
 - 当前阻断点已经前移：左侧菜单视觉高亮后没有进入 `JSBFMain$4.a(JComponent,String)` 或旧 `sub.b.a(tree.i)` 的内容创建分发器。
 - 下一轮不应继续猜 URL，而应插桩 `com.sbf.main.ext.j2026.h$2.mouseClicked()` 的首个返回条件、`h.a(null)` 调用和菜单项 `treeEndFlg/children` 语义，确认为什么点击没有触发回调。
+
+## 11. 2026-06-24 v43-v47 WhatsApp AI采集子路由与 JSinglepage 桥接
+
+v43-v47 不是原始菜单 JSON 取证；它们是在没有真实菜单响应、没有历史 token 的前提下，对 WhatsApp `AI采集` 建立可替换恢复值并逐层验证消费契约。
+
+### 11.1 点击链与父子菜单语义
+
+| 版本 | 证据 | 结论 |
+| --- | --- | --- |
+| v43 | `M5A_V43_MENU_MOUSE_CLICKED=0` | `com.sbf.main.ext.j2026.h$2` 不是 WhatsApp 左侧菜单真实点击处理器。 |
+| v44 | `M5A_V44_SIDE_MENU_MOUSE_CLICKED=1`、`SELECT_CALL=1`、`CALLBACK=2`、`M4_V12_DISPATCH=0` | 真实点击链为 `com.sbf.main.ext.j2026.d$2 -> d$1`；点击与回调成立，但无子项时不会进入内容分发。 |
+| v45 | `M4_V12_DISPATCH name=AI采集 id=91010501 code=REC_WHATSAPP_COLLECT_USERS_ROUTE ...` | `JSBFMain$6` 会分发当前父菜单下的子项；`C4749_006` 应保留为父菜单，新增恢复值子路由承载页面入口。 |
+
+当前恢复值：
+
+| 字段 | 值 | 说明 |
+| --- | --- | --- |
+| 父菜单 ID | `910105` | 恢复 ID，来自产品 `9101` 与 WhatsApp 第 5 个菜单序号。 |
+| 父菜单 code | `C4749_006` | 延续 M4A 的 WhatsApp `AI采集` code。 |
+| 子路由 ID | `91010501` | 恢复 ID，不声明为原始真实值。 |
+| 子路由 code | `REC_WHATSAPP_COLLECT_USERS_ROUTE` | 恢复 code，用于稳定定位和将来集中替换。 |
+| 子路由 evidence | `recovery-route-child:j2026-h-field-map:dataCollect:whatsapp_users_lists` | 明确该子路由是恢复值。 |
+
+### 11.2 URL 字段映射与页面层结果
+
+| 版本 | 证据 | 结论 |
+| --- | --- | --- |
+| v46 | `M4_V12_NEW_JXBROWSER=1`，但 `M4_V18_NORMALIZED_URL=JSinglepage?st=...` | j2026 字段映射已能创建 JxBrowser，但 JxBrowser load 边界拿到的是 `JSinglepage` 占位。 |
+| v47 | `M4_V18_NORMALIZED_URL=https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，`M4_V13_LOAD_URL=` 同 URL | 仅限当前 WhatsApp AI采集恢复子路由的 `JSinglepage` 桥接成功，页面层 URL 可加载。 |
+
+v47 运行结果：
+
+- 主框架请求 `https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp` 返回 200。
+- 静态资源 `app.988d65c1.js`、`chunk-libs.a18eb98a.js`、dataCollect 页面 chunk 和 CSS 返回 200。
+- Web 初始化 XHR 捕获到 `/prod-api/getInfo` 与 `/prod-api/getRouters`。
+- 控制台最终报 `ReferenceError: mijava is not defined`，页面停在加载动画。
+- spider 任务接口 `getNewTask/upstatus/cancelAllRun/submit/save` 均未触发。
+
+结论：
+
+- 当前可声明的仅是“WhatsApp `AI采集` 恢复值子路由到达 dataCollect 页面层”。
+- 不能声明原始菜单 ID、原始真实子路由、任务提交、结果保存或 spider 队列可用。
+- 下一步应只读解析 dataCollect 页面对 `mijava` 的调用和 `/prod-api/getInfo/getRouters` 之后的具体接口，不再在菜单层继续猜 URL。

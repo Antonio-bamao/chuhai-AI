@@ -22,6 +22,7 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
@@ -38,6 +39,9 @@ public final class M4AuthPatch {
     private static final String TREE_NODE_CLASS = "com/sbf/main/tree/i.class";
     private static final String MENU_DISPATCH_CLASS = "com/sbf/main/sub/b.class";
     private static final String MODERN_MENU_DISPATCH_CLASS = "com/sbf/main/JSBFMain$4.class";
+    private static final String MODERN_MENU_MOUSE_CLASS = "com/sbf/main/ext/j2026/h$2.class";
+    private static final String SIDE_MENU_MOUSE_CLASS = "com/sbf/main/ext/j2026/d$2.class";
+    private static final String SIDE_MENU_CALLBACK_CLASS = "com/sbf/main/ext/j2026/d$1.class";
     private static final String START_APP_CLASS = "com/sbf/main/StartApp.class";
     private static final String START_APP_LOGIN_CALLBACK_CLASS = "com/sbf/main/StartApp$1.class";
     private static final String START_APP_UI_CLASS = "com/sbf/main/StartApp$3.class";
@@ -153,6 +157,9 @@ public final class M4AuthPatch {
                 || !result.patchedTreeDiagnostics
                 || !result.patchedMenuDispatchDiagnostics
                 || !result.patchedModernMenuDispatchDiagnostics
+                || !result.patchedModernMenuMouseDiagnostics
+                || !result.patchedSideMenuMouseDiagnostics
+                || !result.patchedSideMenuCallbackDiagnostics
                 || !result.patchedStartAppWebTokenBridge
                 || !result.patchedStartAppLoginDisposeGuard
                 || !result.patchedStartAppAutoLogin
@@ -213,6 +220,12 @@ public final class M4AuthPatch {
                             bytes = patchMenuDispatchDiagnostics(bytes, result);
                         } else if (MODERN_MENU_DISPATCH_CLASS.equals(entry.getName())) {
                             bytes = patchModernMenuDispatchDiagnostics(bytes, result);
+                        } else if (MODERN_MENU_MOUSE_CLASS.equals(entry.getName())) {
+                            bytes = patchModernMenuMouseDiagnostics(bytes, result);
+                        } else if (SIDE_MENU_MOUSE_CLASS.equals(entry.getName())) {
+                            bytes = patchSideMenuMouseDiagnostics(bytes, result);
+                        } else if (SIDE_MENU_CALLBACK_CLASS.equals(entry.getName())) {
+                            bytes = patchSideMenuCallbackDiagnostics(bytes, result);
                         } else if (START_APP_CLASS.equals(entry.getName())) {
                             bytes = patchStartAppWebTokenBridge(bytes, result);
                         } else if (START_APP_LOGIN_CALLBACK_CLASS.equals(entry.getName())) {
@@ -1659,6 +1672,176 @@ public final class M4AuthPatch {
         return writer.toByteArray();
     }
 
+    private static byte[] patchModernMenuMouseDiagnostics(byte[] original, PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"mouseClicked".equals(name) || !"(Ljava/awt/event/MouseEvent;)V".equals(descriptor)) {
+                    return mv;
+                }
+                result.patchedModernMenuMouseDiagnostics = true;
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    private int invokedynamicCount = 0;
+
+                    @Override
+                    public void visitCode() {
+                        super.visitCode();
+                        emitModernMenuMouseDiagnostics(this, "M5A_V43_MENU_MOUSE_CLICKED");
+                    }
+
+                    @Override
+                    public void visitInvokeDynamicInsn(
+                            String dynamicName,
+                            String dynamicDescriptor,
+                            Handle bootstrapMethodHandle,
+                            Object... bootstrapMethodArguments) {
+                        invokedynamicCount++;
+                        if (invokedynamicCount == 2) {
+                            emitModernMenuMouseDiagnostics(this, "M5A_V43_MENU_MOUSE_CALLBACK");
+                        }
+                        super.visitInvokeDynamicInsn(
+                                dynamicName,
+                                dynamicDescriptor,
+                                bootstrapMethodHandle,
+                                bootstrapMethodArguments);
+                    }
+
+                    @Override
+                    public void visitJumpInsn(int opcode, Label label) {
+                        super.visitJumpInsn(opcode, label);
+                    }
+
+                    @Override
+                    public void visitInsn(int opcode) {
+                        if (opcode == Opcodes.RETURN && invokedynamicCount == 1) {
+                            emitModernMenuMouseDiagnostics(this, "M5A_V43_MENU_MOUSE_BLOCKED");
+                        }
+                        super.visitInsn(opcode);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchSideMenuMouseDiagnostics(byte[] original, PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"mouseClicked".equals(name)
+                        || !"(Ljava/awt/event/MouseEvent;)V".equals(descriptor)) {
+                    return mv;
+                }
+                result.patchedSideMenuMouseDiagnostics = true;
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    private int invokedynamicCount = 0;
+
+                    @Override
+                    public void visitCode() {
+                        super.visitCode();
+                        emitSideMenuDiagnostics(
+                                this,
+                                "M5A_V44_SIDE_MENU_MOUSE_CLICKED",
+                                "com/sbf/main/ext/j2026/d$2");
+                    }
+
+                    @Override
+                    public void visitInvokeDynamicInsn(
+                            String dynamicName,
+                            String dynamicDescriptor,
+                            Handle bootstrapMethodHandle,
+                            Object... bootstrapMethodArguments) {
+                        invokedynamicCount++;
+                        if (invokedynamicCount == 2) {
+                            emitSideMenuDiagnostics(
+                                    this,
+                                    "M5A_V44_SIDE_MENU_SELECT_CALL",
+                                    "com/sbf/main/ext/j2026/d$2");
+                        }
+                        super.visitInvokeDynamicInsn(
+                                dynamicName,
+                                dynamicDescriptor,
+                                bootstrapMethodHandle,
+                                bootstrapMethodArguments);
+                    }
+
+                    @Override
+                    public void visitInsn(int opcode) {
+                        if (opcode == Opcodes.RETURN && invokedynamicCount == 1) {
+                            emitSideMenuDiagnostics(
+                                    this,
+                                    "M5A_V44_SIDE_MENU_MOUSE_BLOCKED",
+                                    "com/sbf/main/ext/j2026/d$2");
+                        }
+                        super.visitInsn(opcode);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchSideMenuCallbackDiagnostics(byte[] original, PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"run".equals(name) || !"()V".equals(descriptor)) {
+                    return mv;
+                }
+                result.patchedSideMenuCallbackDiagnostics = true;
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitMethodInsn(
+                            int opcode,
+                            String owner,
+                            String methodName,
+                            String methodDescriptor,
+                            boolean isInterface) {
+                        if (opcode == Opcodes.INVOKEINTERFACE
+                                && "com/sbf/main/ext/j2026/d$a".equals(owner)
+                                && "a".equals(methodName)
+                                && "(Lcom/sbf/main/ext/j2026/d;)V".equals(methodDescriptor)) {
+                            emitSideMenuDiagnostics(
+                                    this,
+                                    "M5A_V44_SIDE_MENU_CALLBACK",
+                                    "com/sbf/main/ext/j2026/d$1");
+                        }
+                        super.visitMethodInsn(
+                                opcode, owner, methodName, methodDescriptor, isInterface);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
     private static byte[] patchUpdateChecker(byte[] original, PatchResult result) {
         ClassReader reader = new ClassReader(original);
         ClassWriter writer = new ClassWriter(reader, 0);
@@ -2556,8 +2739,22 @@ public final class M4AuthPatch {
 
     private static void emitNormalizeRuntimeBusinessUrl(MethodVisitor mv, int urlLocal) {
         org.objectweb.asm.Label done = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label notJSinglepage = new org.objectweb.asm.Label();
         mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
         mv.visitJumpInsn(Opcodes.IFNULL, done);
+        mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
+        mv.visitLdcInsn("JSinglepage");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "startsWith",
+                "(Ljava/lang/String;)Z",
+                false);
+        mv.visitJumpInsn(Opcodes.IFEQ, notJSinglepage);
+        mv.visitLdcInsn(
+                "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp");
+        mv.visitVarInsn(Opcodes.ASTORE, urlLocal);
+        mv.visitLabel(notJSinglepage);
         mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
         mv.visitLdcInsn("/");
         mv.visitMethodInsn(
@@ -2792,6 +2989,52 @@ public final class M4AuthPatch {
                 Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
     }
 
+    private static void emitModernMenuMouseDiagnostics(MethodVisitor mv, String marker) {
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitLdcInsn(marker + " name=");
+        mv.visitMethodInsn(
+                Opcodes.INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "(Ljava/lang/String;)V", false);
+        appendModernMouseString(mv, "e");
+        appendLiteral(mv, " id=");
+        appendModernMouseInt(mv, "f");
+        appendLiteral(mv, " code=");
+        appendModernMouseString(mv, "g");
+        appendLiteral(mv, " localCode=");
+        appendModernMouseString(mv, "h");
+        appendLiteral(mv, " linkUrl=");
+        appendModernMouseString(mv, "i");
+        appendLiteral(mv, " hasChildren=");
+        appendModernMouseBoolean(mv, "k");
+        appendLiteral(mv, " treeEndFlg=");
+        appendModernMouseBoolean(mv, "l");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+    }
+
+    private static void emitSideMenuDiagnostics(MethodVisitor mv, String marker, String listenerClass) {
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitLdcInsn(marker + " name=");
+        mv.visitMethodInsn(
+                Opcodes.INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "(Ljava/lang/String;)V", false);
+        appendSideMenuName(mv, listenerClass);
+        appendLiteral(mv, " id=");
+        appendSideMenuInt(mv, listenerClass, "c");
+        appendLiteral(mv, " code=");
+        appendSideMenuString(mv, listenerClass, "d");
+        appendLiteral(mv, " selected=");
+        appendSideMenuSelected(mv, listenerClass);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+    }
+
     private static void emitTreeDiagnostics(MethodVisitor mv) {
         mv.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
         mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
@@ -2948,6 +3191,102 @@ public final class M4AuthPatch {
                 Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(I)Ljava/lang/StringBuilder;", false);
     }
 
+    private static void appendModernMouseString(MethodVisitor mv, String methodName) {
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(
+                Opcodes.GETFIELD, "com/sbf/main/ext/j2026/h$2", "a", "Lcom/sbf/main/ext/j2026/h;");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "com/sbf/main/ext/j2026/h",
+                methodName,
+                "()Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "append",
+                "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                false);
+    }
+
+    private static void appendModernMouseInt(MethodVisitor mv, String methodName) {
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(
+                Opcodes.GETFIELD, "com/sbf/main/ext/j2026/h$2", "a", "Lcom/sbf/main/ext/j2026/h;");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "com/sbf/main/ext/j2026/h", methodName, "()I", false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(I)Ljava/lang/StringBuilder;", false);
+    }
+
+    private static void appendModernMouseBoolean(MethodVisitor mv, String methodName) {
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(
+                Opcodes.GETFIELD, "com/sbf/main/ext/j2026/h$2", "a", "Lcom/sbf/main/ext/j2026/h;");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "com/sbf/main/ext/j2026/h", methodName, "()Z", false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Z)Ljava/lang/StringBuilder;", false);
+    }
+
+    private static void loadSideMenuOwner(MethodVisitor mv, String listenerClass) {
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(
+                Opcodes.GETFIELD, listenerClass, "a", "Lcom/sbf/main/ext/j2026/d;");
+    }
+
+    private static void appendSideMenuName(MethodVisitor mv, String listenerClass) {
+        loadSideMenuOwner(mv, listenerClass);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "com/sbf/main/ext/j2026/d",
+                "getName",
+                "()Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "append",
+                "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                false);
+    }
+
+    private static void appendSideMenuString(MethodVisitor mv, String listenerClass, String methodName) {
+        loadSideMenuOwner(mv, listenerClass);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "com/sbf/main/ext/j2026/d",
+                methodName,
+                "()Ljava/lang/String;",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/StringBuilder",
+                "append",
+                "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                false);
+    }
+
+    private static void appendSideMenuInt(MethodVisitor mv, String listenerClass, String methodName) {
+        loadSideMenuOwner(mv, listenerClass);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "com/sbf/main/ext/j2026/d", methodName, "()I", false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(I)Ljava/lang/StringBuilder;", false);
+    }
+
+    private static void appendSideMenuSelected(MethodVisitor mv, String listenerClass) {
+        loadSideMenuOwner(mv, listenerClass);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/ext/j2026/d",
+                "g",
+                "(Lcom/sbf/main/ext/j2026/d;)Z",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Z)Ljava/lang/StringBuilder;", false);
+    }
+
     private static final class PatchResult {
         boolean patchedLogin;
         boolean patchedGetInfo;
@@ -2958,6 +3297,9 @@ public final class M4AuthPatch {
         boolean patchedTreeDiagnostics;
         boolean patchedMenuDispatchDiagnostics;
         boolean patchedModernMenuDispatchDiagnostics;
+        boolean patchedModernMenuMouseDiagnostics;
+        boolean patchedSideMenuMouseDiagnostics;
+        boolean patchedSideMenuCallbackDiagnostics;
         boolean patchedStartAppWebTokenBridge;
         boolean patchedStartAppLoginDisposeGuard;
         boolean patchedStartAppAutoLogin;

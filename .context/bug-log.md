@@ -361,3 +361,39 @@
 - 解决方案：记录 v42 为失败候选：字段下发成功但菜单点击没有进入内容分发。下一步应插桩 `com.sbf.main.ext.j2026.h$2.mouseClicked()` 的首个返回条件、`h.a(null)` 回调和 `treeEndFlg/children` 语义，再决定 v43 菜单树或回调修正。
 - 预防措施：后续路由候选必须同时验证三层日志：菜单 JSON 字段、点击回调/内容分发入口、JxBrowser load/XHR；缺任一层都不得宣称页面恢复。
 - 状态：open
+
+## v43 错误插桩了非真实 WhatsApp 侧边栏点击处理器
+- 现象：v43 点击 WhatsApp `AI采集` 后仍只高亮，`M5A_V43_MENU_MOUSE_CLICKED=0`，说明 `com.sbf.main.ext.j2026.h$2` 没有收到该点击。
+- 触发条件：根据 v42 结果先假设现代菜单点击在 `h$2.mouseClicked()`，并用 v43 直接宿主验证。
+- 影响：如果继续围绕 `h$2` 修改，会误判真实回调链，无法打开页面。
+- 根因：WhatsApp 主界面左侧菜单实际点击链在 `com.sbf.main.ext.j2026.d$2.mouseClicked()`，回调在 `d$1.run()`；`h$2` 不是本场景的侧边栏菜单处理器。
+- 解决方案：v44 改为插桩 `d$2` 和 `d$1`，确认点击、选择调用和回调均发生。
+- 预防措施：对 j2026 UI 分支的点击链必须用运行时计数确认处理器，不只按类名或界面层级推断。
+- 状态：resolved-by-v44
+
+## v44 证明点击回调存在但没有子项分发
+- 现象：v44 点击 `AI采集` 后 `M5A_V44_SIDE_MENU_MOUSE_CLICKED=1`、`M5A_V44_SIDE_MENU_SELECT_CALL=1`、`M5A_V44_SIDE_MENU_CALLBACK=2`，但 `M4_V12_DISPATCH=0`、JxBrowser/XHR 均为 0。
+- 触发条件：`C4749_006` 仍作为叶子菜单直接承载恢复路由。
+- 影响：菜单高亮和回调已成立，但内容区不会创建页面，不能进入 M5A 请求分类。
+- 根因：j2026 的 `JSBFMain$6` 会按当前菜单 ID 查找子项并分发子项；没有子项时只完成选择状态，不进入内容创建。
+- 解决方案：v45 保留 `C4749_006` 为父菜单，新增恢复值子路由 `REC_WHATSAPP_COLLECT_USERS_ROUTE`。
+- 预防措施：恢复 j2026 菜单时要同时验证父子语义；截图中的单个菜单名不等同于运行时叶子节点。
+- 状态：resolved-by-v45
+
+## v46 创建了 JxBrowser 但加载了 JSinglepage 占位主机
+- 现象：v46 已出现 `M4_V12_NEW_JXBROWSER=1`、`M4_V13_BROWSER_CONSTRUCTOR=1`，但最终 `M4_V18_NORMALIZED_URL=JSinglepage?st=...`，请求变成 `http://jsinglepage/` 并失败。
+- 触发条件：为了满足 j2026 字段映射，恢复子路由使用 `localCode=JSinglepage` 与 dataCollect `linkUrl`，但 JxBrowser 构造函数拿到的是 `JSinglepage` 占位值。
+- 影响：页面组件创建成功，但 URL 错误，仍不能到达 dataCollect 页面。
+- 根因：j2026 分发链和旧 `sub.b` 字段消费方向不同；当前恢复值需要一个仅限该子路由的桥，把 `JSinglepage` 占位恢复成实际 dataCollect URL。
+- 解决方案：v47 在 JxBrowser load 边界加入窄桥接：当 URL 为当前恢复子路由的 `JSinglepage` 占位时，归一化为 `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，再套用既有 `SBFApi.c()` 域名归一化。
+- 预防措施：字段映射修正必须宿主验证最终 `M4_V18_NORMALIZED_URL`，不能只看到 `NEW_JXBROWSER` 就宣称页面恢复。
+- 状态：resolved-by-v47
+
+## v47 WhatsApp AI采集页面层加载后缺少 mijava bridge
+- 现象：v47 能加载 `https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，主框架和静态资源返回 200，并触发 `/prod-api/getInfo`、`/prod-api/getRouters`，但控制台报 `ReferenceError: mijava is not defined`，UI 停在加载动画。
+- 触发条件：项目内直接运行 v47 JAR，只读点击 WhatsApp `AI采集`，不执行任务动作。
+- 影响：页面层入口已恢复，但 Web 前端仍需要原客户端 JS bridge 或后端初始化契约；不能宣称采集功能可用。
+- 根因：当前证据显示 dataCollect Web 页面比 AiCloud 首屏依赖更多运行时桥或初始化数据；`mijava` 缺失导致页面脚本中断。
+- 解决方案：记录为 M5A 新边界。下一步只读分析 dataCollect 页面 chunk 与 bridge 调用，必要时按具体调用补最小 JS bridge/响应形状，仍禁止泛化 `/prod-api/*`。
+- 预防措施：M5A 页面打开验收必须同时记录最终 URL、XHR、控制台错误和任务接口计数；页面能打开不等于业务动作已恢复。
+- 状态：open

@@ -162,3 +162,32 @@
 - v42 排除了“只要把 dataCollect 路由放到 JSinglepage 就能打开页面”的假设。
 - 当前阻断不是 Web 页面加载失败，而是左侧菜单点击后没有进入已插桩的内容创建分发器。
 - 下一步应先给 `com.sbf.main.ext.j2026.h$2.mouseClicked()`、`h.a(null)` 回调和 `treeEndFlg/children` 条件加诊断，再决定是否调整菜单树结构或回调接线。
+
+## 13. 2026-06-24 v43-v47 WhatsApp AI采集页面层只读验收
+
+| 阶段 | 动作 | 结果 | 分类影响 |
+| --- | --- | --- | --- |
+| v43 | 插桩 `com.sbf.main.ext.j2026.h$2` | 点击 `AI采集` 时 `M5A_V43_MENU_MOUSE_CLICKED=0` | 排除 `h$2` 作为 WhatsApp 侧边栏真实点击处理器 |
+| v44 | 插桩 `com.sbf.main.ext.j2026.d$2` 与 `d$1` | `MOUSE_CLICKED=1`、`SELECT_CALL=1`、`CALLBACK=2`，但 `M4_V12_DISPATCH=0` | 点击链成立，阻断在父子菜单分发语义 |
+| v45 | 给 `C4749_006` 增加恢复值子路由 `REC_WHATSAPP_COLLECT_USERS_ROUTE` | `M4_V12_DISPATCH=1`，但 `M4_V12_NEW_JXBROWSER=0` | 子路由语义正确，字段映射仍需修正 |
+| v46 | 修正 j2026 字段映射 | `M4_V12_NEW_JXBROWSER=1`，但最终加载 `JSinglepage?st=...` | JxBrowser 创建成功，URL 仍是占位值 |
+| v47 | 增加仅限当前恢复子路由的 `JSinglepage` 归一化桥接 | 最终 URL 为 `https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，主框架/静态资源 200，触发 `/prod-api/getInfo`、`/prod-api/getRouters`，控制台报 `mijava is not defined` | 页面层入口恢复；后续阻断转为 Web bridge/后端初始化依赖 |
+
+v47 只读宿主证据：
+
+| 检查点 | 结果 |
+| --- | --- |
+| 候选产物 | `.artifacts/working/m5a-v47-whatsapp-collect-jsinglepage-bridge/App-m5a-v47-whatsapp-collect-jsinglepage-bridge.jar`，SHA-256 `B80C10D0454D4A9983D53B92E0D07F2F1611B665B1D13B489713D07D6027333F` |
+| 验证目录 | `.artifacts/runtime/m5a-v47-whatsapp-collect-jsinglepage-bridge-host-readonly/` |
+| 启动方式 | 项目内 `data/app` 工作目录直接运行 v47 JAR；未覆盖 `data/app/App.dll`，未触碰桌面原始安装包 |
+| 页面状态 | `screen-02-ai-collect-after-click.png` 和额外等待截图显示 `AI采集` 高亮、右侧 dataCollect 页面加载动画 |
+| URL/请求 | `M4_V18_NORMALIZED_URL` 与 `M4_V13_LOAD_URL` 均为 `https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`；`M5_V20_WEB_REQUEST=13` |
+| XHR/控制台 | `M5_V26_WEB_BOOTSTRAP_XHR=2`，分别为 `/prod-api/getInfo`、`/prod-api/getRouters`；控制台 `ReferenceError: mijava is not defined` |
+| 副作用接口 | `getNewTask=0`、`upstatus=0`、`cancelAllRun=0`、`submit=0`、`save=0` |
+| 环境恢复 | 停止 Java 进程后清理运行缓存；`data/app/App.dll` SHA-256 保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B` |
+
+分类结论：
+
+- WhatsApp `AI采集` 入口已从菜单外壳推进到真实 Web 页面层，但仍未进入任务创建或执行链路。
+- dataCollect 页面至少依赖 Web bridge `mijava` 和 `/prod-api/getInfo/getRouters` 初始化；后续可能还会依赖原后端任务列表、结果保存、OSS、代理/验证码/AI 辅助和 spider v2 队列。
+- M5A 下一步应只读解析 dataCollect 页面 chunk 与 `mijava` 调用，逐项记录必要契约；若需本地兼容，进入 M5B 按具体接口重建，不允许直接伪造通用 `/prod-api/*`。

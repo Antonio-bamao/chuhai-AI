@@ -170,14 +170,23 @@ class M4AuthPatchTests(unittest.TestCase):
                                 || item.getString("icon").endsWith(".svg")) {
                             throw new AssertionError("non-resource icon: " + item);
                         }
-                        boolean whatsappCollectCandidate =
+                        boolean whatsappCollectParent =
                                 "C4749_006".equals(item.getString("code"));
-                        if (whatsappCollectCandidate) {
+                        boolean whatsappCollectChild =
+                                "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(item.getString("code"));
+                        if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
                                     || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
                                     || !item.optString("evidence").contains("recovery-route")
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp collect recovery route: " + item);
+                            }
+                        } else if (whatsappCollectChild) {
+                            if (!"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("localCode"))
+                                    || !"JSinglepage".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp collect child recovery route: " + item);
                             }
                         } else if (!"JSinglepage".equals(item.getString("localCode"))
                                 || !"/pc/aicloud/my".equals(item.getString("linkUrl"))
@@ -190,7 +199,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {11, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {12, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -238,11 +247,13 @@ class M4AuthPatchTests(unittest.TestCase):
                     JSONArray entries =
                             new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
                     JSONObject target = null;
+                    JSONObject routeChild = null;
                     for (int i = 0; i < entries.length(); i++) {
                         JSONObject item = entries.getJSONObject(i);
                         if ("C4749_006".equals(item.optString("code"))) {
                             target = item;
-                            break;
+                        } else if ("REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(item.optString("code"))) {
+                            routeChild = item;
                         }
                     }
                     if (target == null) {
@@ -262,6 +273,16 @@ class M4AuthPatchTests(unittest.TestCase):
                     }
                     if (!target.optString("evidence").contains("recovery-route")) {
                         throw new AssertionError("route must be marked as recovered evidence: " + target);
+                    }
+                    if (routeChild == null) {
+                        throw new AssertionError("missing WhatsApp collect child route");
+                    }
+                    if (routeChild.optInt("parentId") != target.optInt("id")
+                            || routeChild.optInt("productId") != 9101
+                            || !expectedLink.equals(routeChild.optString("localCode"))
+                            || !"JSinglepage".equals(routeChild.optString("linkUrl"))
+                            || !routeChild.optString("evidence").contains("recovery-route-child:j2026-h-field-map")) {
+                        throw new AssertionError("wrong WhatsApp collect child route: " + routeChild);
                     }
                     System.out.println("M4_WHATSAPP_COLLECT_ROUTE_OK");
                 }
@@ -386,6 +407,9 @@ class M4AuthPatchTests(unittest.TestCase):
                 "com/sbf/main/StartApp$1.class",
                 "com/sbf/main/StartApp$3.class",
                 "com/sbf/main/StartApp.class",
+                "com/sbf/main/ext/j2026/d$1.class",
+                "com/sbf/main/ext/j2026/d$2.class",
+                "com/sbf/main/ext/j2026/h$2.class",
                 "com/sbf/main/jxbrowser/c$3.class",
                 "com/sbf/main/jxbrowser/c.class",
                 "com/sbf/main/jxbrowser/g.class",
@@ -421,6 +445,18 @@ class M4AuthPatchTests(unittest.TestCase):
         modern_dispatch_block = self.javap_method_block(
             "public final void a(javax.swing.JComponent, java.lang.String);",
             "com.sbf.main.JSBFMain$4",
+        )
+        modern_mouse_block = self.javap_method_block(
+            "public final void mouseClicked(java.awt.event.MouseEvent);",
+            "com.sbf.main.ext.j2026.h$2",
+        )
+        side_menu_mouse_block = self.javap_method_block(
+            "public final void mouseClicked(java.awt.event.MouseEvent);",
+            "com.sbf.main.ext.j2026.d$2",
+        )
+        side_menu_callback_block = self.javap_method_block(
+            "public final void run();",
+            "com.sbf.main.ext.j2026.d$1",
         )
         web_token_bridge_block = self.javap_method_block(
             "public static java.lang.String f(java.lang.String);",
@@ -512,6 +548,24 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("com/sbf/main/ext/j2026/h.e:()Ljava/lang/String;", modern_dispatch_block)
         self.assertIn("com/sbf/main/ext/j2026/h.h:()Ljava/lang/String;", modern_dispatch_block)
         self.assertIn("com/sbf/main/ext/j2026/h.i:()Ljava/lang/String;", modern_dispatch_block)
+        self.assertIn("M5A_V43_MENU_MOUSE_CLICKED", modern_mouse_block)
+        self.assertIn("M5A_V43_MENU_MOUSE_BLOCKED", modern_mouse_block)
+        self.assertIn("M5A_V43_MENU_MOUSE_CALLBACK", modern_mouse_block)
+        self.assertIn("com/sbf/main/ext/j2026/h.e:()Ljava/lang/String;", modern_mouse_block)
+        self.assertIn("com/sbf/main/ext/j2026/h.k:()Z", modern_mouse_block)
+        self.assertIn("com/sbf/main/ext/j2026/h.l:()Z", modern_mouse_block)
+        self.assertIn("M5A_V44_SIDE_MENU_MOUSE_CLICKED", side_menu_mouse_block)
+        self.assertIn("M5A_V44_SIDE_MENU_MOUSE_BLOCKED", side_menu_mouse_block)
+        self.assertIn("M5A_V44_SIDE_MENU_SELECT_CALL", side_menu_mouse_block)
+        self.assertIn("com/sbf/main/ext/j2026/d.getName:()Ljava/lang/String;", side_menu_mouse_block)
+        self.assertIn("com/sbf/main/ext/j2026/d.c:()I", side_menu_mouse_block)
+        self.assertIn("com/sbf/main/ext/j2026/d.d:()Ljava/lang/String;", side_menu_mouse_block)
+        self.assertIn("M5A_V44_SIDE_MENU_CALLBACK", side_menu_callback_block)
+        self.assertIn("Field a:Lcom/sbf/main/ext/j2026/d;", side_menu_callback_block)
+        self.assertIn(
+            "com/sbf/main/ext/j2026/d$a.a:(Lcom/sbf/main/ext/j2026/d;)V",
+            side_menu_callback_block,
+        )
         self.assertIn("getLoingIsToken", web_token_bridge_block)
         self.assertIn("get_current_token", web_token_bridge_block)
         self.assertIn("M4_V19_WEB_TOKEN_BRIDGE url=", web_token_bridge_block)
@@ -566,6 +620,8 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("areturn", dict_bridge_block)
         self.assertIn("M4_V13_LOAD_URL=", browser_load_block)
         self.assertIn("M4_V18_NORMALIZED_URL=", browser_load_block)
+        self.assertIn("JSinglepage", browser_load_block)
+        self.assertIn("/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp", browser_load_block)
         self.assertIn('String.startsWith:(Ljava/lang/String;)Z', browser_load_block)
         self.assertIn("com/sbf/util/http/SBFApi.c:()Ljava/lang/String;", browser_load_block)
         self.assertIn("https://", browser_load_block)
@@ -720,13 +776,15 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 76) {
-                            throw new AssertionError("expected 76 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 77) {
+                            throw new AssertionError("expected 77 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
-                            boolean whatsappCollectCandidate =
+                            boolean whatsappCollectParent =
                                     "C4749_006".equals(recoveredMenu.optString("code"));
+                            boolean whatsappCollectChild =
+                                    "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(recoveredMenu.optString("code"));
                             if (recoveredMenu.optInt("productId") < 9101
                                     || recoveredMenu.optInt("productId") > 9108
                                     || recoveredMenu.optString("code").startsWith("C2850000")
@@ -737,11 +795,17 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || recoveredMenu.optString("linkUrl").contains("offline-home.html")) {
                                 throw new AssertionError("bad recovered menu: " + recoveredMenu);
                             }
-                            if (whatsappCollectCandidate) {
+                            if (whatsappCollectParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                         || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route")) {
                                     throw new AssertionError("bad WhatsApp collect recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappCollectChild) {
+                                if (!"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map")) {
+                                    throw new AssertionError("bad WhatsApp collect child recovery route: " + recoveredMenu);
                                 }
                             } else if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                     || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))) {

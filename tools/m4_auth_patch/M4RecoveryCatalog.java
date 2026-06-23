@@ -1,5 +1,9 @@
 public final class M4RecoveryCatalog {
     private static final int PRODUCT_ID_BASE = 9101;
+    private static final int WHATSAPP_PRODUCT_ID = PRODUCT_ID_BASE;
+    private static final int WHATSAPP_AI_COLLECT_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 5;
+    private static final int WHATSAPP_AI_COLLECT_ROUTE_CHILD_ID =
+            WHATSAPP_AI_COLLECT_MENU_ID * 100 + 1;
     private static final String EXPIRATION = "2099-12-31 23:59:59";
 
     private static final ProductSpec[] PRODUCTS = {
@@ -142,6 +146,10 @@ public final class M4RecoveryCatalog {
                     json.append(',');
                 }
                 appendMenu(json, productMenus[menuIndex], productId, menuIndex + 1);
+                if (isWhatsappCollectMenu(productId, productMenus[menuIndex])) {
+                    json.append(',');
+                    appendWhatsappCollectRouteChild(json);
+                }
                 first = false;
             }
         }
@@ -210,6 +218,10 @@ public final class M4RecoveryCatalog {
                 json.append(',');
             }
             appendMenu(json, productMenus[menuIndex], id, menuIndex + 1);
+            if (isWhatsappCollectMenu(id, productMenus[menuIndex])) {
+                json.append(',');
+                appendWhatsappCollectRouteChild(json);
+            }
         }
         json.append(']');
         json.append('}');
@@ -235,6 +247,38 @@ public final class M4RecoveryCatalog {
         appendNumber(json, "displayIndex", menuIndex);
         appendNumber(json, "sort", menuIndex);
         appendString(json, "evidence", menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
+    private static boolean isWhatsappCollectMenu(int productId, MenuSpec menu) {
+        return productId == WHATSAPP_PRODUCT_ID && "C4749_006".equals(menu.code);
+    }
+
+    private static void appendWhatsappCollectRouteChild(StringBuilder json) {
+        json.append('{');
+        appendNumber(json, "id", WHATSAPP_AI_COLLECT_ROUTE_CHILD_ID);
+        appendNumber(json, "sid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "fid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "productId", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "parentId", WHATSAPP_AI_COLLECT_MENU_ID);
+        appendString(json, "code", "REC_WHATSAPP_COLLECT_USERS_ROUTE");
+        appendString(json, "name", "AI采集");
+        appendString(json, "displayName", "AI采集");
+        appendString(json, "icon", "whatsapp_menu_icon_5");
+        appendString(
+                json,
+                "localCode",
+                "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp");
+        appendString(json, "linkUrl", "JSinglepage");
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(
+                json,
+                "evidence",
+                "recovery-route-child:j2026-h-field-map:dataCollect:whatsapp_users_lists");
         json.append("\"status\":1");
         json.append('}');
     }

@@ -96,3 +96,21 @@
 - 已确认为什么 v40 能显示菜单却不能用于真实业务验收。
 - 已确认下一步应优先找真实 URL/打开器证据，而不是直接开始群发、采集或 GEO 查询。
 - 没有把 `JBigDataMaster`、`ZWBrowser`、`PhoneFission` 等打开器强行绑定到未知菜单。
+
+## 9. 2026-06-23 本地 spider 脚本与 dataCollect 入口发现
+
+详见 `.context/m5a-menu-route-discovery.md` 第 7 节。
+
+| 发现项 | 证据 | 依赖分类影响 | 下一步 |
+| --- | --- | --- | --- |
+| 本地 spider 配置 | `data/app/res/spider/*.cnf` 存在 WhatsApp、TikTok、Facebook 等 21 个明文采集配置 | 多平台采集不是完全服务端黑盒；至少保留了本地脚本/浏览器自动化资产 | 先按配置名梳理菜单候选，不直接执行采集 |
+| WhatsApp 采集配置 | `whatsapp_users_lists`、`whatsapp_regional_collection`、`whatsapp_group_lists`、`wap_global_clue_users` 均含 `moduleCode=whatsapp` 与 Google/平台搜索逻辑 | WhatsApp 采集可细分为客户端直连第三方 + 本地脚本自动化 + 原后端任务/结果存储混合 | 优先恢复只读任务页入口，记录请求和表单，不提交任务 |
+| TikTok/Facebook 配置 | TikTok 配置指向 `www.tiktok.com` 页面/API；Facebook 配置指向 `facebook.com` 页面和 GraphQL/API | 平台采集有直连第三方证据，但批量任务、代理、账号态和结果保存需继续分层 | 后续逐平台只读打开，禁止关注/私信/批量动作 |
+| `JSpiderCloude` 数据采集页 | 反编译代码构造 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` | 这是高置信数据采集入口族，适合后续作为恢复值候选 | 先用测试集中定义候选恢复值，再做页面打开验收 |
+| `SBFApi.H(String)` 本地兜底 | 先请求 `/cloud/spider/code/<code>`，失败后读 `/res/spider/<code>.cnf` | 兼容后端不一定要推倒重建全部采集脚本；可优先利用本地缓存配置 | M5B 若重建 spider 配置接口，应保持远端配置与本地兜底形状兼容 |
+| spider v2 任务接口 | `/api/v1/client/pc/spider/v2/upstatus/get/cancelAllRun/getNewTask` | 任务状态、任务拉取、取消和结果处理仍高概率依赖原后端任务队列/数据库 | M5A 只记录契约；M5B 再决定本地队列/兼容存储 |
+
+阶段结论：
+
+- 采集类业务不应简单归为“客户端全丢”或“后端全丢”。当前更准确的拆法是：页面/脚本/第三方访问可部分保留，任务编排、持久化、OSS、验证码/AI 辅助和队列需要逐项验证。
+- 下一步可围绕 WhatsApp `AI采集/AI数据/AI筛选` 建立高置信只读入口候选，但必须把 `spiderCode/moduleCode/localCode/linkUrl` 中无法证明的值标注为“恢复值”。

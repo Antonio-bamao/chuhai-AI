@@ -511,3 +511,10 @@
 - 结果：确认菜单模型消费 `localCode`、`code`、`name`、`icon`、`linkUrl`、`webFlg` 等字段；主分发器已解出 `ZWBrowser`、`AiBotChat`、`ai_mnq_manager`、`ai_arm_box`、`TkSpiderPanel`、`JBigDataMaster`、`JRealAndroidMaster`、`PhoneFission`、`JSinglepage` 等打开器；v40 当前统一 `JSinglepage + /pc/aicloud/my` 是保守恢复值，不是原始真实业务路由。
 - 验证：`C4749_*`、`C4134_*`、`C4137_*` 重点 code 当前只在恢复目录和证据文档出现，未发现可直接绑定的原始 `localCode/linkUrl`。本步骤未修改补丁代码、未执行业务动作、未连接远端业务接口。
 - 下一步：从 Web 前端 chunk、资源包和缓存目录继续找可证明的 WhatsApp/GEO 业务 URL；若只能建立候选入口，必须标注为恢复值并保持可集中替换。
+
+## 2026-06-23 23:58｜M5A 本地 spider 脚本与 dataCollect 入口发现
+- 目标：继续从原始资源、反编译代码和解码表查找可证明的采集业务入口，避免把 v40 统一 AiCloud 入口误当成真实业务恢复。
+- 动作：扫描 `data/app/res/spider/*.cnf`、`data/app/res/pagebanner/*.cnf`、反编译 `JSpiderCloude`、`SBFApi`、`sub.g` 与 `string_map.json`；解析 WhatsApp/TikTok/Facebook spider 配置的 `moduleCode`、`spiderAppCode`、`homeUrl`、参数和输出字段；定位数据采集 Web 路由和 spider v2 任务接口。
+- 结果：确认 21 个本地 spider 配置存在，WhatsApp 包含 `whatsapp_users_lists`、`whatsapp_regional_collection`、`whatsapp_group_lists`、`wap_global_clue_users`，均含 `moduleCode=whatsapp` 和 Google/平台搜索采集逻辑；TikTok/Facebook 配置包含直连平台页面/API 证据。`JSpiderCloude` 构造 `/pc/cloud/task/myindex?spiderCode=...` 与 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...`；`SBFApi.H(String)` 先请求 `/cloud/spider/code/<code>`，失败后读取本地 `/res/spider/<code>.cnf`；spider v2 的状态、任务拉取、取消和新任务接口仍指向原后端。
+- 验证：本轮只做静态解析和证据归档，没有执行采集、群发、上传、登录第三方平台、创建任务或连接云设备。
+- 下一步：围绕 WhatsApp `AI采集/AI数据/AI筛选` 建立高置信只读入口候选；无法证明为原始值的 `spiderCode/moduleCode/localCode/linkUrl` 均标注“恢复值”，先只打开页面和记录请求，不提交任务。

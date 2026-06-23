@@ -74,3 +74,49 @@
    - 先用测试保证可集中替换；
    - 只做页面打开和请求记录，不执行群发、批量采集、上传或云设备创建。
 
+## 7. 2026-06-23 本地 spider/dataCollect 入口发现
+
+本轮从包内资源和反编译代码继续向下找，确认原客户端保留了可读的本地采集脚本资产和数据采集页面入口。
+
+### 7.1 本地 spider 配置资产
+
+来源：`data/app/res/spider/*.cnf`。
+
+| 平台 | 已确认配置 | 关键含义 |
+| --- | --- | --- |
+| WhatsApp | `whatsapp_users_lists.cnf`、`whatsapp_regional_collection.cnf`、`whatsapp_group_lists.cnf`、`wap_global_clue_users.cnf` | 包含 WhatsApp/全球线索采集配置，`moduleCode=whatsapp`，`homeUrl=https://www.google.com`，通过 Google 搜索和脚本步骤抽取号码/链接/地区等字段。 |
+| TikTok | `tiktok_active_peers.cnf`、`tiktok_live_broadcast.cnf`、`tiktok_peers_details_dsp.cnf`、`tiktok_peers_video.cnf`、`tiktok_popular_account.cnf`、`tiktok_popular_videos.cnf`、`tiktok_user_fans.cnf`、`tiktok_user_following.cnf`、`tiktok_user_message_dsp.cnf` | 包含 TikTok 用户、视频、直播、评论、粉丝/关注等直连页面或 API 的采集配置。 |
+| Facebook | `facebook_designated_group.cnf`、`facebook_group_comments.cnf`、`facebook_group_members.cnf`、`facebook_home_page.cnf`、`facebook_homepage_basics.cnf`、`facebook_peer_interception.cnf`、`facebook_posts_collection.cnf`、`facebook_specify_friend.cnf` | 包含 Facebook 群组、主页、帖子、好友/成员等页面与 GraphQL/API 入口配置。 |
+
+WhatsApp 重点配置摘要：
+
+| 配置 | `id` | `name` | `moduleCode` | 主要参数 | 输出字段 |
+| --- | ---: | --- | --- | --- | --- |
+| `whatsapp_users_lists` | 24 | `WS线索采集` | `whatsapp` | `googSite,areaCode,pltCode,keywords` | `googSite,pltCode,keywords,phone,date,url` |
+| `whatsapp_regional_collection` | 41 | `WS地区采集` | `whatsapp` | `adds,keywords,isfilter,get_range` | `keywords,city,name,phone,links,oloc,date,adds` |
+| `whatsapp_group_lists` | 25 | `WS小组采集` | `whatsapp` | `googSite,pltCode,keywords` | `googSite,pltCode,keywords,group_link,url,date` |
+| `wap_global_clue_users` | 20 | `全球线索采集` | `whatsapp` | `googSite,areaCode,pltCode,keywords` | `googSite,pltCode,keywords,phone,date,url` |
+
+判断：
+
+- 这些 `.cnf` 是原包明文业务资产，能证明部分采集逻辑不是完全遗失在服务端。
+- 其中 URL 大量指向 Google、TikTok、Facebook 等第三方页面/API，属于“客户端直连第三方 + 本地脚本自动化”的强证据。
+- 同时脚本内仍出现 `spider.postData(...)`、`spider.base64TOss(...)`、验证码/代理/结果处理等调用，说明任务创建、结果保存、OSS 上传或辅助识别可能仍依赖原后端或云资源。
+
+### 7.2 Java 数据采集入口
+
+来源：`.artifacts/decompiled/cfr-app-20260620-0215/com/sbf/main/spide/cloud/JSpiderCloude.java`、`.artifacts/decompiled/cfr-app-20260620-0215/com/sbf/util/http/SBFApi.java` 与 `.artifacts/analysis/string_map.json`。
+
+| 位置 | 解码值/行为 | 结论 |
+| --- | --- | --- |
+| `JSpiderCloude.java` 约 295-303 行 | 根据 tab 字段创建页面；其中一个分支构造 `/pc/cloud/task/myindex?spiderCode=...`，另一个分支构造 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` | 原客户端确实存在云任务页和数据采集任务页入口。 |
+| `JSpiderCloude.java` 约 500-525 行 | 使用 `/app/spider/<code>/ver.ini`、`ver`、`fileMd5`、`ossUrl`、`code` 做 spider 包版本检查/下载 | spider 脚本可本地缓存，但更新源和包分发依赖远端/OSS。 |
+| `SBFApi.H(String)` 约 1551-1564 行 | 先请求 `/cloud/spider/code/<code>`，成功后写入本地 `/res/spider/<code>.cnf`；异常时读取本地 `/res/spider/<code>.cnf` | 这是“远端配置优先、本地配置兜底”的明确契约，当前本地 `.cnf` 可作为兼容恢复基础。 |
+| `SBFApi.java` 约 1766、1782、1804、1815 行 | `/api/v1/client/pc/spider/v2/upstatus/`、`get/`、`cancelAllRun/`、`getNewTask/` | spider 运行状态、任务拉取、取消、任务获取仍有原后端任务队列/状态接口。 |
+| `sub.g.java` 解码值 | `JBigDataMaster`、`PhoneFission`、`ThePlugIn`、`WapFilter`、`WSFilter`、`pc/dataCollect/collectionTask` | 侧边栏/子分发器中存在数据采集相关打开器线索，但还不能把它直接绑定到每个 WhatsApp 菜单 code。 |
+
+判断：
+
+- 可把 `pc/dataCollect/collectionTask` 作为高置信“数据采集入口族”证据。
+- 还不能把 v40 的某个 WhatsApp 菜单直接改成该入口并声明“原始真实路由”，因为当前没有原始菜单 JSON 绑定关系。
+- 后续若建立候选入口，应标注为“恢复值”，例如把 `spiderCode=whatsapp_users_lists`、`moduleCode=whatsapp` 作为可替换恢复参数，并只做页面打开/请求记录，不执行采集任务。

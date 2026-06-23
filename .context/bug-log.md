@@ -352,3 +352,12 @@
 - 解决方案：记录 v41 为失败候选：菜单 JSON 下发成功但页面未打开；下一步回到分发链定位正确 localCode/linkUrl/code 组合，生成 v42 只读候选。
 - 预防措施：每个恢复路由候选除测试字段外，必须宿主验证是否触发 M4_V13/M4_V18 Web 加载日志；没有导航日志时不得宣称页面恢复。
 - 状态：open
+
+## v42 WhatsApp AI采集 JSinglepage 候选仍未触发内容分发
+- 现象：v42 将 WhatsApp `AI采集` 改为 `localCode=JSinglepage`、dataCollect `linkUrl` 后，宿主只读点击/双击仍只高亮左侧菜单，右侧内容区域保持空白；日志没有 `M4_DIAG_MODERN_DISPATCH_ENTER`、`M4_V13_LOAD_URL`、`M4_V18_NORMALIZED_URL` 或 XHR。
+- 触发条件：用 `.artifacts/working/m5a-whatsapp-collect-route-v42/App-m5a-v42-whatsapp-collect-jsinglepage.jar` 在项目内 `data/app` 工作目录直接启动，进入 WhatsApp 后点击 `AI采集`。
+- 影响：不能把 v42 认定为页面层恢复；M5A 仍不能开始 AI采集页的请求/依赖分类。
+- 根因：当前证据表明阻断点已经前移到左侧菜单组件点击和内容创建回调之间；`M4_DIAG_DISPATCH_ENTER=0` 且 `M4_DIAG_MODERN_DISPATCH_ENTER=0`，说明没有进入旧 `sub.b.a(tree.i)` 或现代 `JSBFMain$4.a(JComponent,String)` 分发器。
+- 解决方案：记录 v42 为失败候选：字段下发成功但菜单点击没有进入内容分发。下一步应插桩 `com.sbf.main.ext.j2026.h$2.mouseClicked()` 的首个返回条件、`h.a(null)` 回调和 `treeEndFlg/children` 语义，再决定 v43 菜单树或回调修正。
+- 预防措施：后续路由候选必须同时验证三层日志：菜单 JSON 字段、点击回调/内容分发入口、JxBrowser load/XHR；缺任一层都不得宣称页面恢复。
+- 状态：open

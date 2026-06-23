@@ -173,7 +173,7 @@ class M4AuthPatchTests(unittest.TestCase):
                         boolean whatsappCollectCandidate =
                                 "C4749_006".equals(item.getString("code"));
                         if (whatsappCollectCandidate) {
-                            if (!"pc/dataCollect/collectionTask".equals(item.getString("localCode"))
+                            if (!"JSinglepage".equals(item.getString("localCode"))
                                     || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
                                     || !item.optString("evidence").contains("recovery-route")
                                     || item.getInt("webFlg") != 1) {
@@ -252,8 +252,8 @@ class M4AuthPatchTests(unittest.TestCase):
                             || !"AI采集".equals(target.optString("name"))) {
                         throw new AssertionError("wrong WhatsApp collect menu: " + target);
                     }
-                    if (!"pc/dataCollect/collectionTask".equals(target.optString("localCode"))) {
-                        throw new AssertionError("missing dataCollect localCode recovery value: " + target);
+                    if (!"JSinglepage".equals(target.optString("localCode"))) {
+                        throw new AssertionError("missing JSinglepage dataCollect opener recovery value: " + target);
                     }
                     String expectedLink =
                             "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp";
@@ -738,7 +738,7 @@ class M4AuthPatchTests(unittest.TestCase):
                                 throw new AssertionError("bad recovered menu: " + recoveredMenu);
                             }
                             if (whatsappCollectCandidate) {
-                                if (!"pc/dataCollect/collectionTask".equals(recoveredMenu.optString("localCode"))
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                         || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route")) {
                                     throw new AssertionError("bad WhatsApp collect recovery route: " + recoveredMenu);

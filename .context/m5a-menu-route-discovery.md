@@ -163,3 +163,38 @@ WhatsApp 重点配置摘要：
 - `pc/dataCollect/collectionTask` 更像某个二级/子分发器或页面族标识，直接放进当前主侧边栏 `localCode` 后没有打开页面。
 - 不能把 v41 认定为 WhatsApp `AI采集` 页面层恢复；当前仅证明恢复字段可在菜单 JSON 中被消费并显示为可点击项。
 - 下一轮应回到 `com.sbf.main.sub.b`、`sub.g`、`f.d`、`JSBFMain$4` 的分发链，确认 `pc/dataCollect/collectionTask` 应放在 `localCode`、`linkUrl`、`code` 还是某个 `JSinglepage`/默认 JxBrowser 组合里，再生成 v42 候选。
+
+## 10. 2026-06-23 v42 WhatsApp AI采集 JSinglepage 候选与只读结果
+
+v42 将 v41 的失败假设向已验证 Web 加载边界收敛：保留 dataCollect `linkUrl`，但把 `localCode` 改为 `JSinglepage`。该值仍是恢复值，不声明为原始菜单 JSON。
+
+| 字段 | v42 恢复值 | 证据等级 |
+| --- | --- | --- |
+| 菜单 `code` | `C4749_006` | 延续 M4A 恢复 code。 |
+| 菜单名 | `AI采集` | 用户截图验收 + 原包菜单资源恢复。 |
+| `localCode` | `JSinglepage` | 恢复值；用于尝试进入已验证的 Web/JSinglepage 内容创建边界。 |
+| `linkUrl` | `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp` | 恢复值；路径来自 `JSpiderCloude`，`spiderCode` 来自本地 spider 配置。 |
+| `evidence` | `recovery-route:dataCollect:whatsapp_users_lists` | 仍标注恢复路由。 |
+
+验证：
+
+- TDD：先把测试改为要求 `C4749_006` 使用 `JSinglepage + data_index`，目标测试按预期因 v41 字段失败；随后修改 `M4RecoveryCatalog.spiderRoute()` 并转绿。
+- 完整 `python -m unittest discover -s tests -v` 通过 `27/27`。
+- 生成候选产物 `.artifacts/working/m5a-whatsapp-collect-route-v42/App-m5a-v42-whatsapp-collect-jsinglepage.jar`，SHA-256 `97FBC8CE920E38851A9BB2534E05C9E3B797C7D3FD3A8DBDCA7ACAF3D71E271E`。
+- 产物级检查确认 `SBFApi.class` 内含 `JSinglepage`、`/pc/dataCollect/collectionTask/data_index?spiderCode=`、`whatsapp_users_lists` 和 `recovery-route:dataCollect:`。
+
+宿主只读结果：
+
+| 检查点 | 证据 | 结论 |
+| --- | --- | --- |
+| 启动方式 | 项目内 `data/app` 工作目录直接运行 v42 JAR；未覆盖 `data/app/App.dll`，未触碰桌面原始安装包 | `data/app/App.dll` SHA-256 保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。 |
+| 菜单字段 | `.artifacts/runtime/m5a-v42-host-readonly/stdout.log` 的 `M4_DIAG_MENU_K_CALLED` | `C4749_006 / AI采集` 已下发 `localCode=JSinglepage` 与 dataCollect `linkUrl`。 |
+| 点击后 UI | `.artifacts/runtime/m5a-v42-host-readonly/screen-03-ai-collect-after-click.png` 与 double-click 复测目录 | 左侧 `AI采集` 高亮，右侧仍为空白，没有采集页首屏。 |
+| 分发/加载日志 | `M4_DIAG_DISPATCH_ENTER=0`、`M4_DIAG_MODERN_DISPATCH_ENTER=0`、`M4_V13_LOAD_URL=0`、`M4_V18_NORMALIZED_URL=0`、`M5_V26_WEB_BOOTSTRAP_XHR=0` | 点击没有进入已插桩的内容创建分发器，也没有 JxBrowser 导航。 |
+| 副作用接口 | `getNewTask=0`、`upstatus=0`、`cancelAllRun=0`、`submit=0`、`save=0` | 未提交关键词、未创建任务、未触发 spider 队列或状态接口。 |
+
+结论：
+
+- v42 不是页面恢复成功，只证明字段候选可以按 `JSinglepage + data_index` 下发。
+- 当前阻断点已经前移：左侧菜单视觉高亮后没有进入 `JSBFMain$4.a(JComponent,String)` 或旧 `sub.b.a(tree.i)` 的内容创建分发器。
+- 下一轮不应继续猜 URL，而应插桩 `com.sbf.main.ext.j2026.h$2.mouseClicked()` 的首个返回条件、`h.a(null)` 调用和菜单项 `treeEndFlg/children` 语义，确认为什么点击没有触发回调。

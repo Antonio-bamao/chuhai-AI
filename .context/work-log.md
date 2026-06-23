@@ -532,3 +532,11 @@
 - 结果：菜单 JSON 中 C4749_006 已下发 pc/dataCollect/collectionTask、data_index、whatsapp_users_lists 和 recovery-route 证据；点击后 AI采集高亮但右侧空白，没有页面首屏。
 - 验证：截图 screen-03-whatsapp-main-entered.png 与 screen-04-ai-collect-after-click.png 已保存；日志计数 LoadUrl=0、Normalized=0、BootstrapXHR=0、getNewTask/upstatus/cancelAllRun/submit/save=0；data/app/App.dll SHA-256 保持 9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B；git status 运行前仅出现并已清理 activemq-data。
 - 下一步：定位 pc/dataCollect/collectionTask 在 sub.g、f.d、JSBFMain$4 或默认 JxBrowser 分发中的真实入口条件，生成 v42 候选后再做只读页面打开验收。
+
+## 2026-06-23 23:50｜v42 WhatsApp AI采集 JSinglepage 候选与只读宿主验收
+- 目标：修正 v41 的 dataCollect 打开器假设，验证 `JSinglepage + /pc/dataCollect/collectionTask/data_index?...` 是否能触发页面层打开。
+- 动作：复核 `sub.b`、`sub.g`、`JSBFMain$4` 和 `h$2` 分发链；按 TDD 先把测试改为要求 `C4749_006 / AI采集` 使用 `localCode=JSinglepage` 与 dataCollect `linkUrl`，确认测试因 v41 字段失败；随后仅修改 `M4RecoveryCatalog.spiderRoute()`。生成 `.artifacts/working/m5a-whatsapp-collect-route-v42/App-m5a-v42-whatsapp-collect-jsinglepage.jar`。
+- 结果：v42 JAR SHA-256 为 `97FBC8CE920E38851A9BB2534E05C9E3B797C7D3FD3A8DBDCA7ACAF3D71E271E`；产物级检查确认 `SBFApi.class` 内含 `JSinglepage`、`/pc/dataCollect/collectionTask/data_index?spiderCode=`、`whatsapp_users_lists` 和 `recovery-route:dataCollect:`。
+- 宿主只读验收：在项目内 `data/app` 工作目录直接运行 v42 JAR，未覆盖 `data/app/App.dll`，未触碰桌面原始安装包；进入 WhatsApp 后只点击/双击 `AI采集`，不输入关键词、不创建任务、不上传、不群发。截图和日志保存在 `.artifacts/runtime/m5a-v42-host-readonly/` 与 `.artifacts/runtime/m5a-v42-host-readonly-doubleclick/`。
+- 验证：目标测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `27/27`。宿主日志中 `C4749_006` 已下发 `JSinglepage + data_index`，但点击后仍无 `M4_DIAG_DISPATCH_ENTER`、`M4_DIAG_MODERN_DISPATCH_ENTER`、`M4_V13_LOAD_URL`、`M4_V18_NORMALIZED_URL` 或 `M5_V26_WEB_BOOTSTRAP_XHR`；`getNewTask/upstatus/cancelAllRun/submit/save=0`；`stderr.log` 为 0 字节；`data/app/App.dll` SHA-256 保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。
+- 结论：v42 不是页面恢复成功。当前阻断点在左侧菜单点击到内容创建回调之间，下一步应插桩 `com.sbf.main.ext.j2026.h$2.mouseClicked()`、`h.a(null)` 和 `treeEndFlg/children` 条件，而不是继续猜 URL。

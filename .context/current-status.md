@@ -8,7 +8,7 @@
 - 下一步：在可控 VM 或具备管理员权限的环境补一次物理断网/网卡禁用验收，并制作最终可双击分发包；随后进入 M5A 业务依赖分类。
 - 阻塞项：当前会话无管理员权限，无法创建临时 Windows 出站防火墙规则。进程级 HTTP/HTTPS/SOCKS 黑洞代理下九产品选择器已正常显示，但该证据不等同于阻断所有 UDP 的物理断网。
 - 验收目标校正：用户桌面快捷方式 `C:\Users\m1591\Desktop\火柴AI.lnk` 指向用户本人安装的原始包 `H:\HuoChaiAI\app\HuoChaiAI.exe`，不作为本项目恢复产物验收目标。该原始安装包已恢复原 `App.dll` 哈希 `72689D3C96F28A9DFBDDCFFC3F14D082A174AC0FED153144CD2AA89D27C3D494`，后续不得再用它验证 M4B。
-- M5A 已启动只读验收：`.context/m5a-business-dependency-inventory.md` 已记录第一轮结果，`.context/m5a-menu-route-discovery.md` 已记录菜单路由发现、本地 spider/dataCollect 入口证据和 v41 WhatsApp `AI采集` 候选入口。AiCloud 首屏和空表证据可复用；ADB/FFmpeg 可执行；JxBrowser/Selenium/Playwright 依赖存在。关键新边界：菜单模型确实消费 `localCode/linkUrl`，原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；v40 的 76 个菜单仍统一 `JSinglepage + /pc/aicloud/my`，因此 WhatsApp/GEO 当前只能证明外壳和菜单存在；但 `data/app/res/spider/*.cnf` 与 `JSpiderCloude` 已证明 WhatsApp/TikTok/Facebook 等采集脚本和 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` 入口族仍在包内。v41 已在项目内宿主只读验证：菜单 JSON 下发了 `C4749_006 / AI采集` 的 `pc/dataCollect/collectionTask` 和 `whatsapp_users_lists` 恢复字段，点击后左侧菜单高亮，但右侧仍为空白，日志无 `M4_V13_LOAD_URL`、`M4_V18_NORMALIZED_URL`、XHR 或 spider 任务接口；说明该候选字段尚未触发真实页面打开。下一步应修正/定位 dataCollect 打开器分发契约，而不是提交采集任务。
+- M5A 已启动只读验收：`.context/m5a-business-dependency-inventory.md` 已记录第一轮结果，`.context/m5a-menu-route-discovery.md` 已记录菜单路由发现、本地 spider/dataCollect 入口证据和 WhatsApp `AI采集` 候选入口。AiCloud 首屏和空表证据可复用；ADB/FFmpeg 可执行；JxBrowser/Selenium/Playwright 依赖存在。关键新边界：菜单模型确实消费 `localCode/linkUrl`，原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；v40 的 76 个菜单仍统一 `JSinglepage + /pc/aicloud/my`，因此 WhatsApp/GEO 当前只能证明外壳和菜单存在；但 `data/app/res/spider/*.cnf` 与 `JSpiderCloude` 已证明 WhatsApp/TikTok/Facebook 等采集脚本和 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` 入口族仍在包内。v41 已证明 `localCode=pc/dataCollect/collectionTask` 只会下发菜单字段、不触发页面；v42 改为 `localCode=JSinglepage`、`linkUrl=/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，字段下发成功，但项目内宿主只读点击仍只高亮 `AI采集`，右侧空白，日志无 `M4_DIAG_MODERN_DISPATCH_ENTER`、`M4_V13_LOAD_URL`、`M4_V18_NORMALIZED_URL`、XHR 或 spider 任务接口。下一步应插桩 `com.sbf.main.ext.j2026.h$2`/左侧菜单回调条件，先确认为什么点击没有进入内容创建分发器。
 - 当前活跃日志分片：work-log.md
 - v15 VM 证据：`M4_V14_RENDER_MODE=OFF_SCREEN`，包含 SwiftShader/D3D11 软件渲染开关；`M4_V13_LOAD_FINISHED` 成功；`C:\m2dump\m4-jxb-capture.png` 能完整渲染 `HuoChaiAI Offline Mode`，右侧空白问题被软件渲染解决。
 - 重要校正：v8-v15 的 `offline-home.html` 只是诊断页，用来区分菜单/加载/渲染问题；它不是最终业务目标。最终目标不是“业务离线化”，而是“授权/登录/时效/付费门槛本地通过 + 采集/群发/云手机/投屏/视频继续联网”。
@@ -65,7 +65,7 @@
 - 需要在可控 VM 或管理员环境补一次真正禁用网络后的启动、九产品选择器和主界面验收；当前仅完成进程级 HTTP/HTTPS/SOCKS 黑洞代理验收。
 - 需要制作并验证最终双击分发包；当前宿主验证使用 `java -cp ... com.sbf.main.StartApp` 启动，已经证明无需登录操作，但还不是最终安装/快捷方式交付。项目内 `data\app\HuoChaiAI.exe` 在本次会话启动时被系统返回“操作已被用户取消”，未形成双击通过证据。
 - 76 个菜单当前统一使用恢复入口 `/pc/aicloud/my`；这是 M4 静态外壳入口，不代表各菜单业务已经恢复。M5A 第一轮已确认该统一入口会阻止 WhatsApp/GEO 真实业务页面验收；后续需基于 `data/app/res/spider/*.cnf`、`JSpiderCloude` 和分发器证据先恢复或定位真实菜单 `localCode/linkUrl`，无法证明的字段必须标为“恢复值”。
-- v41 的 WhatsApp `AI采集` 恢复值只证明菜单数据可进入运行时；项目内宿主点击没有触发 JxBrowser 导航或 XHR，右侧保持空白。下一轮应优先检查 `com.sbf.main.sub.b`、`sub.g`、`JSBFMain$4` 对 `pc/dataCollect/collectionTask` 的分发条件，必要时把候选入口改为能走已验证 Web 加载边界的 `localCode/linkUrl` 组合。
+- v41/v42 的 WhatsApp `AI采集` 恢复值只证明菜单数据可进入运行时；项目内宿主点击没有触发现代菜单分发、JxBrowser 导航或 XHR，右侧保持空白。下一轮应优先检查 `com.sbf.main.ext.j2026.h$2.mouseClicked()` 的首个返回条件、`treeEndFlg`/父子菜单语义和 `JSBFMain$4` 回调接线，再生成 v43 诊断候选。
 
 ### 用户提供的产品结构证据
 

@@ -146,3 +146,19 @@
 - v41 的 `localCode=pc/dataCollect/collectionTask` 与 `linkUrl=/pc/dataCollect/collectionTask/data_index?...` 进入了运行时菜单 JSON，但当前主侧边栏点击后没有走到已验证的 JxBrowser 加载边界。
 - 该候选不能作为“WhatsApp AI采集页面已恢复”的验收结果，只能作为“菜单字段恢复值已下发”的证据。
 - 下一步应优先定位 `pc/dataCollect/collectionTask` 在 `sub.g`、`f.d` 或 `JSBFMain$4` 中的真实分发前置条件，或改用能触发普通 Web 加载器的候选组合继续只读验证。
+
+## 12. 2026-06-23 v42 WhatsApp AI采集 JSinglepage 候选只读验收
+
+| 验收项 | 动作 | 结果 | 分类影响 |
+| --- | --- | --- | --- |
+| 候选入口 | 将 `C4749_006 / AI采集` 改为 `localCode=JSinglepage`、`linkUrl=/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp` | 测试先红后绿；v42 JAR SHA-256 `97FBC8CE920E38851A9BB2534E05C9E3B797C7D3A8DBDCA7ACAF3D71E271E` | 这是恢复值候选，不是原始真实菜单响应值 |
+| 宿主启动 | 在项目内 `data/app` 工作目录直接运行 v42 JAR；未覆盖 `data/app/App.dll`，未触碰桌面原始安装包 | 进入 WhatsApp 后 `AI采集` 可见；`data/app/App.dll` 哈希保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B` | 仍是 JAR 直接启动只读证据，不是最终双击包验收 |
+| 点击 `AI采集` | 单击与双击复测，仅点击菜单，不输入关键词、不创建任务、不上传、不群发 | 左侧 `AI采集` 高亮，右侧仍为空白；无页面首屏 | 仍不能开始采集页面请求分类 |
+| 日志筛查 | 过滤 `M4_DIAG_*`、`M4_V13_LOAD_URL`、`M4_V18_NORMALIZED_URL`、`M5_V26_WEB_BOOTSTRAP_XHR` 和 spider 任务接口 | `M4_DIAG_DISPATCH_ENTER=0`、`M4_DIAG_MODERN_DISPATCH_ENTER=0`、`LoadUrl=0`、`Normalized=0`、`BootstrapXHR=0`、`getNewTask/upstatus/cancelAllRun/submit/save=0` | 未进入内容创建分发器，且无副作用请求 |
+| 测试产物 | `.artifacts/runtime/m5a-v42-host-readonly/` 与 `.artifacts/runtime/m5a-v42-host-readonly-doubleclick/` | `stderr.log` 均为 0 字节；截图显示同一空白右侧状态 | 可靠负结果，可用于下一轮定位 |
+
+本轮结论：
+
+- v42 排除了“只要把 dataCollect 路由放到 JSinglepage 就能打开页面”的假设。
+- 当前阻断不是 Web 页面加载失败，而是左侧菜单点击后没有进入已插桩的内容创建分发器。
+- 下一步应先给 `com.sbf.main.ext.j2026.h$2.mouseClicked()`、`h.a(null)` 回调和 `treeEndFlg/children` 条件加诊断，再决定是否调整菜单树结构或回调接线。

@@ -306,7 +306,7 @@ public final class M4RecoveryCatalog {
                 code,
                 name,
                 icon,
-                "pc/dataCollect/collectionTask",
+                "JSinglepage",
                 "/pc/dataCollect/collectionTask/data_index?spiderCode="
                         + spiderCode
                         + "&moduleCode=whatsapp",

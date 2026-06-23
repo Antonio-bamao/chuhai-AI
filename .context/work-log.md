@@ -460,3 +460,10 @@
 - 结果：确认登录响应 `data.token` 依次写入 `StartApp.l` 和 `JSBFMain.E`；邮箱登录调用 `SBFApi.k(email,password)`；“记住我”将 `email__________password` 经 `AESCBCHelper` 加密后写入 `HKCU\Software\JavaSoft\Prefs\aimirrorsystem\config` 的 `up`，并使用 `RememberPassword`、`email` 控制回填。旧版 `token/account` 缓存存在约 7 天时效，不适合作为长期恢复来源。
 - 宿主机证据：当前注册表仅有测试值 `/Remember/Password=0`、`up` 为空、`email=local@test.com`，没有历史凭据。
 - 下一步：进入保留原 Windows 用户配置的旧虚拟机，先只读导出该注册表节点；若 `RememberPassword=1` 且 `up` 非空，让原客户端解密回填并进行正常登录，成功后立即用 v36 获取真实产品与菜单 JSON。
+
+## 2026-06-23 21:41｜按最新交接冻结远端 token 路线并把 M4A/M4B/M5A/M5B 写入项目上下文
+- 目标：按最新交接冻结远端 token 路线并把 M4A/M4B/M5A/M5B 写入项目上下文
+- 动作：核验 main/20ef83f、v33 JAR/ISO 哈希和全部指定上下文；确认没有旧虚拟机、历史账号或历史凭据，原服务端控制权遗失；更新 vision、master-plan、design、current-status、task-breakdown、risk-register、seams 和 m4-product-menu-evidence；记录 ADR-0003；定义产品恢复 ID 9101..9109 与可替换菜单 ID 规则。
+- 结果：M4A 不再被原始产品/菜单响应阻塞；v33 明确冻结；正式路线调整为 M4A 静态九产品和菜单恢复、M4B 兼容鉴权产品菜单服务、M5A 业务依赖分类、M5B 逐项兼容后端。
+- 验证：git status 初始干净且 main 同步 origin/main；v33 JAR SHA-256=24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5，ISO SHA-256=AE54073C1745E08164946814ABC949EB54894F67867705DD5F7143D09416C154；上下文校验将在本步骤后重新运行。
+- 下一步：读取 M4 patcher 和测试完整契约，先写九产品兼容目录与菜单拓扑的失败测试，再实现 M4A。

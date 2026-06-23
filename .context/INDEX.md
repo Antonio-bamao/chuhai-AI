@@ -30,6 +30,3 @@
 - current-status.md
 - task-breakdown.md
 - risk-register.md
-- seams.md
-- resource-interface-inventory.md
-- m4-product-menu-evidence.md

@@ -137,7 +137,7 @@
 | 原逻辑 | bridge 入口用 `String.contains(...)` 命中 action 后传给 `StartApp.f(String)`；该方法请求远端并按 `expireTime` 写入 `n` 缓存。Web 前端模块 `5f87` 已确认调用 `window.mijava.getVVParentToken(origin + "/prod-api/getLoingIsToken")`，并把返回值写入 cookie `Admin-Token`。 |
 | 已解字段 | `roles`、`token`、`result`、`header`、`data`、`expireTime`、`get_current_token`、`getLoingIsToken`、`Admin-Token`、`Authorization: Bearer ...` |
 | 结论 | 已证实是 M5 Web 登录态桥接入口。v19 在 `StartApp.f(String)` 对 `getLoingIsToken` / `get_current_token` 返回本地 token 后，宿主机不再停在 `/login?redirect=...`，说明该接缝能越过 Web 路由登录门槛。 |
-| 拟改动方向 | v19 已做最小 token 桥接。v20/v23 已加入 Web 诊断。v27 通过 `InjectJsCallback` 只对 Web 初始化接口补响应形状：`/prod-api/getInfo`、`/prod-api/getRouters`、`/prod-api/mnq/mnqAuthAccounts/mylist`、`/prod-api/system/dict/data/type/yes_no_1_0`。后续应优先寻找真实 header/token 桥接；若必须继续补本地响应，必须限定在授权/页面启动门槛，不得泛化到真实业务动作。 |
+| 拟改动方向 | v19 已做最小 token 桥接。v20/v23 已加入 Web 诊断。v27 通过 `InjectJsCallback` 只对 Web 初始化接口补响应形状：`/prod-api/getInfo`、`/prod-api/getRouters`、`/prod-api/mnq/mnqAuthAccounts/mylist`、`/prod-api/system/dict/data/type/yes_no_1_0`。真实 token 来源已闭环且无可用历史凭据，M4B 将这些启动兼容响应正式化；真实业务动作按 M5A 分类，只有证实依赖遗失服务端时才进入 M5B 逐项重建。 |
 | 风险 | 只返回占位 token 能过前端路由守卫，但可能让后续真实业务 API 带无效 `Authorization`，表现为业务壳层白屏。改 `DTHelper.b(...)` 会误伤业务联网；改 `StartApp.f(...)` 需要限定在登录态 bridge，不应统一拦截真实业务请求。 |
 | 回滚点 | `com/sbf/main/StartApp.class`、`com/sbf/main/jxbrowser/n.class`。 |
 
@@ -201,5 +201,5 @@
 2. `sf` 中目标软件标识的准确字符串：当前静态只确认使用 `StringHelper.i(sf)` 拆分后逐项调用 `StartApp.b(String)` 判断。
 3. `JProductSelectorHtml$d.L` 和 `g$JMainMaster$4.r` 在产品选择/主界面后的实际明文输出。
 4. 支付/订单路径在免登录启动后是否自动触发，还是仅由用户点击触发。
-5. 业务联网是否依赖 S5 的 token/header 刷新结果。
-6. `/system/function_module/listmy/41` 的真实 product JSON 字段全集；M4 需以 S3/S3A 已读字段构造最小兼容样本。
+5. 各业务模块属于客户端直连第三方、原后端代理、原后端数据库、云资源/算力还是 native 依赖；在 M5A 逐项闭合。
+6. `/system/function_module/listmy/41` 的原始 product JSON 字段全集已无法从现有环境取得；M4A 以 S3/S3A 已读契约、原包资源和明确恢复值构造兼容目录。

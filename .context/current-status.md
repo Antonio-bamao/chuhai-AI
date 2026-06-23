@@ -1,9 +1,11 @@
 # 当前状态
 
-- 项目背景：这是用户本人早年设计并打包的火柴AI客户端，源码遗失；当前工作是在本地恢复自己的客户端可用性与源码谱，不是修改第三方软件。目标仍以 `.context/vision.md` 为准：授权层单机化，业务功能照常联网。
-- 当前阶段：v33 已形成可回滚的技术基线，但按项目原始 DoD 重新校准后，M4 尚未正式完成。M4 主链路在 v18 已到真实业务域名；v19 解决 Web 登录页重定向；v27 使真实业务 chunk 加载并渲染 AiCloud 授权码表页面；v33 根据原始 `JSBFMain` 字节码把本地 IM 配置修正为实际消费的 `im.port.udp` 结构，消除了启动期 `JSBFMain.<init>` NPE。下一步先完成 M4 产品结构、免操作启动和断网验收，再进入 M5 真实业务联网回归。
-- M4 产品取证进展：已新增 `.context/m4-product-menu-evidence.md`。原包主 logo 与菜单 icon 资源已确认 8 个可进入系统的内部 code 为 `whatsapp/tiktok/facebook/instagram/twitter/telegram/geo/wskefu`；独立站高置信候选为 `aishope`，并有 `43_head_title/subtitle` 的 Shopify 对标文案支持，但尚缺接口响应或明确字节码把 `43` 与 `aishope` 直接关联。九产品真实 `id/sid/fid/logoSvg/themeStyle/theme colors` 及菜单 `id/parentId/code/localCode/linkUrl/webFlg` 仍需从两个精确接口的历史响应或一次性定点日志闭合，当前不得沿用 v33 的 `41/aigc/C28500001/C28500002` 临时值。
-- 阻塞项：原始 `/system/function_module/listmy/41` 与 `/api/v1/client/pc/menus` 响应尚未在现有日志/缓存中找到；在闭合真实数值 ID、主题和菜单路由前，不进入正式九产品 JSON 实现。
+- 项目背景：这是用户本人早年设计并打包的火柴AI客户端。源码、原服务端、云服务器、数据库和管理后台控制权均已遗失；没有可用旧虚拟机、历史账号或历史凭据。当前工作是在本地恢复自己的客户端，不再把取得原服务端真实 token 作为前提。
+- 当前阶段：M4A 静态恢复九产品与侧边栏。v33 是冻结的稳定技术基线，不是最终 M4 交付；后续必须保留其 JxBrowser 软件渲染、真实 URL 归一化、Web 首屏响应和 `JSBFMain` 的 `im.port.udp` 修复。
+- 已完成：M1-M3 完成；v33 已实现本地登录 JSON、`getInfo`、产品初始化、Web token bridge、`getRouters`、Web 首屏必要响应形状，并验证 AiCloud 在线首屏可渲染。8 个可进入系统内部 code 已确认：`whatsapp/tiktok/facebook/instagram/twitter/telegram/geo/wskefu`；独立站采用高置信 `aishope` 候选并保持未开通。
+- 进行中：从原始资源、反编译代码和国际化字典恢复九产品卡及各系统侧边栏拓扑；撤除 v33 的 `41/aigc/C28500001/C28500002` 临时产品菜单。
+- 下一步：先建立集中、可替换的本地兼容产品/菜单目录；原包可证实的 code、logo、icon 和文案原样使用，未知数值 `id/sid/fid/parentId` 使用稳定恢复值并在证据文档明确标注。随后实现 M4A，进入 M4B 双击免操作启动和断网验收。
+- 阻塞项：无 M4A 硬阻塞。原始产品/菜单响应不可取得只影响“原始真实数值 ID”的还原，不再阻止使用可审计恢复值完成静态产品与菜单恢复。
 - 当前活跃日志分片：work-log.md
 - v15 VM 证据：`M4_V14_RENDER_MODE=OFF_SCREEN`，包含 SwiftShader/D3D11 软件渲染开关；`M4_V13_LOAD_FINISHED` 成功；`C:\m2dump\m4-jxb-capture.png` 能完整渲染 `HuoChaiAI Offline Mode`，右侧空白问题被软件渲染解决。
 - 重要校正：v8-v15 的 `offline-home.html` 只是诊断页，用来区分菜单/加载/渲染问题；它不是最终业务目标。最终目标不是“业务离线化”，而是“授权/登录/时效/付费门槛本地通过 + 采集/群发/云手机/投屏/视频继续联网”。
@@ -30,7 +32,7 @@
 - v36 取证产物：`.artifacts/working/m4-real-menu-request-logging-v36/App-m4-v36-real-menu-request-logging.jar`，大小 `31,870,823` 字节，SHA-256 `9DBC454856F9A09EEC35603404298EEB42D1BAAECBDF20E491D65C2F5269E66B`。
 - v36 取证 ISO：`.artifacts/working/m4-real-menu-request-logging-v36.iso`，大小 `31,934,464` 字节，SHA-256 `2EE09AD403123125677A2FC7690761B2AD9CF848C9FBE6119E4A3922A58D0F56`；ISO 只包含 v36 JAR 和中文 README，不包含 `offline-home.html`。v36 在 v35 基础上，于无参 `SBFApi.k()` 加密请求体生成后、真实 HTTP 调用前打印 `M4_EVIDENCE_PC_MENUS_REQUEST_URL/REQUEST_JSON/REQUEST_BODY/STATIC_A/STATIC_K/STATIC_L/HEADER_E`，用于确认菜单接口空体是否来自请求入参或授权态。
 - 宿主机 v36 证据：`C:\m2dump\m4-v36-real-menu-request-probe.log` 显示只手动设置 `SBFApi.a` 时，`k/l` 为空、`JSBFMain.E=null`、菜单 raw 为空；`C:\m2dump\m4-v36-initialized-menu-probe.log` 显示先调用 `SBFApi.j()` 后 `a/k/l` 已由硬件指纹链生成，且手动设置 `JSBFMain.E=offline-local-token-1234567890` 后，菜单请求仍返回空 raw body。结论：菜单空体不是单纯由 `k/l` 未初始化造成，更高置信是服务器不接受本地 fake token/header/signature；正式九产品仍需真实服务器登录态或继续定位真实登录态字段来源。宿主机 `C:\m2dump\app\App.jar` 已恢复 v33 哈希 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
-- 真实登录态追踪已闭环：原登录成功响应 `data.token -> StartApp.l -> JSBFMain.E`，产品和菜单接口不存在第二枚隐藏 token。j2026 邮箱登录入口为 `SBFApi.k(email,password)`；“记住我”数据保存在当前用户注册表 `HKEY_CURRENT_USER\Software\JavaSoft\Prefs\aimirrorsystem\config`，逻辑键为 `RememberPassword/up/email`，其中 `up` 是 `AESCBCHelper` 加密后的 `email__________password`。当前宿主机只有测试邮箱和空 `up`；下一步进入保留原用户配置的旧虚拟机，只读导出该节点并检查是否存在可重新登录的历史凭据。
+- 真实登录态追踪已闭环：原登录成功响应 `data.token -> StartApp.l -> JSBFMain.E`，产品和菜单接口不存在第二枚隐藏 token。当前没有旧虚拟机、历史账号或历史凭据，新注册账号被“等待审核开通”阻断，原服务端权限也已遗失；该路线正式终止，不再继续猜测或伪造远端认可 token。
 - 宿主机 v33 证据：`C:\m2dump\m5-v33-host.log` 显示真实 URL `https://app.xdxsoft.com/pc/aicloud/my?...`、四个定点 Web 初始化接口、`M4_V13_LOAD_FINISHED`；`C:\m2dump\m5-v33-host.err` 不再包含 `JSBFMain.<init>` NPE；`C:\m2dump\host-screen-v33-business.png` 显示 AiCloud 授权码表页面。stderr 仍有后台图标资源 `Stream closed`，但不影响主窗口和 Web 业务页。
 - 当前边界：v33 已实现“本地授权/登录/有效期/产品门槛 + 真实在线业务首屏”。当前仅对 Java 授权/产品初始化、Web 路由守卫、页面首屏空表/字典做本地补形状；后续增删改、采集、群发、云手机、投屏、视频等真实业务动作仍应继续联网验证，不应扩大成通用离线业务代理。
 
@@ -72,12 +74,9 @@
 
 ### 后续固定顺序
 
-1. 冻结 v33 技术基线。
-2. 下一步不要直接写正式九产品 JSON；v36 已证明当前本地 token 下产品接口为 401，菜单请求即使补齐 `SBFApi.j()` 生成的 `a/k/l` 并设置 `JSBFMain.E` 后 raw body 仍为空。真实 token 来源已确认是登录响应 `data.token`。应进入旧虚拟机检查 `HKCU\Software\JavaSoft\Prefs\aimirrorsystem\config` 的 `RememberPassword/up/email`，若存在历史记住密码凭据则由原客户端重新登录并复跑 v36。
-3. 只有拿到成功产品数组与菜单数组后，才生成脱敏证据 JSON，并恢复 8 个可进入系统和 1 个未开通系统的产品选择器。
-4. 恢复产品真实菜单拓扑，撤掉临时 AIGC 菜单。
-5. 完成双击免操作启动、断网进入和完整主界面验收，正式关闭 M4。
-6. 进入 M5，先选择一个只读或低风险真实业务动作，记录真实 API、状态码和请求头。
-7. 若真实业务接口返回 401/403，定位真实 Java header/token 桥接；不得泛化拦截 `/prod-api/*`。
-8. 跑通一次受控采集流程，再对群发、云手机、投屏、视频及其余系统做基础回归。
-9. 最后进入 M6，整理系统、模块、Java 入口、Web 路由、JS bridge、业务 API 和 native 依赖文档。
+1. 冻结 v33 技术基线和哈希，不修改其现有产物。
+2. M4A：用原包证据和明确恢复值实现 8 个可进入产品、1 个未开通独立站产品及各系统菜单拓扑。
+3. M4B：正式化兼容鉴权、产品和菜单服务，实现双击免操作启动、断网进入、九产品卡与主界面验收。
+4. M5A：逐项分类业务依赖为客户端直连第三方、原后端代理、原后端数据库、云资源/算力和 native 依赖，并验证仍可直连的业务。
+5. M5B：对证明确实依赖遗失服务端的接口逐项重建兼容后端。
+6. M6：整理系统、模块、Java 入口、Web 路由、JS bridge、业务 API、native 依赖和兼容后端文档。

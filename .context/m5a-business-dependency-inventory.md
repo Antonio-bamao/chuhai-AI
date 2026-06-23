@@ -191,3 +191,33 @@ v47 只读宿主证据：
 - WhatsApp `AI采集` 入口已从菜单外壳推进到真实 Web 页面层，但仍未进入任务创建或执行链路。
 - dataCollect 页面至少依赖 Web bridge `mijava` 和 `/prod-api/getInfo/getRouters` 初始化；后续可能还会依赖原后端任务列表、结果保存、OSS、代理/验证码/AI 辅助和 spider v2 队列。
 - M5A 下一步应只读解析 dataCollect 页面 chunk 与 `mijava` 调用，逐项记录必要契约；若需本地兼容，进入 M5B 按具体接口重建，不允许直接伪造通用 `/prod-api/*`。
+
+## 14. 2026-06-24 dataCollect 页面 chunk 与 MiJava bridge 契约
+
+本轮只读解析 v47 运行时实际加载的 dataCollect 页面资源，不点击下载、清空、提交、保存或任何采集动作。页面资源下载到 `.artifacts/analysis/m5a-datacollect-page/`，仅作为本地分析缓存。
+
+| 契约项 | 证据 | 结论 |
+| --- | --- | --- |
+| dataCollect 页面 chunk | `static/js/chunk-00b3289e.51ab7483.js`，组件名 `data_index` | 该页面从 `this.$route.query.spiderCode/moduleCode` 读取参数，v47 URL 中的 `whatsapp_users_lists` 与 `whatsapp` 已进入前端组件上下文。 |
+| 首屏初始化 | `created -> initConfig()`，直接调用 `mijava.getCloudSpiderConfig(this.spiderCode, callback)` | 首屏不是先提交任务，而是先通过 Java bridge 取 spider 配置字段；缺少 `mijava` 会在页面加载阶段直接中断。 |
+| 本地结果列表 | `getList()` 调用 `mijava.getSpiderDataList(moduleCode, spiderCode, pageNum, pageSize, callback)` | 页面默认读取本地已采集数据列表，期望返回形状含 `total` 和 `rows`，每行含 `jsonData`。 |
+| 实时追加 | `mounted` 注册 `window.reloadData(json)`，将 `jsonData` 反序列化后插入表格 | Spider 运行期可能通过宿主回调把新数据推给页面，但 v47 只读验证未触发。 |
+| 导出 | `toPackageDow()` 调用 `mijava.toPackageDowloadData(moduleCode, spiderCode, fields, callback)` | 导出会读取本地结果并生成文件，属于有副作用动作；M5A 只记录契约，不点击。 |
+| 清空 | `toClearAll()` 确认后调用 `mijava.toClearDataAll(moduleCode, spiderCode, callback)` | 清空会删除本地结果，属于破坏性动作；M5A 禁止点击。 |
+| `/prod-api/getInfo/getRouters` | v47 XHR 只捕获这两个 bootstrap 请求 | 它们是 RuoYi/Vue 全局鉴权和动态路由初始化，不是 dataCollect 结果列表或任务提交接口。 |
+| 任务提交接口 | v47 日志 `getNewTask/upstatus/cancelAllRun/submit/save=0`；chunk 内未发现创建任务 API | 当前页面停在 bridge 初始化前，尚未进入 spider v2 任务队列或提交链路。 |
+
+MiJava 方法反查：
+
+| 方法 | Java 证据 | 行为分类 |
+| --- | --- | --- |
+| `getCloudSpiderConfig(String, JsFunction)` | `MiJava.java:5996`，`MiJava$160.run()` 取配置后把字符串传回 JS；方法签名由 `javap` 确认 | 配置读取。结合 `SBFApi.H(String)` 既有证据，配置源为远端 `/cloud/spider/code/<code>` 优先，本地 `/res/spider/<code>.cnf` 兜底。 |
+| `getSpiderDataList(String,String,int,int,JsFunction)` | `MiJava.java:6006`，`MiJava$162` 使用 `DAOBase`、`WhereInfo`、`countOf`、`queryLimit`，返回 `total/rows` JSON | 本地结果列表读取，不是远端任务提交。 |
+| `toClearDataAll(String,String,JsFunction)` | `MiJava.java:6016`，`MiJava$163` 调用 DAO `clearTableAll()` 后回调 | 本地结果清空，有副作用。 |
+| `toPackageDowloadData(String,String,String,JsFunction)` | `MiJava.java:6022`，`MiJava$164` 使用 `JSpiderData`、`ExcelExportHelper`、`File`、分页读取本地结果并回调进度/文件路径 | 本地结果导出，有文件写入副作用。 |
+
+分类结论：
+
+- WhatsApp `AI采集` 当前卡住的直接原因不是“没有提交采集任务”或“任务接口失败”，而是 dataCollect 页面首屏需要宿主注入 `window.mijava`。
+- dataCollect 首屏的最小契约至少包括：`mijava.getCloudSpiderConfig`、`mijava.getSpiderDataList`、`window.reloadData`；下载和清空属于后续操作，不应在 M5A 点击。
+- `getInfo/getRouters` 仍可复用 v33/v40 的本地 bootstrap 形状，但不能把 `/prod-api/*` 扩成通用本地代理；每个新增接口都必须由页面 chunk 或运行日志证明。

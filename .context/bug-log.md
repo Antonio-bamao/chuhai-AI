@@ -393,7 +393,7 @@
 - 现象：v47 能加载 `https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，主框架和静态资源返回 200，并触发 `/prod-api/getInfo`、`/prod-api/getRouters`，但控制台报 `ReferenceError: mijava is not defined`，UI 停在加载动画。
 - 触发条件：项目内直接运行 v47 JAR，只读点击 WhatsApp `AI采集`，不执行任务动作。
 - 影响：页面层入口已恢复，但 Web 前端仍需要原客户端 JS bridge 或后端初始化契约；不能宣称采集功能可用。
-- 根因：当前证据显示 dataCollect Web 页面比 AiCloud 首屏依赖更多运行时桥或初始化数据；`mijava` 缺失导致页面脚本中断。
-- 解决方案：记录为 M5A 新边界。下一步只读分析 dataCollect 页面 chunk 与 bridge 调用，必要时按具体调用补最小 JS bridge/响应形状，仍禁止泛化 `/prod-api/*`。
+- 根因：dataCollect 页面 chunk `chunk-00b3289e.51ab7483.js` 首屏直接调用 `mijava.getCloudSpiderConfig(...)` 和 `mijava.getSpiderDataList(...)`；v47 通过普通 `JSinglepage`/通用 JxBrowser 宿主打开页面，而该宿主未注入 `MiJava`。原包中 `com.sbf.main.cloud.spider.b` 和浏览器工厂 `g` 均存在 `new MiJava(...)` + `window.putProperty(...)` 的 bridge 注入证据，说明 v47 的缺口更准确地说是“dataCollect 宿主/bridge 契约未恢复”。
+- 解决方案：M5A 已记录为新边界。后续实现候选应优先复用原云采集宿主或在当前子路由中注入等价 `MiJava`/`SpiderCallback`，而不是继续猜 URL 或泛化 `/prod-api/*`。本轮仍未点击导出/清空/任务提交。
 - 预防措施：M5A 页面打开验收必须同时记录最终 URL、XHR、控制台错误和任务接口计数；页面能打开不等于业务动作已恢复。
 - 状态：open

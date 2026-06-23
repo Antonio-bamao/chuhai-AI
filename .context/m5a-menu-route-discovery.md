@@ -241,3 +241,29 @@ v47 运行结果：
 - 当前可声明的仅是“WhatsApp `AI采集` 恢复值子路由到达 dataCollect 页面层”。
 - 不能声明原始菜单 ID、原始真实子路由、任务提交、结果保存或 spider 队列可用。
 - 下一步应只读解析 dataCollect 页面对 `mijava` 的调用和 `/prod-api/getInfo/getRouters` 之后的具体接口，不再在菜单层继续猜 URL。
+
+## 12. 2026-06-24 dataCollect 宿主/bridge 路由契约
+
+本轮把 v47 页面加载失败从“页面 URL 候选问题”继续拆到“宿主 bridge 契约问题”。仍未修改代码、未提交采集任务。
+
+| 证据点 | 位置 | 结论 |
+| --- | --- | --- |
+| dataCollect chunk 直接使用裸全局 `mijava` | `chunk-00b3289e.51ab7483.js` 的 `initConfig/getList/toPackageDow/toClearAll` | 页面不是普通纯 Web 页面；必须由原客户端宿主注入 JS bridge。 |
+| 通用 JxBrowser 宿主 `c` 不注入 `MiJava` | `com.sbf.main.jxbrowser.c.java` 仅在 `a(String, JSONObject)` 中注册 `InjectJsCallback` 写 localStorage 和 CSS；未发现 `new MiJava`/`putProperty` | v47 当前通过通用 `JSinglepage` 宿主进入 dataCollect，因此 `mijava is not defined` 符合宿主能力缺口。 |
+| 浏览器工厂 `g` 有通用 bridge 注入能力 | `com.sbf.main.jxbrowser.g.java` 约 818-829 行会 `new MiJava(...)` 并向 JS window `putProperty` 多个对象 | 原客户端确实存在把 Java 对象暴露到前端的基础能力。 |
+| 云采集宿主显式注入 `MiJava` 与 `SpiderCallback` | `com.sbf.main.cloud.spider.b.java` 约 111-156 行注册 `InjectJsCallback`，创建 `new MiJava(params.browser(), null, null)`，向 window `putProperty` 两个 MiJava 别名和 `new SpiderCallback(this)` | dataCollect/云采集页面更像应由 `cloud.spider.b` 这一类宿主管理，而不是普通 `JSinglepage` 宿主。 |
+| `MiJava` 方法签名存在于原包 | `javap -classpath data/app/App.dll com.sbf.main.jxbrowser.MiJava` 输出 `getCloudSpiderConfig/getSpiderDataList/toClearDataAll/toPackageDowloadData` | 前端 chunk 调用的方法在原客户端 Java bridge 中真实存在，不是 Web 端臆造接口。 |
+
+当前路由判断：
+
+- v47 的恢复子路由把页面 URL 打开了，但宿主类型仍偏向普通 Web/JSinglepage，因此缺少 dataCollect 所需 `mijava`。
+- 下一候选不应继续猜新的 URL；更合理的技术方向是二选一：
+  - 让当前恢复子路由进入原始云采集/dataCollect 宿主链，复用 `com.sbf.main.cloud.spider.b` 的注入能力；
+  - 或仅对当前 dataCollect 恢复子路由在现有宿主中补同等 `MiJava`/`SpiderCallback` 注入，但必须先复刻原契约，不能用空 JS 对象糊过去。
+- 这些仍属于后续实现候选；本轮只记录证据，不修改 v47 产物，不扩大菜单恢复值。
+
+`/prod-api/getInfo/getRouters` 契约边界：
+
+- dataCollect 页面加载时确实会走全局 `/prod-api/getInfo` 与 `/prod-api/getRouters`，这是路由守卫/用户信息 bootstrap。
+- v33-v40 已有定点本地响应形状可让 AiCloud 首屏过 bootstrap；dataCollect 的新阻断发生在页面 chunk 的 `mijava` 调用。
+- 当前没有证据证明 dataCollect 首屏还需要新的 `/prod-api/dataCollect/*` 接口；因此 M5A 不能预先补接口，更不能提交任务来“试出来”。

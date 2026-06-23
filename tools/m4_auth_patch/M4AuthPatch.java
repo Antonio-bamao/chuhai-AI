@@ -36,7 +36,6 @@ public final class M4AuthPatch {
             "com/sbf/main/jxbrowser/M5InjectJsCallback.class";
     private static final String M5_REQUEST_OBSERVER_CLASS =
             "com/sbf/main/jxbrowser/M5RequestObserver.class";
-    private static final String AIGC_BUSINESS_URL = "/pc/aicloud/my";
     private static final String WEB_BRIDGE_TOKEN = "offline-local-token-1234567890";
 
     private static final String LOGIN_JSON =
@@ -69,74 +68,9 @@ public final class M4AuthPatch {
                     + "\"im\":{\"ip\":\"127.0.0.1\",\"port\":{\"udp\":7901}}"
                     + "}}}";
 
-    private static final String PRODUCT_MODULE_JSON =
-            "{\"code\":200,\"msg\":\"offline ok\",\"data\":[{"
-                    + "\"id\":41,\"sid\":41,\"fid\":41,\"code\":\"tiktok\","
-                    + "\"name\":\"HuoChaiAI\",\"displayName\":\"HuoChaiAI\","
-                    + "\"status\":1,\"remainingDays\":99999,"
-                    + "\"expirationTime\":\"2099-12-31 23:59:59\","
-                    + "\"logoSvg\":\"logo_tiktok\","
-                    + "\"themeStyle\":\"default\","
-                    + "\"themeColor\":\"#1677ff\",\"primaryColor\":\"#1677ff\","
-                    + "\"primary_color\":\"#1677ff\",\"secondary_color\":\"#7c3aed\","
-                    + "\"bgcolor\":\"#0b0f14\","
-                    + "\"menuBgColor\":\"#ffffff\",\"menuTextColor\":\"#222222\","
-                    + "\"menuActiveBgColor\":\"#e6f4ff\",\"menuActiveTextColor\":\"#1677ff\","
-                    + "\"buttonColor\":\"#1677ff\",\"buttonTextColor\":\"#ffffff\","
-                    + "\"menuAreaBackground\":\"#111827\","
-                    + "\"menuItemDefaultTextColor\":\"#d1d5db\","
-                    + "\"menuItemHoverTextColor\":\"#ffffff\","
-                    + "\"menuItemHoverBackgroundColor\":\"#1f2937\","
-                    + "\"menuItemSelectedTextColor\":\"#ffffff\","
-                    + "\"menuItemSelectedBackgroundColor\":\"#1677ff\","
-                    + "\"topBarBackground\":\"#0b1220\","
-                    + "\"topBarDefaultTextColor\":\"#e5e7eb\","
-                    + "\"topMenuItemHoverTextColor\":\"#ffffff\","
-                    + "\"topMenuItemHoverBackgroundColor\":\"#1f2937\","
-                    + "\"topMenuItemSelectedTextColor\":\"#ffffff\","
-                    + "\"topMenuItemSelectedBackgroundColor\":\"#1677ff\","
-                    + "\"defaultBtnFontColor\":\"#ffffff\","
-                    + "\"defaultBtnBackgroundColor\":\"#1677ff\","
-                    + "\"children\":[{"
-                    + "\"id\":3457,\"sid\":41,\"fid\":41,\"parentId\":41,"
-                    + "\"code\":\"aigc\",\"name\":\"AIGC\",\"displayName\":\"AIGC\","
-                    + "\"icon\":\"menu_icon_aigc\",\"sort\":1,\"status\":1,"
-                    + "\"children\":["
-                    + "{\"id\":28500001,\"sid\":41,\"fid\":41,\"parentId\":3457,"
-                    + "\"code\":\"C28500001\",\"name\":\"AIGC Video\","
-                    + "\"displayName\":\"AIGC Video\",\"icon\":\"menu_icon_C28500001\","
-                    + "\"localCode\":\"JSinglepage\",\"linkUrl\":\"" + AIGC_BUSINESS_URL
-                    + "\",\"webFlg\":1,\"sort\":1,\"status\":1},"
-                    + "{\"id\":28500002,\"sid\":41,\"fid\":41,\"parentId\":3457,"
-                    + "\"code\":\"C28500002\",\"name\":\"Graphic Video\","
-                    + "\"displayName\":\"Graphic Video\",\"icon\":\"menu_icon_C28500002\","
-                    + "\"localCode\":\"JSinglepage\",\"linkUrl\":\"" + AIGC_BUSINESS_URL
-                    + "\",\"webFlg\":1,\"sort\":2,\"status\":1}"
-                    + "]"
-                    + "}]"
-                    + "}]}";
+    private static final String PRODUCT_MODULE_JSON = M4RecoveryCatalog.productModulesJson();
 
-    private static final String PC_MENUS_JSON =
-            "{\"scfs\":[{"
-                    + "\"id\":4795,\"sid\":41,\"fid\":41,\"parentId\":41,"
-                    + "\"code\":\"aigc\",\"name\":\"AIGC\",\"displayName\":\"AIGC\","
-                    + "\"icon\":\"aigc.png\",\"localCode\":\"JSinglepage\","
-                    + "\"linkUrl\":\"" + AIGC_BUSINESS_URL + "\","
-                    + "\"webFlg\":1,\"treeEndFlg\":0,\"displayIndex\":1,\"sort\":1,\"status\":1},"
-                    + "{\"id\":28500001,\"sid\":41,\"fid\":41,\"parentId\":4795,"
-                    + "\"code\":\"C28500001\",\"name\":\"AIGC Video\","
-                    + "\"displayName\":\"AIGC Video\",\"icon\":\"menu_icon_C28500001\","
-                    + "\"localCode\":\"JSinglepage\",\"linkUrl\":\"" + AIGC_BUSINESS_URL
-                    + "\",\"webFlg\":1,\"sort\":1,\"status\":1},"
-                    + "{\"id\":28500002,\"sid\":41,\"fid\":41,\"parentId\":4795,"
-                    + "\"code\":\"C28500002\",\"name\":\"Graphic Video\","
-                    + "\"displayName\":\"Graphic Video\",\"icon\":\"menu_icon_C28500002\","
-                    + "\"localCode\":\"JSinglepage\",\"linkUrl\":\"" + AIGC_BUSINESS_URL
-                    + "\",\"webFlg\":1,\"sort\":2,\"status\":1}"
-                    + "],\"tas\":\"[]\",\"ucf\":{"
-                    + "\"mnq_license_num\":999,\"ads_browsers_license_num\":999,"
-                    + "\"open_mnq_ndk_license\":1,\"kefu_whatsapp_mass_sending_flg\":1"
-                    + "},\"scfsVersion\":1,\"sellInZwNum\":0,\"sellOutZwNum\":0}";
+    private static final String PC_MENUS_JSON = M4RecoveryCatalog.pcMenusJson();
 
     private static final String SPIDER_MODULES_JSON = "[]";
 

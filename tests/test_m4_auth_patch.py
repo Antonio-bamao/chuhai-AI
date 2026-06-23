@@ -18,6 +18,7 @@ ASM_JAR = ROOT / ".artifacts" / "tools" / "threadtear-gui-3.0.1-all.jar"
 JSON_JAR = ROOT / "data" / "lib" / "json-20170516.jar"
 DATA_LIBS = ROOT / "data" / "lib" / "*"
 SOURCE = ROOT / "tools" / "m4_auth_patch" / "M4AuthPatch.java"
+CATALOG_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M4RecoveryCatalog.java"
 TMP_ROOT = ROOT / ".artifacts" / "tmp-tests"
 
 
@@ -41,15 +42,179 @@ class M4AuthPatchTests(unittest.TestCase):
         subprocess.run(
             [
                 str(JAVAC),
+                "-encoding",
+                "UTF-8",
                 "-cp",
                 str(ASM_JAR),
                 "-d",
                 str(self.classes),
+                str(CATALOG_SOURCE),
                 str(SOURCE),
             ],
             cwd=ROOT,
             check=True,
         )
+
+    def compile_and_run_catalog_probe(self, class_name, source):
+        probe_source = self.tmp_path / (class_name + ".java")
+        probe_source.write_text(textwrap.dedent(source).strip(), encoding="utf-8")
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                str(JSON_JAR),
+                "-d",
+                str(self.probe_classes),
+                str(CATALOG_SOURCE),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, JSON_JAR),
+                class_name,
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def test_recovery_catalog_has_nine_products(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M4RecoveryProductProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M4RecoveryProductProbe {
+                public static void main(String[] args) {
+                    JSONArray products =
+                            new JSONObject(M4RecoveryCatalog.productModulesJson())
+                                    .getJSONArray("data");
+                    String[] codes = {
+                        "whatsapp", "tiktok", "facebook", "instagram", "twitter",
+                        "telegram", "geo", "wskefu", "aishope"
+                    };
+                    if (products.length() != codes.length) {
+                        throw new AssertionError("product count: " + products.length());
+                    }
+                    for (int i = 0; i < codes.length; i++) {
+                        JSONObject product = products.getJSONObject(i);
+                        if (product.getInt("id") != 9101 + i) {
+                            throw new AssertionError("recovery id: " + product);
+                        }
+                        if (!codes[i].equals(product.getString("code"))) {
+                            throw new AssertionError("code: " + product);
+                        }
+                        if (i < 8 && product.getInt("status") != 1) {
+                            throw new AssertionError("enterable: " + product);
+                        }
+                        if (i == 8
+                                && (product.getInt("status") == 0
+                                        || product.getInt("status") == 1)) {
+                            throw new AssertionError("aishope must be unopened: " + product);
+                        }
+                        if (product.optString("logoSvg").length() == 0
+                                || product.optString("primaryColor").length() == 0
+                                || product.optString("secondaryColor").length() == 0) {
+                            throw new AssertionError("product shape: " + product);
+                        }
+                    }
+                    System.out.println("M4_RECOVERY_PRODUCTS_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M4_RECOVERY_PRODUCTS_OK", probe.stdout)
+
+    def test_recovery_catalog_has_product_specific_menus(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M4RecoveryMenuProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M4RecoveryMenuProbe {
+                public static void main(String[] args) {
+                    JSONObject menus = new JSONObject(M4RecoveryCatalog.pcMenusJson());
+                    JSONArray entries = menus.getJSONArray("scfs");
+                    Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
+                    Set<String> whatsappNames = new HashSet<String>();
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        int productId = item.getInt("productId");
+                        int id = item.getInt("id");
+                        if (id < productId * 100) {
+                            throw new AssertionError("not a recovery id: " + item);
+                        }
+                        if (item.getString("code").startsWith("C2850000")
+                                || item.getString("name").contains("AIGC Video")
+                                || item.getString("name").contains("Graphic Video")) {
+                            throw new AssertionError("temporary AIGC menu: " + item);
+                        }
+                        if (!item.getString("icon").startsWith("svg/")) {
+                            throw new AssertionError("non-resource icon: " + item);
+                        }
+                        if (!"JSinglepage".equals(item.getString("localCode"))
+                                || !"/pc/aicloud/my".equals(item.getString("linkUrl"))
+                                || item.getInt("webFlg") != 1) {
+                            throw new AssertionError("recovery entry contract: " + item);
+                        }
+                        Integer count = counts.get(productId);
+                        counts.put(productId, count == null ? 1 : count + 1);
+                        if (productId == 9101) {
+                            whatsappNames.add(item.getString("name"));
+                        }
+                    }
+                    int[] expectedCounts = {11, 10, 10, 9, 9, 11, 9, 7};
+                    for (int i = 0; i < expectedCounts.length; i++) {
+                        int productId = 9101 + i;
+                        if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
+                            throw new AssertionError(
+                                    "menu count for " + productId + ": " + counts.get(productId));
+                        }
+                    }
+                    String[] expectedWhatsapp = {
+                        "一句话", "智能体模型", "AI龙虾", "超级号", "AI采集", "AI数据",
+                        "AI筛选", "AI群发", "API", "广告", "AI客服"
+                    };
+                    for (String name : expectedWhatsapp) {
+                        if (!whatsappNames.contains(name)) {
+                            throw new AssertionError("missing WhatsApp menu: " + name);
+                        }
+                    }
+                    JSONArray products =
+                            new JSONObject(M4RecoveryCatalog.productModulesJson())
+                                    .getJSONArray("data");
+                    for (int i = 0; i < 8; i++) {
+                        if (products.getJSONObject(i).getJSONArray("children").length() == 0) {
+                            throw new AssertionError("missing product children: " + products.getJSONObject(i));
+                        }
+                    }
+                    if (products.getJSONObject(8).getJSONArray("children").length() != 0) {
+                        throw new AssertionError("aishope must not have enterable menus");
+                    }
+                    System.out.println("M4_RECOVERY_MENUS_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M4_RECOVERY_MENUS_OK", probe.stdout)
 
     def run_patcher(self):
         return subprocess.run(
@@ -437,8 +602,8 @@ class M4AuthPatchTests(unittest.TestCase):
                             throw new AssertionError("module code");
                         }
                         JSONArray products = modules.getJSONArray("data");
-                        if (products.length() == 0) {
-                            throw new AssertionError("empty products");
+                        if (products.length() != 9) {
+                            throw new AssertionError("expected nine products: " + products);
                         }
                         JSONObject product = products.getJSONObject(0);
                         if (product.getInt("status") != 1 || product.getInt("remainingDays") < 0) {
@@ -450,32 +615,27 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (product.optString("logoSvg").length() == 0) {
                             throw new AssertionError("missing product logoSvg: " + product);
                         }
-                        if (!"tiktok".equals(product.optString("code"))) {
-                            throw new AssertionError("product code must map to an existing main logo: " + product);
-                        }
-                        JSONArray children = product.optJSONArray("children");
-                        if (children == null || children.length() == 0) {
-                            throw new AssertionError("missing product children: " + product);
-                        }
-                        JSONObject aigc = children.getJSONObject(0);
-                        if (!"aigc".equals(aigc.optString("code"))) {
-                            throw new AssertionError("missing aigc entry: " + children);
-                        }
-                        if (aigc.optInt("id") != 3457 || aigc.optString("name").length() == 0) {
-                            throw new AssertionError("bad aigc entry: " + aigc);
-                        }
-                        JSONArray aigcChildren = aigc.optJSONArray("children");
-                        if (aigcChildren == null || aigcChildren.length() == 0) {
-                            throw new AssertionError("missing aigc children: " + aigc);
-                        }
-                        JSONObject firstAigcChild = aigcChildren.getJSONObject(0);
-                        if (firstAigcChild.optString("code").length() == 0
-                                || firstAigcChild.optString("linkUrl").length() == 0
-                                || firstAigcChild.optInt("webFlg") != 1
-                                || !"JSinglepage".equals(firstAigcChild.optString("localCode"))
-                                || !"/pc/aicloud/my".equals(firstAigcChild.optString("linkUrl"))
-                                || firstAigcChild.optString("linkUrl").contains("offline-home.html")) {
-                            throw new AssertionError("bad aigc child entry: " + firstAigcChild);
+                        String[] productCodes = {
+                            "whatsapp", "tiktok", "facebook", "instagram", "twitter",
+                            "telegram", "geo", "wskefu", "aishope"
+                        };
+                        for (int productIndex = 0; productIndex < productCodes.length; productIndex++) {
+                            JSONObject candidate = products.getJSONObject(productIndex);
+                            if (candidate.optInt("id") != 9101 + productIndex
+                                    || !productCodes[productIndex].equals(candidate.optString("code"))) {
+                                throw new AssertionError("bad recovered product: " + candidate);
+                            }
+                            JSONArray children = candidate.optJSONArray("children");
+                            if (productIndex < 8 && (children == null || children.length() == 0)) {
+                                throw new AssertionError("missing product menus: " + candidate);
+                            }
+                            if (productIndex == 8
+                                    && (candidate.optInt("status") == 0
+                                            || candidate.optInt("status") == 1
+                                            || children == null
+                                            || children.length() != 0)) {
+                                throw new AssertionError("aishope must stay unopened: " + candidate);
+                            }
                         }
 
                         JSONObject menus = SBFApi.k();
@@ -486,34 +646,22 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() == 0) {
-                            throw new AssertionError("empty pc menus: " + menus);
+                        if (menuEntries.length() != 76) {
+                            throw new AssertionError("expected 76 recovered menus: " + menuEntries.length());
                         }
-                        JSONObject menuAigc = menuEntries.getJSONObject(0);
-                        if (menuAigc.optInt("id") != 4795
-                                || menuAigc.optInt("parentId") != 41
-                                || menuAigc.optString("code").length() == 0
-                                || menuAigc.optString("icon").length() == 0
-                                || menuAigc.optString("name").length() == 0
-                                || !"JSinglepage".equals(menuAigc.optString("localCode"))
-                                || !"/pc/aicloud/my".equals(menuAigc.optString("linkUrl"))
-                                || menuAigc.optString("linkUrl").contains("offline-home.html")) {
-                            throw new AssertionError("bad j2026 menu item: " + menuAigc);
-                        }
-                        if (menuEntries.length() < 2) {
-                            throw new AssertionError("missing flat j2026 child menu: " + menuEntries);
-                        }
-                        JSONObject firstMenuChild = menuEntries.getJSONObject(1);
-                        if (firstMenuChild.optInt("parentId") != 4795
-                                || !"JSinglepage".equals(firstMenuChild.optString("localCode"))
-                                || !"/pc/aicloud/my".equals(firstMenuChild.optString("linkUrl"))) {
-                            throw new AssertionError("bad flat j2026 child menu: " + firstMenuChild);
-                        }
-                        JSONObject secondMenuChild = menuEntries.getJSONObject(2);
-                        if (secondMenuChild.optInt("parentId") != 4795
-                                || !"JSinglepage".equals(secondMenuChild.optString("localCode"))
-                                || !"/pc/aicloud/my".equals(secondMenuChild.optString("linkUrl"))) {
-                            throw new AssertionError("bad second flat j2026 child menu: " + secondMenuChild);
+                        for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
+                            JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
+                            if (recoveredMenu.optInt("productId") < 9101
+                                    || recoveredMenu.optInt("productId") > 9108
+                                    || recoveredMenu.optString("code").startsWith("C2850000")
+                                    || recoveredMenu.optString("name").contains("AIGC Video")
+                                    || recoveredMenu.optString("name").contains("Graphic Video")
+                                    || !recoveredMenu.optString("icon").startsWith("svg/")
+                                    || !"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                    || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))
+                                    || recoveredMenu.optString("linkUrl").contains("offline-home.html")) {
+                                throw new AssertionError("bad recovered menu: " + recoveredMenu);
+                            }
                         }
                         String[] themeColorKeys = {
                             "primary_color",

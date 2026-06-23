@@ -316,3 +316,12 @@
 - 解决方案：v29-v31 用临时分段/catch 标记排除托盘图标和布局分支，确认只命中 IM catch；v32 把本地 JSON 改为 `im.port.udp` 后宿主机不再命中该 catch；随后移除全部临时 `JSBFMain.class` 插桩，生成正式 v33。
 - 预防措施：后续补授权/产品 JSON 时应从密文调用出现顺序和实际字节码栈顺序反推嵌套字段；同一源码行有多个解密字符串时，不能只按字段语义重排。不要通过 patch `JSBFMain` 吞异常来掩盖本地初始化数据缺口。
 - 状态：resolved-host-verification
+
+## M4A Java 目录中文源码被默认 GBK 编译拒绝
+- 现象：新增 M4RecoveryCatalog.java 后，补丁目标测试在 javac 阶段出现多处 编码GBK的不可映射字符，未进入九产品行为断言。
+- 触发条件：tests/test_m4_auth_patch.py 的 compile_patcher 未传 -encoding UTF-8，而新目录包含中文产品和菜单文案。
+- 影响：M4A 补丁测试无法编译，红灯原因偏离预期功能缺口。
+- 根因：测试夹具隐式依赖 Windows 默认代码页；此前 M4AuthPatch.java 主要是 ASCII 字符串，因此问题未暴露。
+- 解决方案：在 compile_patcher 的 javac 参数中显式加入 -encoding UTF-8，并保留目录探针同样的编码参数。
+- 预防措施：后续所有含中文 Java 源码的编译命令和测试夹具必须显式使用 -encoding UTF-8。
+- 状态：resolved

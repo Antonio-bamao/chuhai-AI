@@ -187,3 +187,53 @@ M4A 恢复规则：
 - 子菜单恢复 ID：`产品恢复 ID * 10000 + 父菜单序号 * 100 + 子菜单序号`。
 - 所有恢复 ID 只承担本地树关系和稳定测试定位，不声明与原服务端 ID 相等。
 - 若未来获得原始响应，只需替换集中目录数据，不改菜单分发代码和测试语义。
+
+## 10. M4A v37 静态恢复实现
+
+实现位置：
+
+- `tools/m4_auth_patch/M4RecoveryCatalog.java`
+- `tools/m4_auth_patch/M4AuthPatch.java`
+- `tests/test_m4_auth_patch.py`
+
+产品恢复值：
+
+| 恢复 ID | code | 显示名称 | 状态 |
+| ---: | --- | --- | --- |
+| 9101 | `whatsapp` | WhatsApp AI龙虾系统 | 已开通 |
+| 9102 | `tiktok` | TK AI龙虾系统 | 已开通 |
+| 9103 | `facebook` | FB AI龙虾系统 | 已开通 |
+| 9104 | `instagram` | Ins AI龙虾系统 | 已开通 |
+| 9105 | `twitter` | X AI龙虾系统 | 已开通 |
+| 9106 | `telegram` | TG AI龙虾系统 | 已开通 |
+| 9107 | `geo` | 海外GEO AI龙虾系统 | 已开通 |
+| 9108 | `wskefu` | WhatsApp AI龙虾客服 | 已开通 |
+| 9109 | `aishope` | 独立站 AI龙虾系统 | 未开通 |
+
+菜单恢复来源：
+
+| 产品 | 菜单数 | 主要 i18n code 证据 | icon 资源族 |
+| --- | ---: | --- | --- |
+| WhatsApp | 11 | `C4749_*`、`C3460_001`；“一句话/智能体模型/AI龙虾/超级号”为截图验收下的恢复 code | `whatsapp_menu_icon_1..9.svg` |
+| TikTok | 10 | `C3461_002..012` 选定十项 | `menu_tk_1..10.svg` |
+| Facebook | 10 | `C4747_000..009` | `facebook_menu_icon_1..10.svg` |
+| Instagram | 9 | `C4131_002..010` | `ins_menu_icon_1..9.svg` |
+| Twitter/X | 9 | `C4133_002..009`、`C4133_017` | `twitter_menu_icon_1..9.svg` |
+| Telegram | 11 | `C4135_001..011` | `tg_menu_icon_1..11.svg` |
+| GEO | 9 | `C4134_002/003/006`、`C4137_001..006` | `geo_ai_menu_icon_1..9.svg` |
+| WhatsApp 客服 | 7 | `C4936_000/001/002/004/005/006/007` | `wskf_menu_icon_1..7.svg` |
+
+当前入口边界：
+
+- M4A 的 76 个菜单项统一使用恢复入口 `localCode=JSinglepage`、`linkUrl=/pc/aicloud/my`、`webFlg=1`。
+- 这是为恢复真实产品/菜单外壳并保护 v33 在线首屏链路的保守兼容值，不声明为各菜单原始真实路由。
+- 各菜单实际业务分流、客户端直连和后端依赖在 M5A 分类后再逐项闭合。
+
+静态验证：
+
+- `python -m unittest discover -s tests -v`：26/26 通过。
+- Java 8 `_JAVA_OPTIONS=-Xverify:all` 目标补丁探针通过。
+- v37 JAR：`.artifacts/working/m4a-product-menu-v37/App-m4a-v37-product-menu.jar`
+- v37 JAR SHA-256：`406B4E73990B2C03C3483B81368B2EB053F67C81EB3C25EA962573329F7E018C`
+- 原始 JAR 到 v37 的修改/新增类集合与 v33 能力集合一致：修改 10 个既有类，新增 3 个 M5 观察/注入类。
+- v33 JAR/ISO 哈希复核保持不变。

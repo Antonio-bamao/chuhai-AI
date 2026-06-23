@@ -30,6 +30,7 @@
 - v36 取证产物：`.artifacts/working/m4-real-menu-request-logging-v36/App-m4-v36-real-menu-request-logging.jar`，大小 `31,870,823` 字节，SHA-256 `9DBC454856F9A09EEC35603404298EEB42D1BAAECBDF20E491D65C2F5269E66B`。
 - v36 取证 ISO：`.artifacts/working/m4-real-menu-request-logging-v36.iso`，大小 `31,934,464` 字节，SHA-256 `2EE09AD403123125677A2FC7690761B2AD9CF848C9FBE6119E4A3922A58D0F56`；ISO 只包含 v36 JAR 和中文 README，不包含 `offline-home.html`。v36 在 v35 基础上，于无参 `SBFApi.k()` 加密请求体生成后、真实 HTTP 调用前打印 `M4_EVIDENCE_PC_MENUS_REQUEST_URL/REQUEST_JSON/REQUEST_BODY/STATIC_A/STATIC_K/STATIC_L/HEADER_E`，用于确认菜单接口空体是否来自请求入参或授权态。
 - 宿主机 v36 证据：`C:\m2dump\m4-v36-real-menu-request-probe.log` 显示只手动设置 `SBFApi.a` 时，`k/l` 为空、`JSBFMain.E=null`、菜单 raw 为空；`C:\m2dump\m4-v36-initialized-menu-probe.log` 显示先调用 `SBFApi.j()` 后 `a/k/l` 已由硬件指纹链生成，且手动设置 `JSBFMain.E=offline-local-token-1234567890` 后，菜单请求仍返回空 raw body。结论：菜单空体不是单纯由 `k/l` 未初始化造成，更高置信是服务器不接受本地 fake token/header/signature；正式九产品仍需真实服务器登录态或继续定位真实登录态字段来源。宿主机 `C:\m2dump\app\App.jar` 已恢复 v33 哈希 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
+- 真实登录态追踪已闭环：原登录成功响应 `data.token -> StartApp.l -> JSBFMain.E`，产品和菜单接口不存在第二枚隐藏 token。j2026 邮箱登录入口为 `SBFApi.k(email,password)`；“记住我”数据保存在当前用户注册表 `HKEY_CURRENT_USER\Software\JavaSoft\Prefs\aimirrorsystem\config`，逻辑键为 `RememberPassword/up/email`，其中 `up` 是 `AESCBCHelper` 加密后的 `email__________password`。当前宿主机只有测试邮箱和空 `up`；下一步进入保留原用户配置的旧虚拟机，只读导出该节点并检查是否存在可重新登录的历史凭据。
 - 宿主机 v33 证据：`C:\m2dump\m5-v33-host.log` 显示真实 URL `https://app.xdxsoft.com/pc/aicloud/my?...`、四个定点 Web 初始化接口、`M4_V13_LOAD_FINISHED`；`C:\m2dump\m5-v33-host.err` 不再包含 `JSBFMain.<init>` NPE；`C:\m2dump\host-screen-v33-business.png` 显示 AiCloud 授权码表页面。stderr 仍有后台图标资源 `Stream closed`，但不影响主窗口和 Web 业务页。
 - 当前边界：v33 已实现“本地授权/登录/有效期/产品门槛 + 真实在线业务首屏”。当前仅对 Java 授权/产品初始化、Web 路由守卫、页面首屏空表/字典做本地补形状；后续增删改、采集、群发、云手机、投屏、视频等真实业务动作仍应继续联网验证，不应扩大成通用离线业务代理。
 
@@ -72,7 +73,7 @@
 ### 后续固定顺序
 
 1. 冻结 v33 技术基线。
-2. 下一步不要直接写正式九产品 JSON；v36 已证明当前本地 token 下产品接口为 401，菜单请求即使补齐 `SBFApi.j()` 生成的 `a/k/l` 并设置 `JSBFMain.E` 后 raw body 仍为空。需要拿到可用真实服务器登录态后复跑 v36，或继续定位真实登录态/header 来源字段。
+2. 下一步不要直接写正式九产品 JSON；v36 已证明当前本地 token 下产品接口为 401，菜单请求即使补齐 `SBFApi.j()` 生成的 `a/k/l` 并设置 `JSBFMain.E` 后 raw body 仍为空。真实 token 来源已确认是登录响应 `data.token`。应进入旧虚拟机检查 `HKCU\Software\JavaSoft\Prefs\aimirrorsystem\config` 的 `RememberPassword/up/email`，若存在历史记住密码凭据则由原客户端重新登录并复跑 v36。
 3. 只有拿到成功产品数组与菜单数组后，才生成脱敏证据 JSON，并恢复 8 个可进入系统和 1 个未开通系统的产品选择器。
 4. 恢复产品真实菜单拓扑，撤掉临时 AIGC 菜单。
 5. 完成双击免操作启动、断网进入和完整主界面验收，正式关闭 M4。

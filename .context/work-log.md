@@ -452,3 +452,11 @@
 - 宿主机实测：确认宿主机 `C:\m2dump\app\App.jar` 先为 v33 哈希；备份后覆盖 v36。探针一仅反射设置 `SBFApi.a=offline-local-token-1234567890` 并调用无参 `SBFApi.k()`，日志 `C:\m2dump\m4-v36-real-menu-request-probe.log` 显示请求 URL 为 `https://app.xdxsoft.com/prod-api/api/v1/client/pc/menus`，请求 JSON 含 `softCode=aimirrorsystem`、`version=3.5.2.9`，但 `STATIC_K/STATIC_L` 为空且 `HEADER_E=null`，raw body 为空。探针二先调用 `SBFApi.j()` 生成硬件指纹态，再设置 `JSBFMain.E=offline-local-token-1234567890`，日志 `C:\m2dump\m4-v36-initialized-menu-probe.log` 显示 `a/k/l/headerE` 均有值，但 raw body 仍为空，随后按预期抛出 `JSONObject text must begin with '{'`。
 - 结论：菜单空体不是单纯由 `SBFApi.k/l` 未初始化造成；当前更高置信是服务器不接受本地 fake token/header/signature。测试后已恢复宿主机 `C:\m2dump\app\App.jar` 为 v33 哈希 `24CCC59B18DC97EF05BBD57B46844B7B56F469E48BE1A85DA3A4649DC7957DF5`。
 - 下一步：不要写正式九产品 JSON。要么拿可用真实服务器登录态复跑 v36，要么继续追 `JSBFMain.E` 构造参数和登录/getInfo 返回字段映射，确认真实 header/token 来源，再决定是否能本地补齐授权态而不是伪造业务响应。
+
+## 2026-06-23｜闭环真实 token 来源与旧虚拟机凭据位置
+
+- 目标：判断服务器拒绝是否可在宿主机修正，以及旧虚拟机是否存在可恢复真实登录态的定点证据。
+- 动作：沿 `JSBFMain.E` 反向追踪到 `StartApp$1`；核对 `JLoginHTML$4`、`HtmlJava$1`、`com.sbf.main.b` 与 bootstrap 映射；只读查询宿主机 Java Preferences 注册表节点。
+- 结果：确认登录响应 `data.token` 依次写入 `StartApp.l` 和 `JSBFMain.E`；邮箱登录调用 `SBFApi.k(email,password)`；“记住我”将 `email__________password` 经 `AESCBCHelper` 加密后写入 `HKCU\Software\JavaSoft\Prefs\aimirrorsystem\config` 的 `up`，并使用 `RememberPassword`、`email` 控制回填。旧版 `token/account` 缓存存在约 7 天时效，不适合作为长期恢复来源。
+- 宿主机证据：当前注册表仅有测试值 `/Remember/Password=0`、`up` 为空、`email=local@test.com`，没有历史凭据。
+- 下一步：进入保留原 Windows 用户配置的旧虚拟机，先只读导出该注册表节点；若 `RememberPassword=1` 且 `up` 非空，让原客户端解密回填并进行正常登录，成功后立即用 v36 获取真实产品与菜单 JSON。

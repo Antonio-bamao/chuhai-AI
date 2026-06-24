@@ -514,6 +514,10 @@ class M4AuthPatchTests(unittest.TestCase):
             "public java.lang.String getDicts(java.lang.String);",
             "com.sbf.main.jxbrowser.MiJava",
         )
+        mijava_get_info_block = self.javap_method_block(
+            "public void getInfo(com.teamdev.jxbrowser.js.JsFunction);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
         engine_create_block = self.javap_method_block(
             "public static synchronized com.teamdev.jxbrowser.browser.Browser a(java.lang.String, com.sbf.main.jxbrowser.g$a, com.sbf.main.jxbrowser.g$b, java.lang.String, com.db.entery.xdx.JDBZWConfig, com.sbf.main.jxbrowser.l, boolean);",
             "com.sbf.main.jxbrowser.g",
@@ -602,6 +606,12 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M5_V23_JSON_DIAG_INSTALLED", inject_js_callback_block)
         self.assertIn("M5_V26_WEB_BOOTSTRAP_XHR url=", inject_js_callback_block)
         self.assertIn("M5_V26_WEB_BOOTSTRAP_FETCH url=", inject_js_callback_block)
+        self.assertIn("M5A_V48_MIJAVA_BRIDGE_INJECTED", inject_js_callback_block)
+        self.assertIn("M5A_V48_MIJAVA_BRIDGE_FAILED", inject_js_callback_block)
+        self.assertIn("com/sbf/main/jxbrowser/MiJava", inject_js_callback_block)
+        self.assertIn("com/teamdev/jxbrowser/js/JsObject.putProperty", inject_js_callback_block)
+        self.assertIn("mijava", inject_js_callback_block)
+        self.assertIn("java", inject_js_callback_block)
         self.assertIn("/prod-api/getInfo", inject_js_callback_block)
         self.assertIn("/prod-api/getRouters", inject_js_callback_block)
         self.assertIn("/prod-api/mnq/mnqAuthAccounts/mylist", inject_js_callback_block)
@@ -618,6 +628,11 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M5_V21_GET_DICTS type=", dict_bridge_block)
         self.assertIn("[]", dict_bridge_block)
         self.assertIn("areturn", dict_bridge_block)
+        self.assertIn("M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON", mijava_get_info_block)
+        self.assertIn("permissions", mijava_get_info_block)
+        self.assertIn("*:*:*", mijava_get_info_block)
+        self.assertIn("com/teamdev/jxbrowser/js/JsFunction.invoke", mijava_get_info_block)
+        self.assertNotIn("com/sbf/main/StartApp.m", mijava_get_info_block)
         self.assertIn("M4_V13_LOAD_URL=", browser_load_block)
         self.assertIn("M4_V18_NORMALIZED_URL=", browser_load_block)
         self.assertIn("JSinglepage", browser_load_block)

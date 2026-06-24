@@ -267,3 +267,29 @@ v47 运行结果：
 - dataCollect 页面加载时确实会走全局 `/prod-api/getInfo` 与 `/prod-api/getRouters`，这是路由守卫/用户信息 bootstrap。
 - v33-v40 已有定点本地响应形状可让 AiCloud 首屏过 bootstrap；dataCollect 的新阻断发生在页面 chunk 的 `mijava` 调用。
 - 当前没有证据证明 dataCollect 首屏还需要新的 `/prod-api/dataCollect/*` 接口；因此 M5A 不能预先补接口，更不能提交任务来“试出来”。
+
+## 13. 2026-06-24 v48-v49 dataCollect bridge 与权限契约
+
+v48-v49 继续沿用第 11 节的恢复值子路由，不改变父菜单 `C4749_006` 与子路由 `REC_WHATSAPP_COLLECT_USERS_ROUTE` 的 ID/code 语义；新增内容只针对该页面在通用 JxBrowser 宿主中缺失的 bridge/权限初始化契约。
+
+| 契约 | 证据 | 结论 |
+| --- | --- | --- |
+| `window.mijava` 注入 | v48 生成类 `com.sbf.main.jxbrowser.M5InjectJsCallback` 调用 `Frame.executeJavaScript("window")`，若无 `mijava` 则创建 `new MiJava(frame.browser(), null, null)` 并 `JsObject.putProperty("mijava", bridge)`、`putProperty("java", bridge)` | 这是对当前 dataCollect 恢复子路由补原客户端真实 Java bridge 对象，不是 JS 空对象。 |
+| v48 宿主结果 | 日志 `M5A_V48_MIJAVA_BRIDGE_INJECTED=1`、`M5A_V48_MIJAVA_BRIDGE_FAILED=0`，无 `mijava is not defined` | v47 的直接 bridge 缺口已闭合。 |
+| v48 新错误 | `app.988d65c1.js` 报 `Cannot read properties of undefined (reading 'some')`，偏移落在 `hasPermiOr -> store.getters.permissions.some(...)` | 前端已经继续到权限判断，缺的是 `permissions` 数组，不是 dataCollect URL。 |
+| Java bridge `getInfo` 分支 | `app.988d65c1.js` 中 `window.mijava.getInfo(callback)` 分支对回调字符串 `JSON.parse(e)` 后直接读取顶层 `i.user/i.roles/i.permissions` | 该分支不消费 XHR 形状 `{code,data:{...}}`，而消费扁平 bridge 形状。 |
+| v49 `MiJava.getInfo` | 补丁后 `MiJava.getInfo(JsFunction)` 通过 `JsFunction.invoke(window, WEB_BRIDGE_GET_INFO_JSON)` 返回顶层 `user/roles/permissions`，字节码含 `M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON` 且不再引用 `StartApp.m` | v49 只补 Web 权限状态契约，避免把 `/prod-api/getInfo` 泛化成其它业务接口。 |
+| v49 宿主结果 | 页面截图显示 `AI采集` 标签与“暂无数据”；日志 `M5A_V48_MIJAVA_BRIDGE_INJECTED=1`、`M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON=1`、`/prod-api/getRouters=1`、`LEVEL_ERROR=0` | WhatsApp `AI采集` 可到达 dataCollect 空表页；仍不是采集任务恢复。 |
+
+v49 后的恢复值边界：
+
+- 当前 WhatsApp `AI采集` 子路由仍是 `REC_WHATSAPP_COLLECT_USERS_ROUTE`，ID `91010501` 是恢复 ID，不是原始真实值。
+- 当前 `JSinglepage` 到 dataCollect URL 的桥接只适用于该恢复子路由；不能据此给其它菜单硬配 URL。
+- `MiJava` 注入使用原包真实类；但当前只验证到 `getInfo`、页面首屏和空表显示。`SpiderCallback`、任务状态回传、运行期 `reloadData`、导出和清空仍未验收。
+- `chunk-17c57094.8c2a9a84.js` 仅含 `theme:"#059D81"`；dataCollect 业务逻辑仍以 `chunk-00b3289e.51ab7483.js` 为准。
+
+下一步：
+
+- 只读追踪 `getCloudSpiderConfig` 的实际配置源：远端 `/cloud/spider/code/<code>`、本地 `/res/spider/<code>.cnf` 兜底以及失败时页面如何处理。
+- 只读追踪 `getSpiderDataList` 的本地 DAO 表和返回 JSON，确认“暂无数据”来源。
+- 继续禁止关键词提交、创建任务、批量采集、上传、群发、导出和清空。

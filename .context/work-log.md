@@ -555,3 +555,11 @@
 - 结果：dataCollect 页面组件名为 `data_index`，首屏 `created -> initConfig()` 直接调用 `mijava.getCloudSpiderConfig(spiderCode, callback)`，随后 `getList()` 调用 `mijava.getSpiderDataList(moduleCode, spiderCode, pageNum, pageSize, callback)`；导出和清空分别调用 `toPackageDowloadData` 与 `toClearDataAll`，均属于后续有副作用操作。原云采集宿主 `com.sbf.main.cloud.spider.b` 明确在 `InjectJsCallback` 中创建 `new MiJava(...)` 并向 window 注入两个 MiJava 别名和 `SpiderCallback`；当前 v47 走到的通用 `com.sbf.main.jxbrowser.c` 未发现等价注入。
 - 验证：本轮仅静态读取本地和线上静态资源，未点击页面按钮、未输入关键词、未调用 `getNewTask/upstatus/cancelAllRun/submit/save`、未导出、未清空。证据已写入 `.context/m5a-business-dependency-inventory.md` 第 14 节、`.context/m5a-menu-route-discovery.md` 第 12 节和 bug-log。
 - 下一步：候选技术方向应从“继续猜 dataCollect URL”转为“复用原云采集宿主或对当前恢复子路由补等价 MiJava/SpiderCallback 注入”；实现前仍需按 TDD 建立窄测试，不允许泛化 `/prod-api/*`。
+
+## 2026-06-24 22:08｜v48-v49 dataCollect bridge 权限契约与空表页只读验证
+- 目标：继续 M5A，只读解析并补齐 dataCollect 页面首屏所需的 `mijava` bridge、Java bridge `getInfo` 和 `/prod-api/getRouters` 后续契约，不提交任何采集任务。
+- 动作：按 TDD 先为 `M5InjectJsCallback` 增加真实 `MiJava` 注入断言，生成 v48；宿主只读验证确认 `mijava is not defined` 消失后，解析 `app.988d65c1.js` 报错偏移，定位到 `window.mijava.getInfo(callback)` 分支期望顶层 `user/roles/permissions`。随后按 TDD patch `MiJava.getInfo(JsFunction)` 返回扁平 bridge JSON，生成 v49。
+- 结果：v49 产物 `.artifacts/working/m5a-v49-datacollect-bridge-getinfo/App-m5a-v49-datacollect-bridge-getinfo.jar`，SHA-256 `26694D706D8141EF8131891285A4ADAB02A0D7E6F70BBF509D27395220F652D0`。宿主只读验证目录 `.artifacts/runtime/m5a-v49-datacollect-bridge-getinfo-host-readonly-rerun/`，最终截图显示 WhatsApp `AI采集` 页面和“暂无数据”空表。
+- 验证：目标测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `27/27`；`-Xverify:all` 加载 `M5InjectJsCallback` 与 `MiJava` 通过。宿主日志显示 `M4_V18_NORMALIZED_URL` 为 dataCollect URL、`M5A_V48_MIJAVA_BRIDGE_INJECTED=1`、`M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON=1`、`/prod-api/getRouters=1`、`LEVEL_ERROR=0`、`mijava is not defined=0`、`.some` 错误为 0。
+- 副作用检查：`getNewTask/upstatus/cancelAllRun/submit/save/toPackageDowloadData/toClearDataAll` 全部为 0；未输入关键词、未创建任务、未采集、未上传、未群发、未支付、未创建云设备。停止进程后清理 `data/app/activemq-data` 与 `data/app/bscache`，`data/app/App.dll` SHA-256 保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。
+- 下一步：继续 M5A 只读分类 `getCloudSpiderConfig` 的远端优先/本地兜底、`getSpiderDataList` 的本地 DAO 表与 spider v2 队列边界；仍不提交采集任务。

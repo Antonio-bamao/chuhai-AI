@@ -98,6 +98,12 @@ public final class M4AuthPatch {
                     + "\"roles\":[\"admin\"],\"permissions\":[\"*:*:*\"]"
                     + "}}";
 
+    private static final String WEB_BRIDGE_GET_INFO_JSON =
+            "{\"user\":{\"userId\":1,\"userName\":\"local@test.com\","
+                    + "\"nickName\":\"HuoChaiAI Local User\",\"avatar\":\"\"},"
+                    + "\"roles\":[\"admin\"],\"permissions\":[\"*:*:*\"],"
+                    + "\"periodTime\":\"2099-12-31 23:59:59\",\"overdue\":0}";
+
     private static final String WEB_BOOTSTRAP_ROUTERS_JSON =
             "{\"code\":200,\"msg\":\"success\",\"data\":[]}";
 
@@ -564,6 +570,14 @@ public final class M4AuthPatch {
                                 && "(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
                             hasGetDicts = true;
                         }
+                        if ("getInfo".equals(name)
+                                && "(Lcom/teamdev/jxbrowser/js/JsFunction;)V".equals(descriptor)) {
+                            MethodVisitor mv =
+                                    super.visitMethod(access, name, descriptor, signature, exceptions);
+                            writeMiJavaGetInfoBridgeMethod(mv);
+                            result.patchedMiJavaDictBridge = true;
+                            return null;
+                        }
                         return super.visitMethod(access, name, descriptor, signature, exceptions);
                     }
 
@@ -608,6 +622,44 @@ public final class M4AuthPatch {
                 },
                 0);
         return writer.toByteArray();
+    }
+
+    private static void writeMiJavaGetInfoBridgeMethod(MethodVisitor mv) {
+        mv.visitAnnotation("Lcom/teamdev/jxbrowser/js/JsAccessible;", true).visitEnd();
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsFunction",
+                "frame",
+                "()Lcom/teamdev/jxbrowser/frame/Frame;",
+                true);
+        mv.visitLdcInsn("window");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/frame/Frame",
+                "executeJavaScript",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                true);
+        mv.visitTypeInsn(Opcodes.CHECKCAST, "com/teamdev/jxbrowser/js/JsObject");
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitLdcInsn(WEB_BRIDGE_GET_INFO_JSON);
+        mv.visitInsn(Opcodes.AASTORE);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsFunction",
+                "invoke",
+                "(Lcom/teamdev/jxbrowser/js/JsObject;[Ljava/lang/Object;)Ljava/lang/Object;",
+                true);
+        mv.visitInsn(Opcodes.POP);
+        emitPrint(mv, "M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON");
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
     }
 
     private static byte[] generateM5ConsoleObserver() {
@@ -695,7 +747,12 @@ public final class M4AuthPatch {
     }
 
     private static byte[] generateM5InjectJsCallback() {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES) {
+            @Override
+            protected String getCommonSuperClass(String type1, String type2) {
+                return "java/lang/Object";
+            }
+        };
         cw.visit(
                 Opcodes.V1_8,
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
@@ -719,6 +776,7 @@ public final class M4AuthPatch {
         mv.visitTryCatchBlock(start, end, handler, "java/lang/Throwable");
         mv.visitCode();
         mv.visitLabel(start);
+        emitM5DataCollectMiJavaBridge(mv);
         mv.visitVarInsn(Opcodes.ALOAD, 1);
         mv.visitMethodInsn(
                 Opcodes.INVOKEINTERFACE,
@@ -840,6 +898,103 @@ public final class M4AuthPatch {
         bridge.visitEnd();
         cw.visitEnd();
         return cw.toByteArray();
+    }
+
+    private static void emitM5DataCollectMiJavaBridge(MethodVisitor mv) {
+        org.objectweb.asm.Label bridgeStart = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label bridgeEnd = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label bridgeHandler = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label afterBridge = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label notJsObject = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label alreadyInjected = new org.objectweb.asm.Label();
+        mv.visitTryCatchBlock(bridgeStart, bridgeEnd, bridgeHandler, "java/lang/Throwable");
+        mv.visitLabel(bridgeStart);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/browser/callback/InjectJsCallback$Params",
+                "frame",
+                "()Lcom/teamdev/jxbrowser/frame/Frame;",
+                true);
+        mv.visitVarInsn(Opcodes.ASTORE, 2);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitLdcInsn("window");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/frame/Frame",
+                "executeJavaScript",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                true);
+        mv.visitVarInsn(Opcodes.ASTORE, 3);
+        mv.visitVarInsn(Opcodes.ALOAD, 3);
+        mv.visitTypeInsn(Opcodes.INSTANCEOF, "com/teamdev/jxbrowser/js/JsObject");
+        mv.visitJumpInsn(Opcodes.IFEQ, notJsObject);
+        mv.visitVarInsn(Opcodes.ALOAD, 3);
+        mv.visitTypeInsn(Opcodes.CHECKCAST, "com/teamdev/jxbrowser/js/JsObject");
+        mv.visitVarInsn(Opcodes.ASTORE, 3);
+        mv.visitVarInsn(Opcodes.ALOAD, 3);
+        mv.visitLdcInsn("mijava");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsObject",
+                "hasProperty",
+                "(Ljava/lang/String;)Z",
+                true);
+        mv.visitJumpInsn(Opcodes.IFNE, alreadyInjected);
+        mv.visitTypeInsn(Opcodes.NEW, "com/sbf/main/jxbrowser/MiJava");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/frame/Frame",
+                "browser",
+                "()Lcom/teamdev/jxbrowser/browser/Browser;",
+                true);
+        mv.visitInsn(Opcodes.ACONST_NULL);
+        mv.visitInsn(Opcodes.ACONST_NULL);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESPECIAL,
+                "com/sbf/main/jxbrowser/MiJava",
+                "<init>",
+                "(Lcom/teamdev/jxbrowser/browser/Browser;Lcom/sbf/main/jxbrowser/g$b;Ljava/lang/String;)V",
+                false);
+        mv.visitVarInsn(Opcodes.ASTORE, 4);
+        mv.visitVarInsn(Opcodes.ALOAD, 3);
+        mv.visitLdcInsn("mijava");
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsObject",
+                "putProperty",
+                "(Ljava/lang/String;Ljava/lang/Object;)Z",
+                true);
+        mv.visitInsn(Opcodes.POP);
+        mv.visitVarInsn(Opcodes.ALOAD, 3);
+        mv.visitLdcInsn("java");
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsObject",
+                "putProperty",
+                "(Ljava/lang/String;Ljava/lang/Object;)Z",
+                true);
+        mv.visitInsn(Opcodes.POP);
+        emitPrint(mv, "M5A_V48_MIJAVA_BRIDGE_INJECTED");
+        mv.visitLabel(alreadyInjected);
+        mv.visitLabel(notJsObject);
+        mv.visitLabel(bridgeEnd);
+        mv.visitJumpInsn(Opcodes.GOTO, afterBridge);
+        mv.visitLabel(bridgeHandler);
+        mv.visitVarInsn(Opcodes.ASTORE, 2);
+        emitStringBuilderPrint(
+                mv,
+                "M5A_V48_MIJAVA_BRIDGE_FAILED ",
+                Opcodes.ALOAD,
+                2,
+                "java/lang/StringBuilder",
+                "append",
+                "(Ljava/lang/Object;)Ljava/lang/StringBuilder;");
+        mv.visitLabel(afterBridge);
     }
 
     private static byte[] generateM5RequestObserver() {

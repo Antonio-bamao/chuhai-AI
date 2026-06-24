@@ -394,6 +394,15 @@
 - 触发条件：项目内直接运行 v47 JAR，只读点击 WhatsApp `AI采集`，不执行任务动作。
 - 影响：页面层入口已恢复，但 Web 前端仍需要原客户端 JS bridge 或后端初始化契约；不能宣称采集功能可用。
 - 根因：dataCollect 页面 chunk `chunk-00b3289e.51ab7483.js` 首屏直接调用 `mijava.getCloudSpiderConfig(...)` 和 `mijava.getSpiderDataList(...)`；v47 通过普通 `JSinglepage`/通用 JxBrowser 宿主打开页面，而该宿主未注入 `MiJava`。原包中 `com.sbf.main.cloud.spider.b` 和浏览器工厂 `g` 均存在 `new MiJava(...)` + `window.putProperty(...)` 的 bridge 注入证据，说明 v47 的缺口更准确地说是“dataCollect 宿主/bridge 契约未恢复”。
-- 解决方案：M5A 已记录为新边界。后续实现候选应优先复用原云采集宿主或在当前子路由中注入等价 `MiJava`/`SpiderCallback`，而不是继续猜 URL 或泛化 `/prod-api/*`。本轮仍未点击导出/清空/任务提交。
+- 解决方案：v48 对当前 dataCollect 恢复子路由所在通用 JxBrowser 宿主补真实 `MiJava` 注入，创建 `new MiJava(frame.browser(), null, null)` 并暴露为 `window.mijava` 与 `window.java`；宿主只读日志确认 `M5A_V48_MIJAVA_BRIDGE_INJECTED=1` 且 `mijava is not defined=0`。本轮仍未点击导出/清空/任务提交。
 - 预防措施：M5A 页面打开验收必须同时记录最终 URL、XHR、控制台错误和任务接口计数；页面能打开不等于业务动作已恢复。
-- 状态：open
+- 状态：resolved-by-v48
+
+## v48 注入 MiJava 后 getInfo bridge 返回形状不符合 Web 权限契约
+- 现象：v48 不再报 `mijava is not defined`，但 dataCollect 页面控制台报 `TypeError: Cannot read properties of undefined (reading 'some')`，栈位于 `hasPermiOr -> store.getters.permissions.some(...)`。
+- 触发条件：项目内直接运行 v48 JAR，只读进入 WhatsApp `AI采集`；真实 `MiJava` 注入后，前端优先走 `window.mijava.getInfo(callback)`，不再触发 `/prod-api/getInfo` XHR。
+- 影响：页面仍停在加载状态，不能到达空表；如果误以为是 `/prod-api/getRouters` 或 dataCollect URL 问题，会继续在错误方向补接口。
+- 根因：Web bundle 的 Java bridge 分支对 `JSON.parse(e)` 结果直接读取顶层 `user/roles/permissions`；原 `MiJava.getInfo` 回传 `StartApp.m.toString()`，其形状来自启动链嵌套数据，不能给 Vuex 写入 `permissions` 数组。
+- 解决方案：v49 仅 patch `MiJava.getInfo(JsFunction)`，通过原 `JsFunction.invoke(window, payload)` 方式返回扁平 `user/roles/permissions` JSON，并打印 `M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON`。宿主只读验证显示 `LEVEL_ERROR=0`、`.some` 错误消失、页面进入“暂无数据”空表。
+- 预防措施：Web 同名接口要区分 XHR 契约和 Java bridge 契约；`/prod-api/getInfo` 的 `{code,data:{...}}` 形状不能直接套给 `window.mijava.getInfo` 分支。
+- 状态：resolved-by-v49

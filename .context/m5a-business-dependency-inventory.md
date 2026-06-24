@@ -221,3 +221,35 @@ MiJava 方法反查：
 - WhatsApp `AI采集` 当前卡住的直接原因不是“没有提交采集任务”或“任务接口失败”，而是 dataCollect 页面首屏需要宿主注入 `window.mijava`。
 - dataCollect 首屏的最小契约至少包括：`mijava.getCloudSpiderConfig`、`mijava.getSpiderDataList`、`window.reloadData`；下载和清空属于后续操作，不应在 M5A 点击。
 - `getInfo/getRouters` 仍可复用 v33/v40 的本地 bootstrap 形状，但不能把 `/prod-api/*` 扩成通用本地代理；每个新增接口都必须由页面 chunk 或运行日志证明。
+
+## 15. 2026-06-24 v48-v49 dataCollect bridge 只读验证
+
+本轮只围绕 v47 暴露出的 dataCollect 首屏依赖继续推进，不输入关键词、不创建采集任务、不导出、不清空、不上传、不群发。验证仍使用项目内 `data/app` 工作目录直接运行候选 JAR，未覆盖 `data/app/App.dll`，未触碰桌面原始安装包。
+
+| 阶段 | 动作 | 结果 | 分类影响 |
+| --- | --- | --- | --- |
+| v48 | 在通用 `M5InjectJsCallback` 中注入真实 `com.sbf.main.jxbrowser.MiJava`，暴露为 `window.mijava` 与 `window.java` | `M5A_V48_MIJAVA_BRIDGE_INJECTED=1`，`mijava is not defined=0`；页面继续加载 `chunk-17c57094`，但控制台报 `Cannot read properties of undefined (reading 'some')` | `mijava` 缺口解决；新阻断转为 Web 权限状态契约 |
+| v48 只读定位 | 解析 `app.988d65c1.js` 报错偏移 | `hasPermiOr -> i()` 内部读取 `store.getters.permissions.some(...)`；前端 Java bridge 分支调用 `window.mijava.getInfo(callback)` 后直接读取顶层 `i.user/i.roles/i.permissions` | 原 `MiJava.getInfo` 返回 `StartApp.m.toString()`，其形状来自启动链嵌套数据，不符合 Web bridge 分支扁平契约 |
+| v49 | 仅 patch `MiJava.getInfo(JsFunction)`，返回顶层 `user/roles/permissions` JSON，并保留真实 `JsFunction.invoke(window, payload)` 调用方式 | 字节码含 `M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON`、`permissions`、`*:*:*`，且不再引用 `StartApp.m`；完整测试 `27/27 OK` | 只补 Web 权限初始化，不新增通用接口代理 |
+| v49 宿主只读 | 直接运行 `.artifacts/working/m5a-v49-datacollect-bridge-getinfo/App-m5a-v49-datacollect-bridge-getinfo.jar`，进入 WhatsApp 后只点击 `AI采集` | 页面最终显示 `AI采集` 标签与“暂无数据”空表；`LEVEL_ERROR=0`、`Cannot read properties of undefined=0`、`mijava is not defined=0` | dataCollect 页面空表层恢复；仍未证明任务创建、任务执行、结果保存或上传 |
+
+v49 关键证据：
+
+| 检查点 | 结果 |
+| --- | --- |
+| 候选产物 | `.artifacts/working/m5a-v49-datacollect-bridge-getinfo/App-m5a-v49-datacollect-bridge-getinfo.jar`，SHA-256 `26694D706D8141EF8131891285A4ADAB02A0D7E6F70BBF509D27395220F652D0` |
+| 验证目录 | `.artifacts/runtime/m5a-v49-datacollect-bridge-getinfo-host-readonly-rerun/` |
+| URL | `M4_V18_NORMALIZED_URL=https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp` |
+| Bridge | `M5A_V48_MIJAVA_BRIDGE_INJECTED=1`、`M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON=1`、`M5A_V48_MIJAVA_BRIDGE_FAILED=0` |
+| Web bootstrap | `/prod-api/getInfo=0`，因为前端检测到 `window.mijava.getInfo` 后走 Java bridge 分支；`/prod-api/getRouters=1` 仍由定点 XHR hook 接住 |
+| 静态资源 | `chunk-00b3289e.51ab7483.js` 与 `chunk-17c57094.8c2a9a84.js` 均 200；后者仅为 `theme:"#059D81"` 模块，不含任务接口 |
+| 控制台 | `LEVEL_ERROR=0`，无 `mijava is not defined`，无 `.some` 权限数组错误 |
+| 副作用接口 | `getNewTask=0`、`upstatus=0`、`cancelAllRun=0`、`submit=0`、`save=0`、`toPackageDowloadData=0`、`toClearDataAll=0` |
+| 环境恢复 | 停止 Java/Chromium 进程后清理 `data/app/activemq-data` 与 `data/app/bscache`；`data/app/App.dll` SHA-256 保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B` |
+
+分类结论：
+
+- v49 证明 WhatsApp `AI采集` 恢复值入口、JxBrowser 页面层、`MiJava` bridge 注入、Web 权限 bootstrap 和本地结果空表读取链路可以在只读边界内跑通。
+- “暂无数据”更符合 `getSpiderDataList` 从本地 `JSpiderData` 数据库读取当前无结果，而不是远端任务接口失败；这是基于 v49 UI 与第 14 节静态方法证据的推断，仍需后续只读确认 DAO 表和返回 JSON。
+- 仍不能宣称采集业务恢复：关键词提交、任务创建、spider v2 队列、结果写入、OSS/代理/验证码/AI 辅助、导出和清空都没有执行或验收。
+- 下一步应继续 M5A 只读分类 `getCloudSpiderConfig` 的远端优先/本地兜底行为、`getSpiderDataList` 的本地表结构和 spider v2 队列入口，必要时再进入 M5B 逐项兼容后端。

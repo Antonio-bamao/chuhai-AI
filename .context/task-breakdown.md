@@ -71,23 +71,23 @@
 
 ### M4B-01：免操作启动与本地兼容服务正式化
 
-- 状态：进行中（免登录、产品选择器、主界面和黑洞代理启动已通过；尚缺物理断网与最终双击包）。
+- 状态：基本完成（免登录、产品选择器、主界面、v50 完整双击包和黑洞代理隔离启动已通过；仅缺物理断网/网卡禁用强证据）。
 - 目标：在不破坏 v33 的前提下，让双击启动直接建立本地永久授权态并进入产品/主界面。
 - 输入：v33 基线、登录/getInfo/产品/菜单/Web bridge 接缝。
-- 输出：正式补丁产物、diff、回滚点、双击与断网验证记录。
+- 输出：正式补丁产物、diff、回滚点、双击与断网验证记录。v50 当前交付物为 `.artifacts/working/m4b-v50-local-launcher-package/`，使用本地无更新 `HuoChaiAI.exe` 启动补丁版 `App.dll`，原官方更新器保留为 `HuoChaiAI-updater-original.exe`。
 - DoD（可自检的完成定义）：无需填写账号或点击登录；断网可进入九产品选择器和主界面；授权外表恒为已授权/永久。
 - 明确不做：不恢复 `offline-home.html` 为业务入口，不回退真实 URL、软件渲染、Web 首屏和 `im.port.udp` 修复。
 - 规模（S·M·L）：M
 
 ### M5A：业务依赖分类与直连回归
 
-- 状态：进行中（第一版静态依赖分类、第一轮只读验收、菜单路由发现和 WhatsApp `AI采集` 页面层恢复值验证已完成；真实业务动作尚未执行）。
+- 状态：进行中（第一版静态依赖分类、第一轮只读验收、菜单路由发现、WhatsApp `AI采集` 页面层恢复值验证、配置/DAO/队列边界已完成；v56 已实现 local-only 字段配置、`spider_data` 写入和页面可见 mock 行闭环；AI大脑支线已按用户要求停止，不作为后续基线；真实采集/发送类业务动作尚未执行）。
 - 目标：逐项判定业务属于客户端直连第三方、原后端代理、原后端数据库、云资源/算力或 native 依赖。
 - 输入：M4B 产物、抓包、调用链和低风险业务流程。
 - 输出：业务依赖矩阵与可直连功能回归记录。第一版静态矩阵和只读验收记录见 `.context/m5a-business-dependency-inventory.md`，菜单真实路由发现见 `.context/m5a-menu-route-discovery.md`。
 - DoD（可自检的完成定义）：至少跑通一个直连或低风险流程；每个模块有依赖类别和下一步；不执行真实群发、支付、批量采集、上传或云设备创建等有副作用动作。
 - 明确不做：不把失败接口直接本地伪成功，不压测，不泛化代理全部 `/prod-api/*`。
-- 当前新前置：v40 统一 `/pc/aicloud/my` 菜单入口不足以验收 WhatsApp/GEO 真实业务。已确认菜单分发依赖 `localCode/linkUrl`，且原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；已进一步发现 `data/app/res/spider/*.cnf` 本地采集脚本、`SBFApi.H(String)` 远端优先/本地兜底配置契约，以及 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` 数据采集入口族。v43-v49 已把 WhatsApp `C4749_006 / AI采集` 收敛为父菜单 + 恢复值子路由 `REC_WHATSAPP_COLLECT_USERS_ROUTE`，并只读验证可加载 dataCollect 空表页；当前已打通页面层、真实 `MiJava` 注入和 Web bridge `getInfo` 权限契约。下一步只读分析 `getCloudSpiderConfig/getSpiderDataList` 的配置源、本地 DAO 表和 spider v2 队列边界，不提交任务。
+- 当前新前置：v40 统一 `/pc/aicloud/my` 菜单入口不足以验收 WhatsApp/GEO 真实业务。已确认菜单分发依赖 `localCode/linkUrl`，且原客户端支持 `ZWBrowser/JBigDataMaster/ai_mnq_manager/PhoneFission/JSinglepage` 等打开器；已进一步发现 `data/app/res/spider/*.cnf` 本地采集脚本、`SBFApi.H(String)` 远端优先/本地兜底配置契约，以及 `/pc/dataCollect/collectionTask/data_index?spiderCode=...&moduleCode=...` 数据采集入口族。v43-v49 已把 WhatsApp `C4749_006 / AI采集` 收敛为父菜单 + 恢复值子路由 `REC_WHATSAPP_COLLECT_USERS_ROUTE`，并只读验证可加载 dataCollect 空表页；当前已打通页面层、真实 `MiJava` 注入和 Web bridge `getInfo` 权限契约。本轮只读确认 `getCloudSpiderConfig` 远端优先/本地 `.cnf` 兜底、`getSpiderDataList` 本地 `spider_data` DAO 空表和 spider v2 队列边界。v56 已证明 local-only 字段配置、`M5LocalSpiderBridge` 本地写表和页面可见 mock 行闭环。`data_index` 前端没有新增/提交任务入口；真正采集执行来自 spider 宿主加载 `.cnf` 后执行 Google 搜索脚本、`spider.postData(...)`、验证码识别和 spider v2 队列状态链路。AI大脑支线已停止；下一步若继续，应进入 WhatsApp `AI采集` 的任务创建/队列/M5B 兼容后端设计，仍不提交真实采集任务。
 - 规模（S·M·L）：L
 
 ### M5B：失效原后端接口兼容重建

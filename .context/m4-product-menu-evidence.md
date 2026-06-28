@@ -272,7 +272,35 @@ M4A 恢复规则：
 - 项目内启动壳 `data\app\HuoChaiAI.exe` 存在，但在临时把 `data\app\App.dll` 替换为 v40 后启动返回“操作已被用户取消”，未进入客户端窗口，因此不能记录为双击分发包通过。随后已恢复 `data\app\App.dll` 为原 SHA-256 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`，Git 工作区保持干净。
 - 因此，当前 v40 可靠证据仍限定为 JAR/Java 直接启动、九产品卡、WhatsApp 主界面和进程级黑洞代理；最终双击分发包仍待单独制作和验证。
 
-## 12. M5A v47 WhatsApp AI采集恢复子路由证据
+## 12. M4B v50 本地无更新双击包验收
+
+背景校正：
+
+- 复测项目内官方 `data/app/HuoChaiAI.exe` 时，它可以启动 Java，但会在 Java 启动前把补丁版 `App.dll` 覆盖为远端/安装版 JAR，导致回到登录窗。该启动器因此不适合作为补丁交付入口。
+- v50 改为在交付包内使用一个最小本地启动器：从当前 `data/app` 推导 `data/jdk/bin/java.exe`，以 `-Djava.io.tmpdir=<app>/temp -jar App.dll` 启动，并且不执行更新、下载或覆盖 `App.dll`。
+
+产物：
+
+- 完整自包含目录包：`.artifacts/working/m4b-v50-local-launcher-package/`
+- 包大小：`1,710,123,210` 字节。
+- 本地启动器：`data/app/HuoChaiAI.exe`，SHA-256 `986BE98D4C7E7655BD6B8A738FD9D9B5637727F14EAC0851762D5CF226B8933E`。
+- 原官方更新器备份：`data/app/HuoChaiAI-updater-original.exe`，SHA-256 `2A6DC95DE97761E4C92EF830ABCA56516B65A2FF3A3372E6ACCD156524A6D115`。
+- 补丁 JAR：`data/app/App.dll`，采用 v49，SHA-256 `26694D706D8141EF8131891285A4ADAB02A0D7E6F70BBF509D27395220F652D0`。
+
+验证：
+
+- 普通双击等价：从完整包 `data/app/HuoChaiAI.exe` 启动，启动器退出码 `0`，Java 进程窗口标题为 `功能入口`，`App.dll` 启动前后 SHA-256 均为 `26694D706D8141EF8131891285A4ADAB02A0D7E6F70BBF509D27395220F652D0`。
+- 隔离等价：设置 `JAVA_TOOL_OPTIONS` 将 HTTP/HTTPS/SOCKS 代理黑洞到 `127.0.0.1:9` 后启动完整包，仍进入九产品选择器，`App.dll` 哈希不变。
+- 隔离等价主界面：同一黑洞代理环境下点击 WhatsApp `进入系统`，窗口标题变为 `火柴AI`，左侧显示 WhatsApp 11 项菜单壳层；右侧 Web 内容区为空白符合业务网络被黑洞的预期，不影响 M4 授权/产品/菜单壳层验收。
+- 截图证据：`.artifacts/runtime/m4b-v50-local-launcher-package/screen-offline-equivalent.png`，SHA-256 `A0E529855B5E27707FE396FA1A3E7F263EDF0C920A9B4E61C7A3C494FA3D4B27`；`.artifacts/runtime/m4b-v50-local-launcher-package/screen-offline-equivalent-whatsapp-main.png`，SHA-256 `F711384D0E50E0969CA13D15F3DE99956A3F27E8F9F221D0BC81A74E8430E93B`。
+
+边界：
+
+- 当前证据为进程级 HTTP/HTTPS/SOCKS 黑洞代理，不等同于网卡禁用或物理断网，尤其不覆盖 UDP 噪声。
+- v50 交付包没有修改用户桌面原始安装目录 `H:\HuoChaiAI\app`，也没有覆盖项目根 `data/app/App.dll`。
+- `data/tools/vecore/dmsdk.dll` 的 Zone.Identifier 在完整包批量解除时被系统拒绝；启动路径依赖的 `data/app` 已解除 Zone 标记并通过双击验证，该工具 DLL 不影响 M4B 启动验收。
+
+## 13. M5A v47 WhatsApp AI采集恢复子路由证据
 
 本节只记录 M5A 对 WhatsApp `AI采集` 的恢复值演进，不改变 M4A/M4B 的主界面验收结论。
 

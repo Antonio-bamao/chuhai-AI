@@ -253,3 +253,157 @@ v49 关键证据：
 - “暂无数据”更符合 `getSpiderDataList` 从本地 `JSpiderData` 数据库读取当前无结果，而不是远端任务接口失败；这是基于 v49 UI 与第 14 节静态方法证据的推断，仍需后续只读确认 DAO 表和返回 JSON。
 - 仍不能宣称采集业务恢复：关键词提交、任务创建、spider v2 队列、结果写入、OSS/代理/验证码/AI 辅助、导出和清空都没有执行或验收。
 - 下一步应继续 M5A 只读分类 `getCloudSpiderConfig` 的远端优先/本地兜底行为、`getSpiderDataList` 的本地表结构和 spider v2 队列入口，必要时再进入 M5B 逐项兼容后端。
+
+## 16. 2026-06-25 getCloudSpiderConfig/getSpiderDataList 只读边界确认
+
+本轮不修改产物、不提交采集任务、不点击导出或清空，只把 v49 暴露出的两个只读 bridge 调用拆清楚。
+
+| 项 | 证据 | 依赖分类 |
+| --- | --- | --- |
+| `getCloudSpiderConfig(spiderCode)` 调用链 | `MiJava.getCloudSpiderConfig(String, JsFunction)` 启动 `MiJava$160`；bootstrap 解码目标为 `com.sbf.util.http.SBFApi.H(String)`；`SBFApi.H` 请求 `/cloud/spider/code/<spiderCode>`，`code==200` 时取 `data` 并写入 `StartApp.a + /res/spider/<spiderCode>.cnf`；异常时读取同一本地 `.cnf`，不存在则返回空 `JSONObject` | 配置读取是“原后端远端优先 + 本地资源兜底/缓存”。v49 只读页面能进入空表，不代表远端配置服务可用或已重建。 |
+| 本地配置缓存路径 | 解码字符串包含 `/res/spider/` 与 `.cnf`；现有 `data/app/res/spider/*.cnf` 已提供 WhatsApp/TikTok/Facebook 等本地 spider 配置 | 本地兜底属于客户端资源，可用于只读首屏字段；不能据此提交任务。 |
+| `getSpiderDataList(moduleCode, spiderCode, pageNum, pageSize)` 调用链 | `MiJava$162` 以 `moduleCode + "_" + spiderCode` 命中 `MiJava.hashDba`，未命中时调用 `com.sbf.main.a.b(moduleCode, spiderCode)` 创建 DAO；随后 `WhereInfo.get()`、`limit(pageSize)`、`currentPage=pageNum`、`order("time", false)`、`countOf`、`queryLimit`，返回 `{"total":count,"rows":list}` | 本地结果列表读取，不访问 spider v2 队列，不创建任务。 |
+| DAO 物理表 | `com.sbf.main.a.b` 使用 `DBHelper.init(StartApp.a + /data/ + moduleCode)` 与 `newDBDao("db_spider_data_" + spiderCode, JSpiderData.class, null)`；v49 运行目录实测 SQLite 文件为 `.artifacts/working/m5a-v49-datacollect-bridge-getinfo/data/whatsappdata/db_spider_data_whatsapp_users_lists.data`，表 `spider_data(spider_modal, spider_code, json_data, time, id)`，`COUNT=0` | “暂无数据”由本地 `spider_data` 空表解释；这是结果存储读路径，不是采集执行路径。 |
+| `toClearDataAll` | `MiJava$163` 使用同一 DAO 并调用 `clearTableAll()` | 本地破坏性动作，M5A 禁止触发。 |
+| `toPackageDowloadData` | `MiJava$164` 使用同一 DAO 分页读取、按 fields 映射并通过 `ExcelExportHelper` 写文件/打开文件 | 本地文件写入动作，M5A 禁止触发。 |
+| spider v2 队列 | `SBFApi` 中 `/api/v1/client/pc/spider/v2/upstatus/` 写 `taskId/status/msg/total`；`/spider/v2/cancelAllRun/` 写 `moduleCode`；`/spider/v2/getNewTask/` 写 `status/moduleCode` 并返回 `data`；这些端点未被 dataCollect 空表 `getList()` 调用 | 队列/任务状态属于原后端任务系统边界；当前只读页面层没有进入该边界。 |
+
+当前结论：
+
+- dataCollect 首屏只读链路分成两类：配置字段取自远端优先/本地兜底，结果列表取自本地 DAO。
+- v49 的“暂无数据”已经能由本地 SQLite `spider_data` 表为空解释；没有证据显示它来自 spider v2 接口失败。
+- spider v2 的 `getNewTask/upstatus/cancelAllRun` 是后续采集执行队列边界；M5A 继续禁止关键词提交、创建任务、采集、导出、清空、上传和群发。
+
+## 17. 2026-06-25 v50 低风险真实页面回归：一句话负结果与 AI大脑首屏
+
+> 2026-06-25 校正：用户明确要求不要继续 AI大脑模块，后续可能删除该功能。本节和第 18 节仅作为历史运行证据保留；相关 v51 代码/测试改动不作为当前主线基线。当前 M5A 主线回到 WhatsApp `AI采集` 业务模块。
+
+本轮从 v50 完整双击包继续 M5A，不再深挖 WhatsApp dataCollect。为保留日志，实际运行方式为从 `.artifacts/working/m4b-v50-local-launcher-package/data/app` 直接启动包内 Java 和 `App.dll`，stdout/stderr 写入 `.artifacts/runtime/m5a-v50-whatsapp-yijuhua-readonly/`；未修改项目根 `data/app`，未触碰桌面原始安装包。
+
+| 流程 | 动作 | 结果 | 分类影响 |
+| --- | --- | --- | --- |
+| WhatsApp `一句话` | 启动 v50，进入 WhatsApp 后停留在默认 `一句话` 菜单；不输入、不点击发送 | 截图显示左侧 `一句话` 高亮但右侧空白；日志中 `REC_WHATSAPP_ONELINE=2`、`M5A_V44_SIDE_MENU_CALLBACK=1`，但 `M4_V12_DISPATCH=0`、`M4_V13_LOAD_URL=0`、`M4_V18_NORMALIZED_URL=0`、`M5_V26_WEB_BOOTSTRAP_XHR=0` | 该菜单仍是恢复值 `JSinglepage + /pc/aicloud/my`，不能作为 WhatsApp 原始业务流程闭合点；不继续在这个入口上钻。 |
+| `AI大脑` | 在 WhatsApp 主界面左下点击 `AI大脑`，只打开聊天面板，不输入、不发送 | 成功加载 `https://app.xdxsoft.com/pc/aigc/aichat_dialog?st=...&lang=zh_cn`；截图显示 `火柴 Claw / AI智能大脑` 在线聊天面板和输入框 | 这是本轮低风险真实页面闭合点：真实前端资源和聊天 UI 可加载，但 profile/邀请码资料响应形状仍缺字段。 |
+
+`AI大脑` 请求与错误证据：
+
+| 检查点 | 结果 |
+| --- | --- |
+| 页面 URL | `M4_V18_NORMALIZED_URL=https://app.xdxsoft.com/pc/aigc/aichat_dialog?...`，`M4_V13_LOAD_URL=` 同 URL，`M4_V13_LOAD_FINISHED` 成功 |
+| 静态资源 | 主框架、`app.988d65c1.js`、`chunk-libs.a18eb98a.js`、`chunk-elementUI.6bce4c17.js`、`chunk-17c57094.8c2a9a84.js`、`chunk-4806d588.15f97967.js`、CSS 和字体均至少一次 200 |
+| 鉴权/bridge | `M4_V19_WEB_TOKEN_BRIDGE` 命中 `/prod-api/getLoingIsToken` 9 次；`M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON` 出现；`M5_V26_WEB_BOOTSTRAP_XHR url=/prod-api/getRouters` 出现 |
+| XHR | 应用域名下只记录 2 个 GET XHR：`/prod-api/ads/inivitationCode/balance`、`/prod-api/system/user/profile` |
+| 副作用 | 应用域名下 `POST/PUT/DELETE=0`；日志唯一 `method=POST` 是 Chromium 对 `optimizationguide-pa.googleapis.com` 的内部请求，不属于本客户端业务动作 |
+| 控制台缺口 | `LEVEL_ERROR=5`，集中为 `avatar`、`invitationCode`、`phonenumber` undefined；说明 `system/user/profile` 与 `ads/inivitationCode/balance` 当前返回形状不足，但未阻止聊天面板壳层渲染 |
+| 截图 | `.artifacts/runtime/m5a-v50-whatsapp-yijuhua-readonly/screen-whatsapp-yijuhua-after-enter.png`，SHA-256 `EED0BC467F734A4DA46602D1EFC2A1831A176E1C2C5D368E5961B1373054C28E`；`.artifacts/runtime/m5a-v50-aicloud-readonly/screen-aicloud-after-click.png`，SHA-256 `60226716005192CED6CAF193DC663C5E9C10B5AB3517D529AFF2618245E40971` |
+| 产物哈希 | 完整包 `App.dll` 启动后保持 SHA-256 `26694D706D8141EF8131891285A4ADAB02A0D7E6F70BBF509D27395220F652D0` |
+
+分类结论：
+
+- `AI大脑` 属于“真实在线 Web 前端 + 本地鉴权 bridge + 原后端资料/邀请码接口”的混合流程；页面壳层和静态资源可直连保留。
+- 历史判断：若当时继续 `AI大脑`，只应针对运行日志已证明的 `system/user/profile` 与 `ads/inivitationCode/balance` 补最小兼容响应；但该支线已停止，不进入后续计划。
+- 本轮没有发送聊天消息，因此还没有触发 AI 对话生成、计费、上传、TOS/OSS 或模型接口；聊天发送属于下一层更高风险流程，需单独确认后再做。
+
+## 18. 2026-06-25 v51 AI大脑 profile/邀请码最小响应补形状
+
+> 2026-06-25 校正：本节产物和验证不再推进，不进入后续计划。当前代码层已不保留该支线的新增响应形状；如果将来删除 AI大脑功能，本节可作为删除前的历史取证记录。
+
+本轮只补第 17 节运行日志已证明的两个 GET 接口：`/prod-api/system/user/profile` 与 `/prod-api/ads/inivitationCode/balance`。不扩展为通用 `/prod-api/*` 代理，不发送聊天消息。
+
+| 项 | 结果 |
+| --- | --- |
+| 候选产物 | `.artifacts/working/m5a-v51-aicloud-profile-balance/App-m5a-v51-aicloud-profile-balance.jar` |
+| SHA-256 | `06B9EDA686C17F8DE46EA337D6B448B237FBB03A9673F41BF7742F866B2B08BB` |
+| 新增响应 | `system/user/profile` 返回 `user/avatar/phonenumber/email/roles/permissions` 等最小资料形状；`ads/inivitationCode/balance` 返回 `invitationCode/inivitationCode/balance/amount/total` |
+| 测试 | 先新增失败断言，要求注入脚本含两个 endpoint 和 `avatar/phonenumber/invitationCode` 字段；红灯失败在缺 `/prod-api/system/user/profile`，实现后目标测试和完整 `27/27` 单测通过 |
+| 产物检查 | `M5InjectJsCallback.class` 含 `/prod-api/system/user/profile`、`/prod-api/ads/inivitationCode/balance`、`avatar`、`phonenumber`、`invitationCode`、`M5_V26_WEB_BOOTSTRAP_XHR` |
+| 宿主只读验证 | 独立运行目录 `.artifacts/working/m5a-v51-aicloud-profile-balance-run/`，stdout/stderr 在 `.artifacts/runtime/m5a-v51-aicloud-profile-balance-readonly/` |
+| 页面结果 | `AI大脑` 仍加载 `https://app.xdxsoft.com/pc/aigc/aichat_dialog?...`，截图 `.artifacts/runtime/m5a-v51-aicloud-profile-balance-readonly/screen-aicloud-v51-after-profile-balance.png`，SHA-256 `729F21B2F4EBE6AB0AC753E128DB4F1D2224BA770B7E1B6DC6089E4E6F15D93E` |
+| 日志结果 | `/prod-api/system/user/profile=1`、`/prod-api/ads/inivitationCode/balance=1`、`M5_V26_WEB_BOOTSTRAP_XHR=3`、`LEVEL_ERROR=0`、`UNHANDLED_REJECTION=0` |
+| 副作用 | 应用域名下 `POST/PUT/DELETE=0`；唯一 `method=POST` 仍是 Chromium 对 `optimizationguide-pa.googleapis.com` 的内部请求，不属于业务动作 |
+
+分类结论：
+
+- `AI大脑` 首屏已从“壳层可见但资料字段报错”推进到“壳层可见且无控制台错误”的低风险闭合点。
+- 当前恢复边界仍止于页面首屏；未验证发送消息、AI 生成、计费、附件上传、TOS/OSS 或模型接口。
+- 该支线已停止：不再解析发送按钮，不进入 AI 对话生成或计费链路。
+
+## 19. 2026-06-25 WhatsApp AI采集任务创建链路只读校准
+
+本节回应“什么时候才能进入业务模块”的校准：WhatsApp `AI采集` 已经进入业务模块的 dataCollect 列表页，但尚未进入任务创建/执行层。当前不能继续把首屏只读当成业务闭环。
+
+| 层级 | 已确认 | 还差什么 | 风险边界 |
+| --- | --- | --- | --- |
+| 页面入口 | `REC_WHATSAPP_COLLECT_USERS_ROUTE` 恢复子路由可打开 `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp` | 原始真实菜单 JSON 仍不可得；当前仍是恢复值 | 可继续使用恢复值做验证，但不能宣称原始菜单字段已找回。 |
+| 首屏读路径 | `chunk-00b3289e.51ab7483.js` 只调用 `getCloudSpiderConfig`、`getSpiderDataList`，页面按钮只有下载、清空、刷新 | 首屏没有新增/提交任务按钮；任务创建不在该 chunk 中 | 下载、清空是本地写/删动作，仍禁止点击。 |
+| spider 配置 | `whatsapp_users_lists.cnf` 要求 `googSite/areaCode/pltCode/keywords`，脚本会打开 Google 并拼 `site:<pltCode> <keywords> intext:whatsapp <areaCode>` | 需要确认任务参数从哪里进入 spider 宿主：原后端队列、云任务页，还是本地兼容队列 | 一旦输入关键词并启动脚本，就会访问 Google、处理验证码和写结果，不再是只读。 |
+| 采集执行 | `.cnf` 内调用 `spider.doHref`、`spider.toCheckDom`、`spider.postData(JSON.stringify(data))`、`spider.endTask()` | 需要拆 `SpiderCallback.postData/endTask` 如何写 `JSpiderData` 和如何触发 `window.reloadData` | `postData` 是结果写入边界；可静态拆，不能运行真实采集。 |
+| 验证码/AI 辅助 | `.cnf` 内调用 `mijava.creatGoogleCRTask(base64, qid, callback)` | 需要分类它依赖原后端、第三方识别还是本地能力 | 涉及图片上传/识别/费用或服务端能力，必须作为 M5B 兼容项处理。 |
+| 队列状态 | `SBFApi` 保留 `/api/v1/client/pc/spider/v2/getNewTask/upstatus/cancelAllRun/get` | 需要决定是否重建最小本地任务队列，让 spider 宿主有任务可拉取 | `getNewTask/upstatus/cancelAllRun` 是任务队列/状态写边界，本轮未触发。 |
+
+当前结论：
+
+- 业务模块已经进入到 WhatsApp `AI采集` 的 dataCollect 结果页；不是还停在外壳。
+- 真正缺的是“任务来源 -> spider 宿主执行 -> `spider.postData` 写本地表 -> 页面 `reloadData/getSpiderDataList` 看到结果”的小闭环。
+- 下一步不应继续 AI大脑，也不应继续无限首屏只读；应静态拆 `SpiderCallback.postData/endTask/reloadData` 和 spider v2 队列调用后，决定是否做一个本地最小任务队列/结果写入兼容层。该层属于 M5A 高风险流程或 M5B 起点，必须仍以“不提交真实采集任务”为边界。
+
+### 19.1 结果写入与任务创建边界补充
+
+本轮继续只读确认了一段必要链路，但仍未运行 spider：
+
+| 点位 | 证据 | 结论 |
+| --- | --- | --- |
+| 结果写本地表 | `JSpiderCloude.a(JSONObject)` 创建 `JSpiderData`，设置 `spiderCode/spiderModal/time/jsonData`，调用 DAO `addOrUpdate`，随后对结果页执行 `window.reloadData` | `postData` 之后的本地 `spider_data` 写入与前端增量刷新路径已确认。 |
+| dataCollect 页签 | `JSpiderCloude.c(String)` 中 `tablePanel1` 打开 `/pc/dataCollect/collectionTask/data_index?spiderCode=<code>&moduleCode=<module>`；`tablePanel2` 打开 `/pc/cloud/task/myindex?spiderCode=<code>` | 结果表和云任务页是两个不同入口；当前 v49 只恢复了结果表。 |
+| 任务表单 | `JSpiderCloude$9` 组装 `newTaskForm`，字段包括 `spiderCode/spiderParams/cloudServer/moduleCode/taskConfig`，成功后生成 `taskId`，并继续组装 `taskId/data/spiderMode/cookie/proxy` | 这是创建/提交采集任务边界；静态可读，但不能在 M5A 只读范围内触发。 |
+| spider 运行器 | `JSpiderCloude$2` 初始化 `JCloudSpiderMaster` 并把 `moduleCode/spiderMode/spiderAppCode` 等运行参数传入 | 任务进入真实 spider 执行层后会访问外部站点、处理代理/验证码、写结果和上报状态。 |
+
+更新后的判断：若要继续，前置步骤不是 AI大脑，也不是继续路由猜测，而是先设计“本地最小任务队列 + 本地结果写入”的离线/可控兼容方案；在没有这个方案前，不应点击任务创建或输入真实关键词。
+
+### 19.2 v52 本地任务/结果桥实现
+
+本轮开始把上面的兼容方案做成可测试代码，但边界仍限定在本地 mock，不运行真实 spider。
+
+| 项 | 结果 |
+| --- | --- |
+| 新增类 | `com.sbf.main.jxbrowser.M5LocalSpiderBridge`，由 `M4AuthPatch` 作为 support class 写入补丁 JAR。 |
+| 队列行为 | `getNewTask("whatsapp")` 固定返回空数组，并打印 `M5A_LOCAL_SPIDER_QUEUE_EMPTY`；不向 `/api/v1/client/pc/spider/v2/getNewTask/` 拉任务。 |
+| 任务预览 | `previewTask("whatsapp", "whatsapp_users_lists", params)` 返回 `dryRun=true`、`submitted=false` 和 `local-preview-*`，只用于确认参数形状，不创建云任务。 |
+| 本地结果写入 | `writeMockResult(baseDir, "whatsapp", "whatsapp_users_lists", json)` 创建或打开 `data/whatsappdata/db_spider_data_whatsapp_users_lists.data`，建表 `spider_data(spider_modal, spider_code, json_data, time, id)` 并插入一条 mock 行。 |
+| 产物 | `.artifacts/working/m5a-v52-local-spider-bridge/App-m5a-v52-local-spider-bridge.jar`，SHA-256 `23C59F9ADE422317725402C9C0B1CA7B0AF3506A3FA25F739FD01FF5D1E06204`。 |
+| 测试 | `python -m unittest discover -s tests -v` 通过 `28/28`；新增测试直接用 SQLite 验证写入行的 `spider_modal=whatsapp`、`spider_code=whatsapp_users_lists` 和 `json_data`。 |
+
+分类结论：
+
+- 这一步证明 `getSpiderDataList` 所读的本地 `spider_data` 表可以被本地兼容桥写入，因此“空表 -> 有结果行”的最小本地闭环具备实现基础。
+- 这一步没有证明真实采集恢复：没有创建远端任务、没有启动 `JCloudSpiderMaster`、没有运行 `whatsapp_users_lists.cnf`、没有访问 Google、没有验证码识别、没有代理/OSS/AI 辅助。
+- 后续若要让页面可见 mock 结果，应增加显式 local-only 入口并刷新 dataCollect；真实任务队列和云任务页仍需单独设计，不应默认接入。
+
+### 19.3 v53 页面显式 seed 入口
+
+v53 在 v52 基础上把本地写表能力挂到页面可调用的显式 hook：
+
+| 项 | 结果 |
+| --- | --- |
+| MiJava 新方法 | `m5WriteLocalMockResult(moduleCode, spiderCode, jsonData)`，带 `@JsAccessible`，内部调用 `M5LocalSpiderBridge.writeMockResult(StartApp.a, ...)`。 |
+| 页面 hook | `window.__m5LocalSpider.seedWhatsAppMockResult()`，写入 `source=local-ui-mock`、`submitted=false` 的本地 mock 行后尝试 `window.reloadData()`。 |
+| 产物 | `.artifacts/working/m5a-v53-local-datacollect-seed/App-m5a-v53-local-datacollect-seed.jar`，SHA-256 `B0D1192AABDBC6C67F3FC4AC9973122552D6B3A73C9E59205E5D3CBB0B88C74E`。 |
+| 验证 | 完整单测 `28/28` 通过；产物级 `javap` 确认 MiJava 方法与注入脚本字符串。 |
+
+分类结论：
+
+- v53 比 v52 多的是“页面可显式触发本地 mock 结果写入并刷新”；它不是任务创建入口。
+- 该 hook 不自动执行，避免进入真实采集、队列或外部网络流程。
+- 下一步若需要宿主截图证据，可只读打开 `AI采集` 页后在控制台调用该 hook，观察表格从“暂无数据”变为本地 mock 行；仍不得输入真实关键词或点击云任务创建。
+
+### 19.4 v56 宿主可见性验证
+
+| 项 | 结果 |
+| --- | --- |
+| 产物 | `.artifacts/working/m5a-v56-local-datacollect-visible-fields/App-m5a-v56-local-datacollect-visible-fields.jar`，SHA-256 `4AE223B9CDD39993AAA5090EE682A0DE661B14189E6BAE203150868A7DB313F9`。 |
+| 字段配置 | `MiJava.getCloudSpiderConfig` 对当前 `whatsapp_users_lists` 返回本地字段：`googSite/pltCode/keywords/phone/date/url`。 |
+| 本地结果 | SQLite `spider_data` 一行：`googSite=google.com`、`pltCode=example.com`、`keywords=local-test`、`phone=+10000000000`、`date=2026-06-25`、`url=https://example.com/local-ui-mock`、`submitted=false`。 |
+| UI 证据 | `.artifacts/runtime/m5a-v56-local-datacollect-visible-fields-host/screen-visible-fields-row-after-click.png` 显示 `AI采集` 页表头和一条 mock 行，底部 `共 1 条`。 |
+| 副作用检查 | 未输入真实关键词，未点击云任务页，未运行 `.cnf`，未调用 `getNewTask/upstatus/cancelAllRun/submit/save/toClearDataAll/toPackageDowloadData`。 |
+
+结论：WhatsApp `AI采集` 当前已证明“dataCollect 页面 -> 本地字段配置 -> 本地 `spider_data` 写入 -> 页面可见行”的 local-only 小闭环。它仍不是正式采集恢复；真实采集还缺任务来源、spider 宿主运行、Google/验证码/代理/OSS/AI 辅助和状态上报。

@@ -563,3 +563,98 @@
 - 验证：目标测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `27/27`；`-Xverify:all` 加载 `M5InjectJsCallback` 与 `MiJava` 通过。宿主日志显示 `M4_V18_NORMALIZED_URL` 为 dataCollect URL、`M5A_V48_MIJAVA_BRIDGE_INJECTED=1`、`M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON=1`、`/prod-api/getRouters=1`、`LEVEL_ERROR=0`、`mijava is not defined=0`、`.some` 错误为 0。
 - 副作用检查：`getNewTask/upstatus/cancelAllRun/submit/save/toPackageDowloadData/toClearDataAll` 全部为 0；未输入关键词、未创建任务、未采集、未上传、未群发、未支付、未创建云设备。停止进程后清理 `data/app/activemq-data` 与 `data/app/bscache`，`data/app/App.dll` SHA-256 保持 `9084FABCE357AAD8B18D06D0FB708DE4E92E1B5D63686CEA1DED49E19F73A99B`。
 - 下一步：继续 M5A 只读分类 `getCloudSpiderConfig` 的远端优先/本地兜底、`getSpiderDataList` 的本地 DAO 表与 spider v2 队列边界；仍不提交采集任务。
+
+## 2026-06-25 00:42｜getCloudSpiderConfig/getSpiderDataList 只读边界拆分
+- 目标：延续 v49 空表页结果，拆清 `getCloudSpiderConfig` 的远端优先/本地兜底、`getSpiderDataList` 的本地 DAO 表，以及 spider v2 队列边界；不提交采集任务。
+- 动作：只读复核 dataCollect chunk、`MiJava$160/$162/$163/$164`、`SBFApi.H(String)`、`com.sbf.main.a.b(moduleCode, spiderCode)`、spider v2 端点字符串和 v49 运行目录 SQLite 文件；用 SQLite `mode=ro` 读取本地结果库结构。
+- 结果：`getCloudSpiderConfig` 走 `SBFApi.H(spiderCode)`，远端 `/cloud/spider/code/<code>` 成功时取 `result.data` 并写 `/res/spider/<code>.cnf`，异常时读本地 `.cnf`；`getSpiderDataList` 只读本地 `JSpiderData` DAO，按 `time desc` 分页返回 `total/rows`。v49 本地库 `.artifacts/working/m5a-v49-datacollect-bridge-getinfo/data/whatsappdata/db_spider_data_whatsapp_users_lists.data` 表为 `spider_data(spider_modal, spider_code, json_data, time, id)`，计数为 0。
+- 验证：未修改补丁代码、未生成新 JAR、未输入关键词、未创建任务、未调用 `getNewTask/upstatus/cancelAllRun/submit/save/toPackageDowloadData/toClearDataAll`。证据已写入 `.context/m5a-business-dependency-inventory.md` 第 16 节和 `.context/m5a-menu-route-discovery.md` 第 14 节；完整 `python -m unittest discover -s tests -v` 通过 `27/27`，`validate_context.py` 返回 `context is valid`，`git diff --check` 仅有既有 CRLF 提示。
+- 下一步：如继续 M5A，应保持只读观察 `window.reloadData`/`SpiderCallback` 与已有任务结果推送；若要进入任务创建或 spider v2 队列，需单独确认高风险流程范围。
+
+## 2026-06-25 01:06｜校准是否继续 WhatsApp dataCollect 只读支线
+- 目标：回应“不要在一个路子里越钻越远”的提醒，复核日志、计划和进度，判断是否继续拆 `reloadData/SpiderCallback`。
+- 动作：重读 `.context/INDEX.md`、`master-plan.md`、`task-breakdown.md`、`current-status.md`、`design.md`、`work-log.md` tail、M5A 依赖清单和菜单路由发现；核对最近提交历史与当前工作树。
+- 结果：主线仍有 M4B 最终双击分发包、物理断网/等价隔离验收未闭合；M5A 的 DoD 是至少一个低风险真实业务流程，而不是无限只读拆解。WhatsApp dataCollect 已经证明页面层、bridge、配置读、本地 DAO 空表和 spider v2 队列边界；继续追 `window.reloadData/SpiderCallback` 的边际收益低，且会偏离当前主线。
+- 结论：暂停 WhatsApp dataCollect 只读支线。下一步优先回到 M4B 交付验收；若继续 M5A，则应另选低风险真实业务流程，或在明确批准后进入任务创建/队列这类高风险流程。
+
+## 2026-06-25 02:50｜v50 本地无更新双击包与等价隔离验收
+- 目标：继续 M4B 主线，补齐最终双击分发包和断网/等价隔离验收，不再深挖 WhatsApp dataCollect 只读支线。
+- 动作：复测项目内官方 `HuoChaiAI.exe`，确认它会在 Java 启动前把补丁版 `App.dll` 覆盖为远端/安装版 JAR，导致回到登录窗；随后实现 .NET 4 WinExe 本地启动器，只启动同目录 `App.dll`，不更新、不下载、不覆盖。制作轻量烟测包和完整自包含包 `.artifacts/working/m4b-v50-local-launcher-package/`，包内保留原官方更新器为 `HuoChaiAI-updater-original.exe`。
+- 结果：完整包大小 `1,710,123,210` 字节；本地启动器 `data/app/HuoChaiAI.exe` SHA-256 `986BE98D4C7E7655BD6B8A738FD9D9B5637727F14EAC0851762D5CF226B8933E`；补丁 `App.dll` SHA-256 `26694D706D8141EF8131891285A4ADAB02A0D7E6F70BBF509D27395220F652D0`；原更新器备份 SHA-256 `2A6DC95DE97761E4C92EF830ABCA56516B65A2FF3A3372E6ACCD156524A6D115`。
+- 验证：普通双击等价启动完整包，Java 窗口标题为 `功能入口`，`App.dll` 启动前后哈希不变；在 `JAVA_TOOL_OPTIONS` HTTP/HTTPS/SOCKS 黑洞代理 `127.0.0.1:9` 下仍进入九产品选择器；同一隔离环境点击 WhatsApp `进入系统` 后窗口标题为 `火柴AI`，左侧 11 项菜单壳层显示，`App.dll` 哈希仍不变。截图保存在 `.artifacts/runtime/m4b-v50-local-launcher-package/`。
+- 边界：当前隔离证据不是网卡禁用或物理断网，不覆盖 UDP 噪声；完整包批量解除 Zone 标记时 `data/tools/vecore/dmsdk.dll:Zone.Identifier` 被系统拒绝，但 `data/app` 已解除并通过启动验证。未修改用户桌面原始安装目录 `H:\HuoChaiAI\app`，未覆盖项目根 `data/app/App.dll`。早期轻量联接烟测曾污染项目根 `data/lib/XDXDBHelper.jar`、`data/lib/XDXDBHelper.jar.del` 并生成 `data/lib/scrcpysv4.jar`，已按精确路径恢复/删除；最终完整包不依赖联接。
+- 下一步：若用户要求最高强度验收，再在可控 VM/管理员环境补物理断网；否则 M4B 可视为交付主线基本闭合，下一轮应进入 M5A 低风险真实业务流程回归，而不是继续 dataCollect 只读拆分。
+
+## 2026-06-25 03:08｜v50 M5A 低风险真实页面：AI大脑首屏
+- 目标：按“不要继续钻 dataCollect”的校准，选择一个非任务提交类的低风险真实业务页面做 M5A 只读回归。
+- 动作：从 v50 完整包直接启动包内 Java 和 `App.dll` 以便重定向日志；先进入 WhatsApp 默认 `一句话`，确认其仍只触发菜单回调、不进入 Web 分发；随后点击左下 `AI大脑`，只打开聊天面板，不输入、不发送。
+- 结果：`一句话` 截图为 `.artifacts/runtime/m5a-v50-whatsapp-yijuhua-readonly/screen-whatsapp-yijuhua-after-enter.png`，SHA-256 `EED0BC467F734A4DA46602D1EFC2A1831A176E1C2C5D368E5961B1373054C28E`，日志 `M4_V13_LOAD_URL=0`，说明它不是当前可闭合业务流程。`AI大脑` 成功加载 `https://app.xdxsoft.com/pc/aigc/aichat_dialog?st=...&lang=zh_cn`，截图 `.artifacts/runtime/m5a-v50-aicloud-readonly/screen-aicloud-after-click.png`，SHA-256 `60226716005192CED6CAF193DC663C5E9C10B5AB3517D529AFF2618245E40971`。
+- 验证：`AI大脑` 页面主框架、app/chunk-libs/chunk-elementUI/chunk-17c57094/chunk-4806d588、CSS 和字体均加载；`M4_V19_WEB_TOKEN_BRIDGE` 命中 `/prod-api/getLoingIsToken`，`M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON` 命中，`/prod-api/getRouters` bootstrap 命中。应用域名下只出现 2 个 GET XHR：`/prod-api/ads/inivitationCode/balance` 与 `/prod-api/system/user/profile`；应用域名下 POST/PUT/DELETE 为 0，未发送聊天消息。
+- 缺口：控制台错误集中在 `avatar`、`invitationCode`、`phonenumber` undefined，说明 `system/user/profile` 和 `ads/inivitationCode/balance` 当前返回形状不足；这不阻止聊天面板壳层渲染，但会影响无错误首屏。
+- 下一步：若继续实现，应只针对这两个已由日志证明的 GET 接口补最小兼容响应形状；不泛化 `/prod-api/*`，不点击发送，不进入 AI 对话生成或计费链路。
+
+## 2026-06-25 03:18｜v51 AI大脑 profile/邀请码最小响应形状
+- 目标：补 v50 `AI大脑` 首屏已证实的两个 GET 缺口，使页面首屏无控制台错误；仍不发送聊天消息。
+- 动作：按 TDD 先在 `tests/test_m4_auth_patch.py` 增加失败断言，要求 `M5InjectJsCallback` 注入脚本包含 `/prod-api/system/user/profile`、`/prod-api/ads/inivitationCode/balance` 和 `avatar/phonenumber/invitationCode` 字段；确认测试红在缺 profile endpoint。随后只修改 `tools/m4_auth_patch/M4AuthPatch.java`，为 JS fetch/XHR bootstrap 增加两个最小响应体。
+- 结果：v51 产物 `.artifacts/working/m5a-v51-aicloud-profile-balance/App-m5a-v51-aicloud-profile-balance.jar`，SHA-256 `06B9EDA686C17F8DE46EA337D6B448B237FBB03A9673F41BF7742F866B2B08BB`。产物级检查确认 `M5InjectJsCallback.class` 含两个 endpoint 与三个缺失字段。
+- 验证：目标测试转绿；完整 `python -m unittest discover -s tests -v` 通过 `27/27`；`git diff --check` 仅 CRLF warning。独立运行目录 `.artifacts/working/m5a-v51-aicloud-profile-balance-run/` 中复验 `AI大脑`，日志显示 `/prod-api/system/user/profile=1`、`/prod-api/ads/inivitationCode/balance=1`、`M5_V26_WEB_BOOTSTRAP_XHR=3`、`LEVEL_ERROR=0`、`UNHANDLED_REJECTION=0`。截图 `.artifacts/runtime/m5a-v51-aicloud-profile-balance-readonly/screen-aicloud-v51-after-profile-balance.png`，SHA-256 `729F21B2F4EBE6AB0AC753E128DB4F1D2224BA770B7E1B6DC6089E4E6F15D93E`。
+- 副作用边界：应用域名下 POST/PUT/DELETE 为 0；唯一 POST 是 Chromium 对 `optimizationguide-pa.googleapis.com` 的内部请求。停止复验 Java 进程后无残留。
+- 下一步：如继续 `AI大脑`，应先只读解析 `chunk-4806d588.15f97967.js` 的发送按钮和接口契约；真正发送消息属于更高风险流程，需单独确认。
+
+## 2026-06-25 03:45｜停止 AI大脑支线，回到 WhatsApp AI采集业务主线
+- 目标：按用户要求停止 AI大脑模块，避免继续偏离主线；重新确认 WhatsApp `AI采集` 还差什么才能进入真正业务闭环。
+- 动作：确认当前代码层不保留 v51 AI大脑新增响应形状；只读复核 `chunk-00b3289e.51ab7483.js`、`whatsapp_users_lists.cnf`、`MiJava` bridge、spider v2 队列证据，并更新 `.context/current-status.md`、`.context/task-breakdown.md`、`.context/m5a-business-dependency-inventory.md`、`.context/m5a-menu-route-discovery.md`。
+- 结果：结论校准为“业务模块已经进入到 WhatsApp `AI采集` dataCollect 结果页；真正缺的是任务来源 -> spider 宿主执行 -> `spider.postData` 写本地表 -> 页面 `reloadData/getSpiderDataList` 看到结果的小闭环”。`data_index` 前端本身没有新增/提交任务按钮；`.cnf` 真正执行时会访问 Google、处理验证码/AI 识别并写结果，不能在只读边界内运行。
+- 下一步：不再推进 AI大脑。若继续 M5A/M5B，应先静态拆 `SpiderCallback.postData/endTask/reloadData` 和 spider v2 `getNewTask/upstatus/cancelAllRun`，再决定是否做本地最小任务队列与 `spider_data` 写入兼容层；仍不提交真实采集任务。
+
+## 2026-06-25 04:05｜WhatsApp AI采集任务/结果小闭环边界补证
+- 目标：按用户确认继续，但只确认是否还有必要做前置，不跑采集任务。
+- 动作：只读查看 `JSpiderCloude`、`JSpiderCloude$2`、`JSpiderCloude$9`、`JCloudSpiderMaster` 和 cloud spider host `b` 的关键字符串与调用边界。
+- 结果：`JSpiderCloude.a(JSONObject)` 已确认结果写入为 `JSpiderData` -> DAO `addOrUpdate` -> `window.reloadData`；`JSpiderCloude.c(String)` 把 `tablePanel1` 指向 dataCollect 结果页，把 `tablePanel2` 指向 `/pc/cloud/task/myindex?spiderCode=...`；`JSpiderCloude$9` 会组装 `newTaskForm`，字段含 `spiderCode/spiderParams/moduleCode/taskConfig`，成功后得到 `taskId`，随后进入 `taskId/data/spiderMode/cookie/proxy` 等运行字段。
+- 结论：当前确实已经进入业务模块，差的是任务创建/队列/运行器/结果写入小闭环。继续做是有必要的，但必须把下一步限定为“本地最小任务队列和结果写入兼容方案”，不点击云任务页、不输入真实关键词、不提交采集任务。
+
+## 2026-06-25 04:40｜v52 WhatsApp AI采集本地结果写入桥
+- 目标：在不提交真实采集任务、不运行 Google/验证码/代理/OSS 链路的前提下，先把 WhatsApp `AI采集` 的本地任务/结果表最小兼容层做出来，证明 `spider_data` 写入形状可控。
+- 动作：按 TDD 先新增失败测试 `test_local_spider_bridge_writes_mock_result_without_submitting_tasks`，要求补丁产物包含 `M5LocalSpiderBridge.class`，`getNewTask("whatsapp")` 返回空数组，`previewTask(...)` 返回 `dryRun=true/submitted=false`，`writeMockResult(...)` 向本地 SQLite `data/whatsappdata/db_spider_data_whatsapp_users_lists.data` 的 `spider_data` 表写入一条 mock 结果。随后新增 `tools/m4_auth_patch/M5LocalSpiderBridge.java`，并让 `M4AuthPatch` 把该 class 打进补丁 JAR。
+- 结果：生成 `.artifacts/working/m5a-v52-local-spider-bridge/App-m5a-v52-local-spider-bridge.jar`，大小 `31,886,235` 字节，SHA-256 `23C59F9ADE422317725402C9C0B1CA7B0AF3506A3FA25F739FD01FF5D1E06204`。新增桥只支持 `whatsapp/whatsapp_users_lists`：队列为空、任务只 dry-run 预览、结果写入仅本地 mock SQLite 行。
+- 验证：目标测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `28/28`。产物级 `jar tf` 确认 `M5LocalSpiderBridge.class` 存在，`javap -p` 确认公开方法为 `getNewTask/previewTask/writeMockResult`。本轮未点击云任务页、未输入关键词、未调用真实 `submit/save`、未运行 `.cnf` 采集脚本、未访问 Google、未上传或群发。
+- 下一步：若继续，应把该本地桥以显式 dev/local-only 入口接到当前 dataCollect 验证流程，让页面能刷新看到 mock 行；仍不能把它宣称为真实采集恢复，也不能默认接管 spider v2 云队列。
+
+## 2026-06-25 05:12｜v53 dataCollect 页面 local-only seed hook
+- 目标：把 v52 的本地写表能力暴露到当前 dataCollect 页面验证流程，但仍保持显式 local-only，不自动创建或提交采集任务。
+- 动作：继续按 TDD，在 `test_patches_auth_methods_and_adds_menu_diagnostics` 中先要求补丁后的 `MiJava` 包含 `m5WriteLocalMockResult(moduleCode, spiderCode, jsonData)`，并要求注入脚本包含 `window.__m5LocalSpider.seedWhatsAppMockResult()`、`M5A_LOCAL_DATACOLLECT_SEED`、`local-ui-mock` 和 `submitted:false`。红灯确认缺 MiJava 方法后，实现 ASM 补丁：给 `MiJava` 增加 `@JsAccessible` 的 `m5WriteLocalMockResult(...)`，内部调用 `M5LocalSpiderBridge.writeMockResult(StartApp.a, ...)`；注入脚本只挂显式 hook，不自动执行。
+- 结果：生成 `.artifacts/working/m5a-v53-local-datacollect-seed/App-m5a-v53-local-datacollect-seed.jar`，SHA-256 `B0D1192AABDBC6C67F3FC4AC9973122552D6B3A73C9E59205E5D3CBB0B88C74E`。页面可通过控制台或后续显式按钮调用 `window.__m5LocalSpider.seedWhatsAppMockResult()` 写入一条 `source=local-ui-mock` 的本地 mock 行，并尝试调用 `window.reloadData()`。
+- 验证：目标测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `28/28`；产物级 `javap` 确认 `MiJava.m5WriteLocalMockResult` 调用 `StartApp.a` 和 `M5LocalSpiderBridge.writeMockResult`，`M5InjectJsCallback` 含 `__m5LocalSpider/seedWhatsAppMockResult/M5A_LOCAL_DATACOLLECT_SEED/local-ui-mock`。`git diff --check` 仅有既有 CRLF warning。
+- 边界：hook 不会自动执行，未点击云任务页、未输入关键词、未创建任务、未运行 `.cnf`、未访问 Google/验证码/代理/OSS/AI 辅助。它只用于证明本地结果行可被 dataCollect 刷新看见。
+
+## 2026-06-25 06:10｜v56 WhatsApp AI采集本地 mock 行可见
+- 目标：按用户要求“进入看看”，在宿主 UI 中验证 WhatsApp `AI采集` 页面能看到本地 mock 结果行，而不是只停在 SQLite 写入。
+- 动作：v54 先把 v53 hook 改为 dataCollect URL 下 local-only 自动 seed，宿主验证发现本地表写入成功但 `window.reloadData()` 无参导致 `JSON.parse(undefined)`，页面仍空表；v55 改为 `reloadData(JSON.stringify({jsonData: JSON.parse(row)}))`，页面显示 `共 1 条` 但无列；v56 进一步补 `MiJava.getCloudSpiderConfig("whatsapp_users_lists", callback)` 本地字段配置，字段为 `googSite/pltCode/keywords/phone/date/url`，并把 mock 行补齐对应字段。
+- 结果：v56 产物 `.artifacts/working/m5a-v56-local-datacollect-visible-fields/App-m5a-v56-local-datacollect-visible-fields.jar`，SHA-256 `4AE223B9CDD39993AAA5090EE682A0DE661B14189E6BAE203150868A7DB313F9`。独立运行目录 `.artifacts/working/m5a-v56-local-datacollect-visible-fields-run/` 使用 v50 无更新包，只替换该目录内 `data/app/App.dll`，未触碰项目根 `data/app` 或 `H:\HuoChaiAI\app`。
+- 宿主验证：启动后点击 WhatsApp `进入系统` 和左侧 `AI采集`。日志出现 `M4_V18_NORMALIZED_URL=https://app.xdxsoft.com/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`、`M5A_LOCAL_DATACOLLECT_CONFIG_JSON whatsapp_users_lists`、`M5A_LOCAL_DATACOLLECT_AUTO_SEED`、`M5A_LOCAL_SPIDER_RESULT_WRITTEN ... total=1`，未再出现 `JSON_PARSE_UNDEFINED`。SQLite 表含一行 `spider_modal=whatsapp`、`spider_code=whatsapp_users_lists`、`json_data` 为 `googSite=google.com/pltCode=example.com/keywords=local-test/phone=+10000000000/date=2026-06-25/url=https://example.com/local-ui-mock/submitted=false`。截图 `.artifacts/runtime/m5a-v56-local-datacollect-visible-fields-host/screen-visible-fields-row-after-click.png`，SHA-256 `DE147C965011AB7230464D05AF08FE8A5D50F432F58C7EC62369E22632003AC6`，页面显示一行 mock 数据。
+- 边界：本轮没有输入真实关键词，没有点击云任务页，没有调用 `getNewTask/upstatus/cancelAllRun/submit/save/toClearDataAll/toPackageDowloadData`；未运行 `whatsapp_users_lists.cnf` 采集脚本，未访问 Google 采集、验证码、代理、OSS 或 AI 辅助。日志唯一业务外 POST 为 Chromium `optimizationguide-pa.googleapis.com` 内部请求，非客户端采集动作。
+
+## 2026-06-27 03:40｜M5C-1 AI数据菜单恢复验收
+- 目标：按 M5C 顺序先恢复 WhatsApp `AI数据`，要求页面能打开、数据显示、无副作用操作不报错；不改 `.cnf`、`cloud.spider.b`、`libmytrpc`。
+- 动作：先用 TDD 增加 `C4749_007 / AI数据` 本地数据路由断言，红灯确认为当前仍指向 `/pc/aicloud/my`；随后只修改恢复目录，把 `AI数据` 改为 dataCollect 恢复路由，并新增恢复值子路由 `REC_WHATSAPP_AI_DATA_ROUTE`，复用 `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`、`MiJava` 本地字段配置和 `spider_data` SQLite 读表链路。
+- 结果：候选产物 `.artifacts/working/m5c-ai-data-route/App-m5c-ai-data-route.jar`，SHA-256 `6C818DB199C164512A7418EDA6A20CB1071F0A1F36B315198C69FCC03284392F`。独立运行目录 `.artifacts/working/m5c-ai-data-route-run/` 由 v50 自包含包复制而来，只替换该副本内 `data/app/App.dll`。
+- 验证：目标测试先红后绿；完整 `python -m unittest discover -s tests -v` 通过 `29/29`。宿主 UI 打开 WhatsApp 后点击 `AI数据`，页面高亮 `AI数据` 并显示本地 `spider_data` 一行，截图 `.artifacts/runtime/m5c-ai-data-route/screen-01-ai-data-after-click.png`，SHA-256 `8686E6F96A84E33B43451E398B34C7685F243BD05214EF5414C25F370D1A4E0A`；点击无副作用的 `刷新` 后页面仍正常，截图 `.artifacts/runtime/m5c-ai-data-route/screen-02-ai-data-after-refresh.png`，SHA-256 `52B9554E36767EB3224556059FDA38406A8E28DE432C513F2C0F6E6A8620D841`。
+- 数据证据：运行副本 SQLite `data/app/data/whatsappdata/db_spider_data_whatsapp_users_lists.data` 中 `spider_data` 计数为 1，`spider_modal=whatsapp`、`spider_code=whatsapp_users_lists`，页面显示同一批字段：站点、来源平台、相关关键词、线索、采集时间、网址。
+- 结论：`AI数据` 在“本地采集结果查看/刷新”范围内已完全可用；不需要 WA 登录态、LLM 或新服务。本轮未点击下载/清空，未创建任务，未运行 `.cnf`，未调用采集提交、群发、支付或外部服务。
+
+## 2026-06-27 04:10｜M5C-1 AI数据错误同源纠偏
+- 目标：纠正上一轮把 `AI数据` 接到 `AI采集` dataCollect 页的错误别名；恢复 `/pc/aicloud/my` 原始页面，并用组件/接口证据判定是否同源。
+- 动作：按 TDD 先把 `C4749_007 / AI数据` 断言改为必须保持 `JSinglepage + /pc/aicloud/my + original-i18n`，并确认红灯命中当前 dataCollect 错误路由；随后回滚父菜单，保留仅用于 j2026 内容分发的恢复值子路由 `REC_WHATSAPP_AI_DATA_ROUTE`，其 `localCode=/pc/aicloud/my`、`linkUrl=JSinglepage:/pc/aicloud/my`。同时在 JxBrowser 归一化桥增加显式 `JSinglepage:/pc/aicloud/my -> /pc/aicloud/my` 分支，避免被旧 `JSinglepage -> dataCollect` 兜底误导。
+- 原始组件测绘：`/pc/aicloud/my` 加载 `.artifacts/working/m5-online-js/chunk-dea9eb98.0b47177e.js`，组件名 `MnqAuthAccounts`。首屏 `created -> getList()` 调用模块 `3a09.g`，接口 `/mnq/mnqAuthAccounts/mylist`，经前端请求基址表现为 `/prod-api/mnq/mnqAuthAccounts/mylist?pageNum=1&pageSize=10`；字典使用 `dicts:["yes_no_1_0"]`，请求 `/prod-api/system/dict/data/type/yes_no_1_0`。期望列表响应为 `{ rows: [...], total: number }`，行字段包括 `id/authCode/passwd/number/machineCode/status/remark`；字典响应为 `{ code: 200, data: [{dictLabel, dictValue, label, value}, ...] }`。
+- 二元判定：不同源。`AI采集` 使用 `chunk-00b3289e...` 的 `data_index`，通过 `mijava.getCloudSpiderConfig` 与 `mijava.getSpiderDataList(moduleCode, spiderCode, ...)` 读取本地 `spider_data`；`AI数据` 使用 `MnqAuthAccounts`，通过 HTTP `/prod-api/mnq/mnqAuthAccounts/mylist` 读取授权码/机器码列表。组件、接口、字段结构均不同，因此不得复用 `spider_data`。
+- 结果：产物 `.artifacts/working/m5c-ai-data-aicloud-route/App-m5c-ai-data-aicloud-route.jar`，SHA-256 `BCDE59206A3FAE6F35EFC1135A5A561FC0291BB86CBAC8B6B169C0DAEF6931B4`。独立运行目录 `.artifacts/working/m5c-ai-data-aicloud-route-run/` 只替换副本内 `data/app/App.dll`。
+- 验证：完整 `python -m unittest discover -s tests -v` 通过 `29/29`。宿主 UI 中 `AI采集` 截图 `.artifacts/runtime/m5c-ai-data-aicloud-route/screen-02-ai-collect-datacollect.png` 显示 dataCollect 线索表，SHA-256 `66D7D2D7998592857F38B891A0128E3E707F096420F33569A1EC5087387A4D9E`；`AI数据` 截图 `.artifacts/runtime/m5c-ai-data-aicloud-route/screen-03-ai-data-aicloud.png` 显示授权码/机器码/AiCloud 空表，SHA-256 `FE4E9706C7C0FCC66A83EDC5E3E181CDF2A65924CBF556AF80D7B32D75BA4935`；点击搜索后截图 `.artifacts/runtime/m5c-ai-data-aicloud-route/screen-04-ai-data-after-search.png`，SHA-256 `EF4A41827234DF9766E25159300B1EA38DDD909CC9E3F3D5ABE464BA8DEE1E7A`。
+- 边界：未改 `.cnf`、`cloud.spider.b`、`libmytrpc`；未点击下载/清空、未创建采集任务、未运行 `.cnf`、未触发群发/支付。`AI数据` 当前结论为 UI 已恢复，`mylist` 和字典首屏由本地 JS 桩返回合理空态；真实授权码/机器码数据仍待接原服务或本地持久化。
+
+## 2026-06-27 18:50｜M5C AI筛选原版页面与本地空态恢复
+- 目标：只恢复 WhatsApp `AI筛选` 的原版 Vue 页面、本地 `JWSFriends` 列表/分页/空态和无 WA 状态；真实执行新筛选单独立项。
+- 动作：按 TDD 新增 `C4749_009` 原版 `/ws/wsfilter/home` 路由、j2026 子路由、三条读接口和执行 gate 字节码契约。第一次宿主运行发现子路由只传 `JSinglepage`，被旧归一化兜底误导到 dataCollect 表；补失败测试后改为 `JSinglepage:/ws/wsfilter/home` 并显式归一化到目标路径。`doZwFilterWhataspp` 改为回调 `-1` 和“需登录 WhatsApp；执行新筛选待单独接入”，不再创建 `MiJava$170` 或发送 MQ。
+- 数据证据：`MiJava$171.run()` 保留 `JSBFMain` 的 `JWSFriends` DAO、`WhereInfo.limit/currentPage`、`DAOBase.countOf/queryLimit`、`Result.getCount/getList`，返回 `{total,rows}`；原组件字段为 `wid/nickname/sex/age/country/avator/wsactId/sealed/userIntroduction`。无本地行时页面显示“暂无数据”；无 WA 时状态计数均为 0，导入弹窗筛选通道下拉显示“无数据”。
+- 结果：候选 `.artifacts/working/m5c-ai-filter/App-m5c-ai-filter.jar`，SHA-256 `9BC58198EFD4B69A30198B25A384304861F077D6A004F1CFDEAFF088F5C674D5`；独立运行目录 `.artifacts/working/m5c-ai-filter-run/` 只替换该副本的 `data/app/App.dll`。
+- 验证：`python -m unittest tests.test_m4_auth_patch` 通过 `8/8`，`git diff --check` 无错误。截图 `.artifacts/runtime/m5c-ai-filter/screen-06-ai-filter-fitted.png`（SHA-256 `FE5BE4AD2188E0D1235CC2123AEB072E34B6760F91350F9838D7CD4BF62AE789`）证明原版列表/筛选控件/空态渲染；`screen-08-empty-wa-channel-options.png`（SHA-256 `4CB28836E118C77212580EDDD0BF2EDC63A4018AE9C9DD1BA4CB90B8FED6D7C2`）证明导入交互和无 WA 分组选项空态。
+- 边界与结论：未改 `.cnf`、`cloud.spider.b`、`libmytrpc`，未碰其他菜单，未运行真实筛选。二元结论为跑通：UI 活 + 本地列表/空态可用；真实 WA 筛选执行待单独接入。

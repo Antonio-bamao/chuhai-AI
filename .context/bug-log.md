@@ -406,3 +406,30 @@
 - 解决方案：v49 仅 patch `MiJava.getInfo(JsFunction)`，通过原 `JsFunction.invoke(window, payload)` 方式返回扁平 `user/roles/permissions` JSON，并打印 `M5A_V49_MIJAVA_GET_INFO_BRIDGE_JSON`。宿主只读验证显示 `LEVEL_ERROR=0`、`.some` 错误消失、页面进入“暂无数据”空表。
 - 预防措施：Web 同名接口要区分 XHR 契约和 Java bridge 契约；`/prod-api/getInfo` 的 `{code,data:{...}}` 形状不能直接套给 `window.mijava.getInfo` 分支。
 - 状态：resolved-by-v49
+
+## M5B-10 普通 collect 与 M5B-9 manual 路径的 postData 时序差异
+- 现象：M5B-10 第一跑用普通 collect 模式时，Google 已进入 `/search?q=site:facebook.com soccer jersey intext:whatsapp +1`，页面状态显示 `hasMain/hasCenterCol/hasSearch/hasResults=true`，但任务侧只停在 `等待元素[div[id='main']] 0/60`、`1/60` 附近，未触发 `postData`，SQLite 仅建表无行；第二跑切回 M5B-9 的 manualCaptcha/可见路径后，同一搜索页触发 `postData====`，本地后端接收并落库 1 条 `[REAL]`。
+- 触发条件：同一固定 profile、同一任务 `soccer jersey / google.com / facebook.com`，先普通 collect，再 M5B-9 manual 模式。
+- 影响：`count=24`（M5B-9 首跑）与 `count=0`/无 postData（普通复跑）不是落库层问题；落库接收端已通过 `M5B10_BACKEND_POSTDATA_RECEIVED`、`M5B10_DB_INSERT` 和 SQLite `count=1` 证明可用。
+- 根因：更像结果抽取/等待时序或浏览器实例绑定竞态；运行日志里同时存在实际结果页浏览器和多个 `about:blank` 浏览器，普通 collect 任务侧可能在错误实例或早期状态上等待。
+- 解决方案：本轮不改 `.cnf / cloud.spider.b / libmytrpc` 采集核心，只记录竞态；后续若要提升稳定性，应单独最小化定位“等待 div#main 的 Browser 实例”和结果抽取触发时机。
+- 预防措施：后续验收 postData/落库时要同时记录 Google 实际结果页状态、`SpiderCallback.postData(String)` 是否触发、SQLite SELECT 结果，避免把“未触发 postData”误判成“收到但没写库”。
+- 状态：open
+
+## M5C AI数据 was incorrectly aliased to AI采集 dataCollect
+- 现象：上一轮把 `C4749_007 / AI数据` 改成了 `/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp`，导致 `AI数据` 与 `AI采集` 打开同一个 dataCollect 结果页。
+- 触发条件：依据“AI数据看起来像采集结果”这个产品名推断，未先测绘 `/pc/aicloud/my` 实际加载的前端组件和接口。
+- 影响：错误复用了 `spider_data`，把 `AI数据` 的真实 AiCloud 授权码/机器码页伪装成采集结果页，后续排期会被错误同源结论带偏。
+- 根因：缺少“组件/接口先证据、再判定同源”的硬门槛；只看菜单名称和可用本地表，跳过了原始前端 chunk `chunk-dea9eb98.0b47177e.js` 的 `MnqAuthAccounts` 证据。
+- 解决方案：回滚 `C4749_007` 父菜单到 `JSinglepage + /pc/aicloud/my + original-i18n`；保留恢复子路由仅用于 j2026 分发，并显式归一化 `JSinglepage:/pc/aicloud/my` 到 `/pc/aicloud/my`。验证截图证明 `AI采集` 仍是 dataCollect，`AI数据` 是授权码/机器码页。
+- 预防措施：后续每个菜单恢复前必须先贴组件名、chunk/类位置、接口路径和响应结构；只有组件和接口证明同源，才允许复用已有本地表。
+- 状态：resolved-by-m5c-ai-data-aicloud-route
+
+## M5C AI筛选子路由被通用 JSinglepage 兜底误导到 dataCollect
+- 现象：第一次点击 `AI筛选` 时菜单高亮正确，但右侧显示站点/来源平台/关键词/线索的采集结果表，不是 `/ws/wsfilter/home` 原版筛选页面。
+- 触发条件：恢复子路由使用 `localCode=/ws/wsfilter/home`、`linkUrl=JSinglepage`；旧加载归一化把所有未识别的 `JSinglepage*` 统一改写为 WhatsApp dataCollect URL。
+- 影响：会形成“菜单能点开”的假阳性，并错误复用 AI采集页面，无法验收 `JWSFriends` 列表、状态计数和 WA 筛选通道。
+- 根因：子路由没有像 AI数据一样携带可区分的 `JSinglepage:<path>` 分发值，加载桥也缺少 wsfilter 专用分支。
+- 解决方案：子路由改为 `JSinglepage:/ws/wsfilter/home`，在通用兜底前显式归一化为 `/ws/wsfilter/home`；增加目录和产物字节码回归断言，并以宿主截图验证原版筛选表头与空态。
+- 预防措施：后续每个独立 Web 菜单都要同时验证菜单高亮、最终组件内容和最终归一化 URL；不得以“右侧有页面”替代真实路由验收。
+- 状态：resolved-by-m5c-ai-filter

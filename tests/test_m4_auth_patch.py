@@ -19,6 +19,7 @@ JSON_JAR = ROOT / "data" / "lib" / "json-20170516.jar"
 DATA_LIBS = ROOT / "data" / "lib" / "*"
 SOURCE = ROOT / "tools" / "m4_auth_patch" / "M4AuthPatch.java"
 CATALOG_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M4RecoveryCatalog.java"
+LOCAL_SPIDER_BRIDGE_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M5LocalSpiderBridge.java"
 TMP_ROOT = ROOT / ".artifacts" / "tmp-tests"
 
 
@@ -45,10 +46,11 @@ class M4AuthPatchTests(unittest.TestCase):
                 "-encoding",
                 "UTF-8",
                 "-cp",
-                str(ASM_JAR),
+                classpath(ASM_JAR, JSON_JAR),
                 "-d",
                 str(self.classes),
                 str(CATALOG_SOURCE),
+                str(LOCAL_SPIDER_BRIDGE_SOURCE),
                 str(SOURCE),
             ],
             cwd=ROOT,
@@ -174,6 +176,14 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "C4749_006".equals(item.getString("code"));
                         boolean whatsappCollectChild =
                                 "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(item.getString("code"));
+                        boolean whatsappDataParent =
+                                "C4749_007".equals(item.getString("code"));
+                        boolean whatsappDataChild =
+                                "REC_WHATSAPP_AI_DATA_ROUTE".equals(item.getString("code"));
+                        boolean whatsappFilterParent =
+                                "C4749_009".equals(item.getString("code"));
+                        boolean whatsappFilterChild =
+                                "REC_WHATSAPP_AI_FILTER_ROUTE".equals(item.getString("code"));
                         if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
                                     || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
@@ -188,6 +198,34 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp collect child recovery route: " + item);
                             }
+                        } else if (whatsappDataParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/pc/aicloud/my".equals(item.getString("linkUrl"))
+                                    || !"original-i18n".equals(item.optString("evidence"))
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp AI data must stay on original AiCloud route: " + item);
+                            }
+                        } else if (whatsappDataChild) {
+                            if (!"/pc/aicloud/my".equals(item.getString("localCode"))
+                                    || !"JSinglepage:/pc/aicloud/my".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aicloud-my")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp AI data child must open AiCloud route: " + item);
+                            }
+                        } else if (whatsappFilterParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/ws/wsfilter/home".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route:wsfilter-home")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp AI filter recovery route: " + item);
+                            }
+                        } else if (whatsappFilterChild) {
+                            if (!"/ws/wsfilter/home".equals(item.getString("localCode"))
+                                    || !"JSinglepage:/ws/wsfilter/home".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:wsfilter-home")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp AI filter child recovery route: " + item);
+                            }
                         } else if (!"JSinglepage".equals(item.getString("localCode"))
                                 || !"/pc/aicloud/my".equals(item.getString("linkUrl"))
                                 || item.getInt("webFlg") != 1) {
@@ -199,7 +237,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {12, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {14, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -292,6 +330,108 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M4_WHATSAPP_COLLECT_ROUTE_OK", probe.stdout)
 
+    def test_recovery_catalog_keeps_whatsapp_ai_data_on_original_aicloud_route(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M4RecoveryWhatsAppAiDataRouteProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M4RecoveryWhatsAppAiDataRouteProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject target = null;
+                    JSONObject routeChild = null;
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("C4749_007".equals(item.optString("code"))) {
+                            target = item;
+                        } else if ("REC_WHATSAPP_AI_DATA_ROUTE".equals(item.optString("code"))) {
+                            routeChild = item;
+                        }
+                    }
+                    if (target == null) {
+                        throw new AssertionError("missing WhatsApp AI data menu");
+                    }
+                    if (target.optInt("productId") != 9101
+                            || !"AI数据".equals(target.optString("name"))) {
+                        throw new AssertionError("wrong WhatsApp AI data menu: " + target);
+                    }
+                    if (!"JSinglepage".equals(target.optString("localCode"))) {
+                        throw new AssertionError("missing JSinglepage opener recovery value: " + target);
+                    }
+                    String expectedLink = "/pc/aicloud/my";
+                    if (!expectedLink.equals(target.optString("linkUrl"))) {
+                        throw new AssertionError("AI data must use original AiCloud route: " + target);
+                    }
+                    if (!"original-i18n".equals(target.optString("evidence"))) {
+                        throw new AssertionError("parent route must remain original-i18n evidence: " + target);
+                    }
+                    if (routeChild == null) {
+                        throw new AssertionError("missing WhatsApp AI data child route");
+                    }
+                    if (routeChild.optInt("parentId") != target.optInt("id")
+                            || routeChild.optInt("productId") != 9101
+                            || !"AI数据".equals(routeChild.optString("name"))
+                            || !expectedLink.equals(routeChild.optString("localCode"))
+                            || !"JSinglepage:/pc/aicloud/my".equals(routeChild.optString("linkUrl"))
+                            || !routeChild.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aicloud-my")) {
+                        throw new AssertionError("wrong WhatsApp AI data child route: " + routeChild);
+                    }
+                    System.out.println("M4_WHATSAPP_AI_DATA_AICLOUD_ROUTE_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M4_WHATSAPP_AI_DATA_AICLOUD_ROUTE_OK", probe.stdout)
+
+    def test_recovery_catalog_routes_whatsapp_ai_filter_to_original_web_component(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M5CRecoveryWhatsAppAiFilterRouteProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M5CRecoveryWhatsAppAiFilterRouteProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject target = null;
+                    JSONObject routeChild = null;
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("C4749_009".equals(item.optString("code"))) {
+                            target = item;
+                        } else if ("REC_WHATSAPP_AI_FILTER_ROUTE".equals(item.optString("code"))) {
+                            routeChild = item;
+                        }
+                    }
+                    if (target == null || routeChild == null) {
+                        throw new AssertionError("missing WhatsApp AI filter route pair");
+                    }
+                    String expectedLink = "/ws/wsfilter/home";
+                    if (!"JSinglepage".equals(target.optString("localCode"))
+                            || !expectedLink.equals(target.optString("linkUrl"))
+                            || !target.optString("evidence").contains("recovery-route:wsfilter-home")) {
+                        throw new AssertionError("wrong WhatsApp AI filter parent: " + target);
+                    }
+                    if (routeChild.optInt("parentId") != target.optInt("id")
+                            || routeChild.optInt("productId") != 9101
+                            || !expectedLink.equals(routeChild.optString("localCode"))
+                            || !"JSinglepage:/ws/wsfilter/home".equals(routeChild.optString("linkUrl"))
+                            || !routeChild.optString("evidence").contains("recovery-route-child:j2026-h-field-map:wsfilter-home")) {
+                        throw new AssertionError("wrong WhatsApp AI filter child: " + routeChild);
+                    }
+                    System.out.println("M5C_WHATSAPP_AI_FILTER_ROUTE_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M5C_WHATSAPP_AI_FILTER_ROUTE_OK", probe.stdout)
+
     def run_patcher(self):
         return subprocess.run(
             [
@@ -344,7 +484,9 @@ class M4AuthPatchTests(unittest.TestCase):
             check=True,
         )
         lines = result.stdout.splitlines()
-        start = next(i for i, line in enumerate(lines) if method_header in line)
+        matches = [i for i, line in enumerate(lines) if method_header in line]
+        self.assertTrue(matches, f"missing javap method header: {method_header}")
+        start = matches[0]
         end = next(
             (
                 i
@@ -392,6 +534,8 @@ class M4AuthPatchTests(unittest.TestCase):
                 [
                     "com/sbf/main/jxbrowser/M5ConsoleObserver.class",
                     "com/sbf/main/jxbrowser/M5InjectJsCallback.class",
+                    "com/sbf/main/jxbrowser/M5LocalSpiderBridge$LocalPipelineRunner.class",
+                    "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
                     "com/sbf/main/jxbrowser/M5RequestObserver.class",
                 ],
             )
@@ -518,6 +662,40 @@ class M4AuthPatchTests(unittest.TestCase):
             "public void getInfo(com.teamdev.jxbrowser.js.JsFunction);",
             "com.sbf.main.jxbrowser.MiJava",
         )
+        mijava_get_cloud_spider_config_block = self.javap_method_block(
+            "public void getCloudSpiderConfig(java.lang.String, com.teamdev.jxbrowser.js.JsFunction);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        sbfapi_get_local_task_block = self.javap_method_block(
+            "public static org.json.JSONObject c(java.lang.Long);"
+        )
+        sbfapi_update_local_task_status_block = self.javap_method_block(
+            "public static void a(java.lang.Long, int, java.lang.String, java.lang.Long);"
+        )
+        ws_filter_list_block = self.javap_method_block(
+            "public void getWsFilterDataList(java.lang.String, com.teamdev.jxbrowser.js.JsFunction);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        ws_filter_status_block = self.javap_method_block(
+            "public void checkWSfilterStatus(com.teamdev.jxbrowser.js.JsFunction);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        ws_filter_browsers_block = self.javap_method_block(
+            "public void doGetAllOpenBrowserInWhatsapp(com.teamdev.jxbrowser.js.JsFunction);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        ws_filter_execute_block = self.javap_method_block(
+            "public void doZwFilterWhataspp(java.lang.String, java.lang.String, com.teamdev.jxbrowser.js.JsFunction);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        ws_filter_list_worker_block = self.javap_method_block(
+            "public final void run();",
+            "com.sbf.main.jxbrowser.MiJava$171",
+        )
+        ws_filter_browsers_worker_block = self.javap_method_block(
+            "public final void run();",
+            "com.sbf.main.jxbrowser.MiJava$168",
+        )
         engine_create_block = self.javap_method_block(
             "public static synchronized com.teamdev.jxbrowser.browser.Browser a(java.lang.String, com.sbf.main.jxbrowser.g$a, com.sbf.main.jxbrowser.g$b, java.lang.String, com.db.entery.xdx.JDBZWConfig, com.sbf.main.jxbrowser.l, boolean);",
             "com.sbf.main.jxbrowser.g",
@@ -633,9 +811,98 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("*:*:*", mijava_get_info_block)
         self.assertIn("com/teamdev/jxbrowser/js/JsFunction.invoke", mijava_get_info_block)
         self.assertNotIn("com/sbf/main/StartApp.m", mijava_get_info_block)
+        self.assertIn("M5A_LOCAL_DATACOLLECT_CONFIG_JSON", mijava_get_cloud_spider_config_block)
+        self.assertIn("whatsapp_users_lists", mijava_get_cloud_spider_config_block)
+        self.assertIn("googSite", mijava_get_cloud_spider_config_block)
+        self.assertIn("pltCode", mijava_get_cloud_spider_config_block)
+        self.assertIn("keywords", mijava_get_cloud_spider_config_block)
+        self.assertIn("phone", mijava_get_cloud_spider_config_block)
+        self.assertIn("date", mijava_get_cloud_spider_config_block)
+        self.assertIn("url", mijava_get_cloud_spider_config_block)
+        self.assertIn("com/sbf/main/jxbrowser/MiJava$171", ws_filter_list_block)
+        self.assertIn("com/sbf/main/jxbrowser/MiJava$202", ws_filter_status_block)
+        self.assertIn(
+            "doGetAllOpenBrowserInWhatsapp:(Ljava/lang/String;Lcom/teamdev/jxbrowser/js/JsFunction;)V",
+            ws_filter_browsers_block,
+        )
+        self.assertIn("M5C_AI_FILTER_EXECUTION_GATED", ws_filter_execute_block)
+        self.assertIn("WhatsApp", ws_filter_execute_block)
+        self.assertIn("com/teamdev/jxbrowser/js/JsFunction.invoke", ws_filter_execute_block)
+        self.assertNotIn("com/sbf/main/jxbrowser/MiJava$170", ws_filter_execute_block)
+        self.assertIn("com/db/WhereInfo.limit", ws_filter_list_worker_block)
+        self.assertIn("com/db/WhereInfo.currentPage", ws_filter_list_worker_block)
+        self.assertIn("com/db/DAOBase.countOf", ws_filter_list_worker_block)
+        self.assertIn("com/db/DAOBase.queryLimit", ws_filter_list_worker_block)
+        self.assertIn("com/db/Result.getCount", ws_filter_list_worker_block)
+        self.assertIn("com/db/Result.getList", ws_filter_list_worker_block)
+        self.assertIn("org/json/JSONArray", ws_filter_browsers_worker_block)
+        self.assertIn("com/teamdev/jxbrowser/js/JsFunction.invoke", ws_filter_browsers_worker_block)
+        local_mock_method_block = self.javap_method_block(
+            "public java.lang.String m5WriteLocalMockResult(java.lang.String, java.lang.String, java.lang.String);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        local_submit_method_block = self.javap_method_block(
+            "public java.lang.String m5SubmitLocalCollectTask(java.lang.String, java.lang.String, java.lang.String, java.lang.String);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        local_list_tasks_method_block = self.javap_method_block(
+            "public java.lang.String m5ListLocalCollectTasks(java.lang.String, java.lang.String);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
+        self.assertIn("M5A_LOCAL_DATACOLLECT_MOCK_WRITE", local_mock_method_block)
+        self.assertIn("com/sbf/main/StartApp.a", local_mock_method_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.writeMockResult", local_mock_method_block)
+        self.assertIn("M5C_COLLECT_LOCAL_TASK_SUBMIT", local_submit_method_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.submitTask", local_submit_method_block)
+        self.assertIn("M5C_COLLECT_LOCAL_TASK_LIST", local_list_tasks_method_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.listTasks", local_list_tasks_method_block)
+        sbfapi_get_new_task_block = self.javap_method_block(
+            "public static org.json.JSONArray a(java.lang.String, int);"
+        )
+        sbfapi_cancel_all_run_block = self.javap_method_block("public static void L(java.lang.String);")
+        self.assertIn("M5C_QUEUE_SBFAPI_GET_NEW_TASK", sbfapi_get_new_task_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.getNewTask", sbfapi_get_new_task_block)
+        self.assertIn("M5C_QUEUE_SBFAPI_CANCEL_ALL_RUN", sbfapi_cancel_all_run_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.cancelAllRun", sbfapi_cancel_all_run_block)
+        self.assertIn("M5C_COLLECT_SBFAPI_GET_LOCAL_TASK", sbfapi_get_local_task_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.getTask", sbfapi_get_local_task_block)
+        self.assertIn("org/json/JSONObject", sbfapi_get_local_task_block)
+        self.assertIn("M5C_COLLECT_SBFAPI_STATUS_LOCAL", sbfapi_update_local_task_status_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.updateTaskStatus", sbfapi_update_local_task_status_block)
+        self.assertIn("__m5LocalSpider", inject_js_callback_block)
+        self.assertIn("seedWhatsAppMockResult", inject_js_callback_block)
+        self.assertIn("m5WriteLocalMockResult", inject_js_callback_block)
+        self.assertIn("__m5CollectFullShape", inject_js_callback_block)
+        self.assertIn("area_code", inject_js_callback_block)
+        self.assertIn("platform", inject_js_callback_block)
+        self.assertIn("facebook.com", inject_js_callback_block)
+        self.assertIn("google.com", inject_js_callback_block)
+        self.assertIn("m5c_create_task", inject_js_callback_block)
+        self.assertIn("m5c_task_rows", inject_js_callback_block)
+        self.assertIn("M5C_COLLECT_FULL_SHAPE_INSTALLED", inject_js_callback_block)
+        self.assertIn("m5SubmitLocalCollectTask", inject_js_callback_block)
+        self.assertIn("m5ListLocalCollectTasks", inject_js_callback_block)
+        self.assertIn("/cloud/spider/code/", inject_js_callback_block)
+        self.assertIn("/dataCollect/platform/list", inject_js_callback_block)
+        self.assertIn("/cloud/spider/data/", inject_js_callback_block)
+        self.assertIn("/cloud/task", inject_js_callback_block)
+        self.assertIn("M5A_LOCAL_DATACOLLECT_SEED", inject_js_callback_block)
+        self.assertIn("local-ui-mock", inject_js_callback_block)
+        self.assertIn("submitted", inject_js_callback_block)
+        self.assertIn("false", inject_js_callback_block)
+        self.assertIn("__m5AutoSeedDataCollect", inject_js_callback_block)
+        self.assertIn("/pc/dataCollect/collectionTask/data_index", inject_js_callback_block)
+        self.assertIn("whatsapp_users_lists", inject_js_callback_block)
+        self.assertIn("M5A_LOCAL_DATACOLLECT_AUTO_SEED", inject_js_callback_block)
+        self.assertIn("seedWhatsAppMockResult", inject_js_callback_block)
+        self.assertIn("JSON.stringify({jsonData:JSON.parse(row)})", inject_js_callback_block)
         self.assertIn("M4_V13_LOAD_URL=", browser_load_block)
         self.assertIn("M4_V18_NORMALIZED_URL=", browser_load_block)
         self.assertIn("JSinglepage", browser_load_block)
+        self.assertIn("JSinglepage:/pc/aicloud/my", browser_load_block)
+        self.assertIn("/pc/aicloud/my", browser_load_block)
+        self.assertIn("JSinglepage:/ws/wsfilter/home", browser_load_block)
+        self.assertIn("/ws/wsfilter/home", browser_load_block)
         self.assertIn("/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp", browser_load_block)
         self.assertIn('String.startsWith:(Ljava/lang/String;)Z', browser_load_block)
         self.assertIn("com/sbf/util/http/SBFApi.c:()Ljava/lang/String;", browser_load_block)
@@ -791,8 +1058,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 77) {
-                            throw new AssertionError("expected 77 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 79) {
+                            throw new AssertionError("expected 79 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -800,6 +1067,14 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "C4749_006".equals(recoveredMenu.optString("code"));
                             boolean whatsappCollectChild =
                                     "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappDataParent =
+                                    "C4749_007".equals(recoveredMenu.optString("code"));
+                            boolean whatsappDataChild =
+                                    "REC_WHATSAPP_AI_DATA_ROUTE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappFilterParent =
+                                    "C4749_009".equals(recoveredMenu.optString("code"));
+                            boolean whatsappFilterChild =
+                                    "REC_WHATSAPP_AI_FILTER_ROUTE".equals(recoveredMenu.optString("code"));
                             if (recoveredMenu.optInt("productId") < 9101
                                     || recoveredMenu.optInt("productId") > 9108
                                     || recoveredMenu.optString("code").startsWith("C2850000")
@@ -821,6 +1096,30 @@ class M4AuthPatchTests(unittest.TestCase):
                                         || !"JSinglepage".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map")) {
                                     throw new AssertionError("bad WhatsApp collect child recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappDataParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))
+                                        || !"original-i18n".equals(recoveredMenu.optString("evidence"))) {
+                                    throw new AssertionError("bad WhatsApp AI data original route: " + recoveredMenu);
+                                }
+                            } else if (whatsappDataChild) {
+                                if (!"/pc/aicloud/my".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage:/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aicloud-my")) {
+                                    throw new AssertionError("bad WhatsApp AI data child route: " + recoveredMenu);
+                                }
+                            } else if (whatsappFilterParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/ws/wsfilter/home".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route:wsfilter-home")) {
+                                    throw new AssertionError("bad WhatsApp AI filter recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappFilterChild) {
+                                if (!"/ws/wsfilter/home".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage:/ws/wsfilter/home".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:wsfilter-home")) {
+                                    throw new AssertionError("bad WhatsApp AI filter child route: " + recoveredMenu);
                                 }
                             } else if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                     || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))) {
@@ -889,6 +1188,247 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M4_DIAG_MENU_K_CALLED resp=", probe.stdout)
         self.assertIn("M4_DIAG_MENU_K_CALLER", probe.stdout)
         self.assertEqual(json.loads(probe.stdout.splitlines()[-1]), {"ok": True})
+
+    def test_local_spider_bridge_writes_mock_result_and_submits_local_collect_tasks(self):
+        self.compile_patcher()
+
+        result = self.run_patcher()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with zipfile.ZipFile(self.output_jar) as patched:
+            self.assertIn(
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+                patched.namelist(),
+            )
+
+        probe_source = self.tmp_path / "M5LocalSpiderBridgeProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+                import java.nio.file.Files;
+                import java.nio.file.Path;
+                import java.nio.file.Paths;
+                import java.sql.Connection;
+                import java.sql.DriverManager;
+                import java.sql.ResultSet;
+                import java.sql.Statement;
+                import org.json.JSONArray;
+                import org.json.JSONObject;
+
+                public class M5LocalSpiderBridgeProbe {
+                    public static void main(String[] args) throws Exception {
+                        Path baseDir = Paths.get(args[0]);
+                        String emptyQueue = M5LocalSpiderBridge.getNewTask(baseDir.toString(), "whatsapp", 0);
+                        JSONArray queue = new JSONArray(emptyQueue);
+                        if (queue.length() != 0) {
+                            throw new AssertionError("local queue must start empty: " + queue);
+                        }
+
+                        JSONObject preview = new JSONObject(
+                                M5LocalSpiderBridge.previewTask(
+                                        "whatsapp",
+                                        "whatsapp_users_lists",
+                                        "{\\"googSite\\":\\"google.com\\",\\"keywords\\":\\"local-test\\"}"));
+                        if (!preview.optBoolean("dryRun")
+                                || preview.optBoolean("submitted")
+                                || !preview.optString("taskId").startsWith("local-preview-")) {
+                            throw new AssertionError("preview must not submit: " + preview);
+                        }
+
+                        JSONObject writeResult = new JSONObject(
+                                M5LocalSpiderBridge.writeMockResult(
+                                        baseDir.toString(),
+                                        "whatsapp",
+                                        "whatsapp_users_lists",
+                                        "{\\"phone\\":\\"+10000000000\\",\\"source\\":\\"local-mock\\"}"));
+                        if (writeResult.optInt("code") != 200
+                                || writeResult.optInt("total") != 1
+                                || writeResult.optBoolean("submitted")) {
+                            throw new AssertionError("write result shape: " + writeResult);
+                        }
+
+                        JSONObject submit = new JSONObject(
+                                M5LocalSpiderBridge.submitTask(
+                                        baseDir.toString(),
+                                        "whatsapp",
+                                        "whatsapp_users_lists",
+                                        "{\\"googSite\\":\\"google.com\\",\\"areaCode\\":\\"+1\\",\\"pltCode\\":\\"facebook.com\\",\\"keywords\\":\\"local-test\\"}",
+                                        "{\\"cloudServer\\":\\"local\\"}"));
+                        if (submit.optInt("code") != 200
+                                || !submit.optBoolean("submitted")
+                                || submit.optLong("taskId") <= 0
+                                || !submit.optString("entry").contains("cloud.spider.a.a")) {
+                            throw new AssertionError("submit result shape: " + submit);
+                        }
+
+                        JSONObject tasks = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (tasks.optInt("total") != 1
+                                || tasks.getJSONArray("rows").getJSONObject(0).optLong("taskId")
+                                        != submit.optLong("taskId")
+                                || tasks.getJSONArray("rows").getJSONObject(0).optInt("status") != 0
+                                || tasks.getJSONArray("rows").getJSONObject(0).optInt("retryCount") != 0) {
+                            throw new AssertionError("local task list shape: " + tasks);
+                        }
+                        Path jtaskDb = baseDir.resolve("data").resolve("db_jtable_jrpatask.data");
+                        if (!Files.exists(jtaskDb)) {
+                            throw new AssertionError("missing reused JTask db: " + jtaskDb);
+                        }
+                        Path legacyQueueDb = baseDir.resolve("data")
+                                .resolve("whatsappdata")
+                                .resolve("db_local_spider_tasks.data");
+                        if (Files.exists(legacyQueueDb)) {
+                            throw new AssertionError("must not create parallel local task db: " + legacyQueueDb);
+                        }
+
+                        JSONArray claimed = new JSONArray(
+                                M5LocalSpiderBridge.getNewTask(baseDir.toString(), "whatsapp", 0));
+                        if (claimed.length() != 1
+                                || claimed.getJSONObject(0).optLong("taskId") != submit.optLong("taskId")
+                                || !"whatsapp_users_lists".equals(claimed.getJSONObject(0).optString("spiderCode"))
+                                || !claimed.getJSONObject(0).toString().contains("facebook.com")) {
+                            throw new AssertionError("claimed task shape: " + claimed);
+                        }
+                        JSONObject running = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (running.getJSONArray("rows").getJSONObject(0).optInt("status") != 1
+                                || running.getJSONArray("rows").getJSONObject(0).optInt("retryCount") != 1
+                                || !running.getJSONArray("rows").getJSONObject(0).optString("message").contains("running")) {
+                            throw new AssertionError("running task list shape: " + running);
+                        }
+                        M5LocalSpiderBridge.finishDispatchedTask(
+                                baseDir.toString(), submit.optLong("taskId"), true, "executor returned");
+                        JSONObject finished = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (finished.getJSONArray("rows").getJSONObject(0).optInt("status") != 2
+                                || !finished.getJSONArray("rows").getJSONObject(0).optString("message").contains("executor returned")) {
+                            throw new AssertionError("finished task list shape: " + finished);
+                        }
+                        JSONArray secondClaim = new JSONArray(
+                                M5LocalSpiderBridge.getNewTask(baseDir.toString(), "whatsapp", 0));
+                        if (secondClaim.length() != 0) {
+                            throw new AssertionError("running task must not be claimed twice: " + secondClaim);
+                        }
+
+                        JSONObject envelope = new JSONObject(
+                                M5LocalSpiderBridge.getTask(baseDir.toString(), submit.optLong("taskId")));
+                        JSONObject task = envelope.optJSONObject("task");
+                        JSONObject spider = envelope.optJSONObject("spider");
+                        if (task == null
+                                || spider == null
+                                || !"whatsapp_users_lists".equals(spider.optString("code"))
+                                || !task.optString("spiderParams").contains("facebook.com")
+                                || !task.optString("taskConfig").contains("local")) {
+                            throw new AssertionError("task envelope shape: " + envelope);
+                        }
+                        M5LocalSpiderBridge.updateTaskStatus(
+                                baseDir.toString(), submit.optLong("taskId"), 2, "done", Long.valueOf(3));
+                        JSONObject updated = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (updated.getJSONArray("rows").getJSONObject(0).optInt("status") != 2
+                                || updated.getJSONArray("rows").getJSONObject(0).optLong("total") != 3
+                                || !updated.getJSONArray("rows").getJSONObject(0).optString("message").contains("done")) {
+                            throw new AssertionError("updated task list shape: " + updated);
+                        }
+
+                        JSONObject cancelSubmit = new JSONObject(
+                                M5LocalSpiderBridge.submitTask(
+                                        baseDir.toString(),
+                                        "whatsapp",
+                                        "whatsapp_users_lists",
+                                        "{\\"googSite\\":\\"google.com\\",\\"areaCode\\":\\"+1\\",\\"pltCode\\":\\"google.com\\",\\"keywords\\":\\"cancel-me\\"}",
+                                        "{\\"cloudServer\\":\\"local\\"}"));
+                        JSONObject cancel = new JSONObject(M5LocalSpiderBridge.cancelAllRun(baseDir.toString(), "whatsapp"));
+                        if (cancel.optInt("code") != 200 || cancel.optInt("cancelled") < 1) {
+                            throw new AssertionError("cancelAllRun result shape: " + cancel);
+                        }
+                        JSONArray afterCancelClaim = new JSONArray(
+                                M5LocalSpiderBridge.getNewTask(baseDir.toString(), "whatsapp", 0));
+                        if (afterCancelClaim.length() != 0) {
+                            throw new AssertionError("cancelled task must not be claimable: " + afterCancelClaim);
+                        }
+                        JSONObject cancelledList = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (cancelledList.getJSONArray("rows").getJSONObject(0).optLong("taskId")
+                                        != cancelSubmit.optLong("taskId")
+                                || cancelledList.getJSONArray("rows").getJSONObject(0).optInt("status") != -2) {
+                            throw new AssertionError("cancelled task list shape: " + cancelledList);
+                        }
+
+                        JSONObject areaOptions = new JSONObject(M5LocalSpiderBridge.platformOptions("area_code"));
+                        JSONObject platformOptions = new JSONObject(M5LocalSpiderBridge.platformOptions("platform"));
+                        if (!areaOptions.toString().contains("+1")
+                                || !platformOptions.toString().contains("facebook.com")
+                                || !platformOptions.toString().contains("google.com")) {
+                            throw new AssertionError("missing local platform options");
+                        }
+
+                        Path db = baseDir.resolve("data")
+                                .resolve("whatsappdata")
+                                .resolve("db_spider_data_whatsapp_users_lists.data");
+                        if (!Files.exists(db)) {
+                            throw new AssertionError("missing spider data db: " + db);
+                        }
+                        Class.forName("org.sqlite.JDBC");
+                        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db.toAbsolutePath());
+                                Statement stmt = conn.createStatement();
+                                ResultSet rs = stmt.executeQuery(
+                                        "select spider_modal, spider_code, json_data from spider_data")) {
+                            if (!rs.next()) {
+                                throw new AssertionError("missing inserted spider row");
+                            }
+                            if (!"whatsapp".equals(rs.getString(1))
+                                    || !"whatsapp_users_lists".equals(rs.getString(2))
+                                    || !rs.getString(3).contains("local-mock")) {
+                                throw new AssertionError("bad inserted row");
+                            }
+                            if (rs.next()) {
+                                throw new AssertionError("unexpected extra spider rows");
+                            }
+                        }
+
+                        System.out.println("M5_LOCAL_SPIDER_BRIDGE_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.output_jar, JSON_JAR),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.output_jar, JSON_JAR, DATA_LIBS),
+                "M5LocalSpiderBridgeProbe",
+                str(self.tmp_path / "runtime"),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M5_LOCAL_SPIDER_BRIDGE_OK", probe.stdout)
 
     def test_real_product_menu_logging_mode_preserves_original_json_calls(self):
         self.compile_patcher()

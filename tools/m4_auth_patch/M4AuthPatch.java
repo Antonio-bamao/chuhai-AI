@@ -49,8 +49,11 @@ public final class M4AuthPatch {
     private static final String JXBROWSER_CLASS = "com/sbf/main/jxbrowser/c.class";
     private static final String JXBROWSER_LOAD_THREAD_CLASS = "com/sbf/main/jxbrowser/c$3.class";
     private static final String JXBROWSER_ENGINE_CLASS = "com/sbf/main/jxbrowser/g.class";
+    private static final String JXBROWSER_SCHEME_CALLBACK_CLASS = "com/sbf/main/jxbrowser/b.class";
     private static final String M5_CONSOLE_OBSERVER_CLASS =
             "com/sbf/main/jxbrowser/M5ConsoleObserver.class";
+    private static final String M5_AUTH_BOOTSTRAP_CALLBACK_CLASS =
+            "com/sbf/main/jxbrowser/M5AuthBootstrapCallback.class";
     private static final String M5_INJECT_JS_CALLBACK_CLASS =
             "com/sbf/main/jxbrowser/M5InjectJsCallback.class";
     private static final String M5_LOCAL_SPIDER_BRIDGE_CLASS =
@@ -59,6 +62,12 @@ public final class M4AuthPatch {
             "com/sbf/main/jxbrowser/M5LocalSpiderBridge$LocalPipelineRunner.class";
     private static final String M5_REQUEST_OBSERVER_CLASS =
             "com/sbf/main/jxbrowser/M5RequestObserver.class";
+    private static final String GOOGLE_CR_HELPER_CLASS =
+            "com/sbf/main/ext/gg/GoogleCRHelper.class";
+    private static final String SPIDER_CALLBACK_CLASS =
+            "com/sbf/main/cloud/spider/SpiderCallback.class";
+    private static final String M5_YES_CAPTCHA_BRIDGE_CLASS =
+            "com/sbf/main/ext/gg/M5YesCaptchaBridge.class";
     private static final String WEB_BRIDGE_TOKEN = "offline-local-token-1234567890";
 
     private static final String LOGIN_JSON =
@@ -121,6 +130,30 @@ public final class M4AuthPatch {
                     + "{\"dpIndex\":\"2\",\"code\":\"areaCode\",\"name\":\"国家/区号\",\"type\":\"select\"},"
                     + "{\"dpIndex\":\"3\",\"code\":\"pltCode\",\"name\":\"平台\",\"type\":\"select\"},"
                     + "{\"dpIndex\":\"4\",\"code\":\"keywords\",\"name\":\"关键词\",\"type\":\"keyWords\"}"
+                    + "]}";
+
+    private static final String LOCAL_WHATSAPP_USERS_HTTP_CONFIG_JSON =
+            "{\"code\":200,\"msg\":\"success\",\"data\":{"
+                    + "\"code\":\"whatsapp_users_lists\","
+                    + "\"moduleCode\":\"whatsapp\","
+                    + "\"fields\":\"["
+                    + "{\\\"dpIndex\\\":\\\"1\\\",\\\"code\\\":\\\"googSite\\\",\\\"name\\\":\\\"站点\\\",\\\"type\\\":\\\"text\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"2\\\",\\\"code\\\":\\\"pltCode\\\",\\\"name\\\":\\\"来源平台\\\",\\\"type\\\":\\\"text\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"3\\\",\\\"code\\\":\\\"keywords\\\",\\\"name\\\":\\\"相关关键词\\\",\\\"type\\\":\\\"text\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"0\\\",\\\"code\\\":\\\"phone\\\",\\\"name\\\":\\\"线索\\\",\\\"type\\\":\\\"text\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"7\\\",\\\"code\\\":\\\"date\\\",\\\"name\\\":\\\"采集时间\\\",\\\"type\\\":\\\"text\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"8\\\",\\\"code\\\":\\\"url\\\",\\\"name\\\":\\\"网址\\\",\\\"type\\\":\\\"text_url\\\"}"
+                    + "]\","
+                    + "\"spiderParams\":\"["
+                    + "{\\\"dpIndex\\\":\\\"2\\\",\\\"code\\\":\\\"areaCode\\\",\\\"name\\\":\\\"选择国家区号\\\",\\\"type\\\":\\\"telArea\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"3\\\",\\\"code\\\":\\\"pltCode\\\",\\\"name\\\":\\\"选择相关平台\\\",\\\"type\\\":\\\"platform\\\"},"
+                    + "{\\\"dpIndex\\\":\\\"4\\\",\\\"code\\\":\\\"keywords\\\",\\\"name\\\":\\\"关键词\\\",\\\"type\\\":\\\"keyWords\\\"}"
+                    + "]\""
+                    + "}}";
+
+    private static final String WEB_BOOTSTRAP_CLOUD_HOST_LIST_JSON =
+            "{\"code\":200,\"msg\":\"success\",\"data\":["
+                    + "{\"authCode\":\"local\",\"title\":\"本机\",\"online\":1}"
                     + "]}";
 
     private static final String WEB_BOOTSTRAP_ROUTERS_JSON =
@@ -193,13 +226,19 @@ public final class M4AuthPatch {
                 || !result.patchedJxBrowserDiagnostics
                 || !result.patchedJxBrowserLoadDiagnostics
                 || !result.patchedJxBrowserEngine
+                || !result.patchedLocalWebSchemeCallback
+                || !result.patchedGoogleCRHelper
                 || !result.patchedMiJavaDictBridge
                 || !result.patchedLocalSpiderTaskGet
                 || !result.patchedLocalSpiderTaskStatus
                 || !result.addedM5ConsoleObserver
+                || !result.addedM5AuthBootstrapCallback
                 || !result.addedM5InjectJsCallback
                 || !result.addedM5LocalSpiderBridge
-                || !result.addedM5RequestObserver) {
+                || !result.addedM5RequestObserver
+                || !result.addedM5YesCaptchaBridge
+                || !result.patchedSpiderCallbackPostData
+                || !result.patchedSpiderCallbackEndTask) {
             Files.deleteIfExists(temp);
             throw new IllegalStateException(
                     "failed to patch SBFApi auth/menu methods and diagnostics");
@@ -270,6 +309,12 @@ public final class M4AuthPatch {
                             bytes = patchJxBrowserLoadDiagnostics(bytes, result);
                         } else if (JXBROWSER_ENGINE_CLASS.equals(entry.getName())) {
                             bytes = patchJxBrowserEngine(bytes, result);
+                        } else if (JXBROWSER_SCHEME_CALLBACK_CLASS.equals(entry.getName())) {
+                            bytes = patchJxBrowserSchemeCallback(bytes, result);
+                        } else if (GOOGLE_CR_HELPER_CLASS.equals(entry.getName())) {
+                            bytes = patchGoogleCRHelper(bytes, result);
+                        } else if (SPIDER_CALLBACK_CLASS.equals(entry.getName())) {
+                            bytes = patchSpiderCallback(bytes, result);
                         }
                         jarOut.write(bytes);
                     }
@@ -280,6 +325,11 @@ public final class M4AuthPatch {
                 writeGeneratedClass(
                         jarOut, M5_CONSOLE_OBSERVER_CLASS, generateM5ConsoleObserver());
                 result.addedM5ConsoleObserver = true;
+            }
+            if (names.add(M5_AUTH_BOOTSTRAP_CALLBACK_CLASS)) {
+                writeGeneratedClass(
+                        jarOut, M5_AUTH_BOOTSTRAP_CALLBACK_CLASS, generateM5AuthBootstrapCallback());
+                result.addedM5AuthBootstrapCallback = true;
             }
             if (names.add(M5_INJECT_JS_CALLBACK_CLASS)) {
                 writeGeneratedClass(
@@ -304,8 +354,184 @@ public final class M4AuthPatch {
                         jarOut, M5_REQUEST_OBSERVER_CLASS, generateM5RequestObserver());
                 result.addedM5RequestObserver = true;
             }
+            if (names.add(M5_YES_CAPTCHA_BRIDGE_CLASS)) {
+                writeGeneratedClass(
+                        jarOut,
+                        M5_YES_CAPTCHA_BRIDGE_CLASS,
+                        readGeneratedSupportClass(M5_YES_CAPTCHA_BRIDGE_CLASS));
+                result.addedM5YesCaptchaBridge = true;
+            }
         }
         return result;
+    }
+
+    private static byte[] patchJxBrowserSchemeCallback(byte[] original, PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                if ("on".equals(name) && "(Ljava/lang/Object;)Ljava/lang/Object;".equals(descriptor)) {
+                    result.patchedLocalWebSchemeCallback = true;
+                    return writeLocalWebSchemeCallback(access, name, descriptor, signature, exceptions);
+                }
+                return super.visitMethod(access, name, descriptor, signature, exceptions);
+            }
+
+            private MethodVisitor writeLocalWebSchemeCallback(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                Label fallback = new Label();
+                mv.visitCode();
+                mv.visitVarInsn(Opcodes.ALOAD, 1);
+                mv.visitTypeInsn(
+                        Opcodes.CHECKCAST,
+                        "com/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Params");
+                mv.visitVarInsn(Opcodes.ASTORE, 2);
+                mv.visitVarInsn(Opcodes.ALOAD, 2);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEINTERFACE,
+                        "com/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Params",
+                        "urlRequest",
+                        "()Lcom/teamdev/jxbrowser/net/UrlRequest;",
+                        true);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEINTERFACE,
+                        "com/teamdev/jxbrowser/net/UrlRequest",
+                        "url",
+                        "()Ljava/lang/String;",
+                        true);
+                mv.visitVarInsn(Opcodes.ASTORE, 3);
+                mv.visitVarInsn(Opcodes.ALOAD, 3);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                        "localWebAssetBody",
+                        "(Ljava/lang/String;)Ljava/lang/String;",
+                        false);
+                mv.visitVarInsn(Opcodes.ASTORE, 4);
+                mv.visitVarInsn(Opcodes.ALOAD, 4);
+                mv.visitJumpInsn(Opcodes.IFNULL, fallback);
+                emitStringBuilderPrint(
+                        mv,
+                        "M5D8_LOCAL_WEB_ASSET_ADD_SCHEME url=",
+                        Opcodes.ALOAD,
+                        3,
+                        "java/lang/StringBuilder",
+                        "append",
+                        "(Ljava/lang/String;)Ljava/lang/StringBuilder;");
+                mv.visitFieldInsn(
+                        Opcodes.GETSTATIC,
+                        "com/teamdev/jxbrowser/net/HttpStatus",
+                        "OK",
+                        "Lcom/teamdev/jxbrowser/net/HttpStatus;");
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "com/teamdev/jxbrowser/net/UrlRequestJob$Options",
+                        "newBuilder",
+                        "(Lcom/teamdev/jxbrowser/net/HttpStatus;)"
+                                + "Lcom/teamdev/jxbrowser/net/UrlRequestJob$Options$Builder;",
+                        false);
+                mv.visitLdcInsn("Content-Type");
+                mv.visitVarInsn(Opcodes.ALOAD, 3);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                        "localWebAssetContentType",
+                        "(Ljava/lang/String;)Ljava/lang/String;",
+                        false);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "com/teamdev/jxbrowser/net/HttpHeader",
+                        "of",
+                        "(Ljava/lang/String;Ljava/lang/String;)Lcom/teamdev/jxbrowser/net/HttpHeader;",
+                        false);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEVIRTUAL,
+                        "com/teamdev/jxbrowser/net/UrlRequestJob$Options$Builder",
+                        "addHttpHeader",
+                        "(Lcom/teamdev/jxbrowser/net/HttpHeader;)"
+                                + "Lcom/teamdev/jxbrowser/net/UrlRequestJob$Options$Builder;",
+                        false);
+                mv.visitVarInsn(Opcodes.ASTORE, 5);
+                mv.visitVarInsn(Opcodes.ALOAD, 2);
+                mv.visitVarInsn(Opcodes.ALOAD, 5);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEVIRTUAL,
+                        "com/teamdev/jxbrowser/net/UrlRequestJob$Options$Builder",
+                        "build",
+                        "()Lcom/teamdev/jxbrowser/net/UrlRequestJob$Options;",
+                        false);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEINTERFACE,
+                        "com/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Params",
+                        "newUrlRequestJob",
+                        "(Lcom/teamdev/jxbrowser/net/UrlRequestJob$Options;)"
+                                + "Lcom/teamdev/jxbrowser/net/UrlRequestJob;",
+                        true);
+                mv.visitVarInsn(Opcodes.ASTORE, 6);
+                mv.visitVarInsn(Opcodes.ALOAD, 6);
+                mv.visitVarInsn(Opcodes.ALOAD, 4);
+                mv.visitFieldInsn(
+                        Opcodes.GETSTATIC,
+                        "java/nio/charset/StandardCharsets",
+                        "UTF_8",
+                        "Ljava/nio/charset/Charset;");
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEVIRTUAL,
+                        "java/lang/String",
+                        "getBytes",
+                        "(Ljava/nio/charset/Charset;)[B",
+                        false);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEINTERFACE,
+                        "com/teamdev/jxbrowser/net/UrlRequestJob",
+                        "write",
+                        "([B)V",
+                        true);
+                mv.visitVarInsn(Opcodes.ALOAD, 6);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEINTERFACE,
+                        "com/teamdev/jxbrowser/net/UrlRequestJob",
+                        "complete",
+                        "()V",
+                        true);
+                mv.visitVarInsn(Opcodes.ALOAD, 6);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "com/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Response",
+                        "intercept",
+                        "(Lcom/teamdev/jxbrowser/net/UrlRequestJob;)"
+                                + "Lcom/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Response;",
+                        true);
+                mv.visitInsn(Opcodes.ARETURN);
+                mv.visitLabel(fallback);
+                mv.visitVarInsn(Opcodes.ALOAD, 0);
+                mv.visitVarInsn(Opcodes.ALOAD, 2);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESPECIAL,
+                        "com/sbf/main/jxbrowser/b",
+                        "a",
+                        "(Lcom/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Params;)"
+                                + "Lcom/teamdev/jxbrowser/net/callback/InterceptUrlRequestCallback$Response;",
+                        false);
+                mv.visitInsn(Opcodes.ARETURN);
+                mv.visitMaxs(4, 7);
+                mv.visitEnd();
+                return null;
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
     }
 
     private static Map<String, String> decodeRecoveryProductLogos(Path input) throws IOException {
@@ -407,6 +633,16 @@ public final class M4AuthPatch {
         mv.visitInsn(Opcodes.ACONST_NULL);
         mv.visitVarInsn(Opcodes.ASTORE, 3);
         mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "localWebAssetBody",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                false);
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitVarInsn(Opcodes.ASTORE, 3);
+        mv.visitJumpInsn(Opcodes.IFNONNULL, hasBody);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
         mv.visitLdcInsn("/prod-api/getInfo");
         mv.visitMethodInsn(
                 Opcodes.INVOKEVIRTUAL,
@@ -459,7 +695,13 @@ public final class M4AuthPatch {
                         + "Lcom/teamdev/jxbrowser/net/UrlRequestJob$Options$Builder;",
                 true);
         mv.visitLdcInsn("Content-Type");
-        mv.visitLdcInsn("application/json;charset=UTF-8");
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "localWebAssetContentType",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                false);
         mv.visitMethodInsn(
                 Opcodes.INVOKESTATIC,
                 "com/teamdev/jxbrowser/net/HttpHeader",
@@ -607,6 +849,8 @@ public final class M4AuthPatch {
                     private boolean hasM5WriteLocalMockResult;
                     private boolean hasM5SubmitLocalCollectTask;
                     private boolean hasM5ListLocalCollectTasks;
+                    private boolean hasM5ListLocalSpiderData;
+                    private boolean hasM5GetLocalSpiderConfig;
 
                     @Override
                     public MethodVisitor visitMethod(
@@ -634,6 +878,15 @@ public final class M4AuthPatch {
                                         .equals(descriptor)) {
                             hasM5ListLocalCollectTasks = true;
                         }
+                        if ("m5ListLocalSpiderData".equals(name)
+                                && "(Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;"
+                                        .equals(descriptor)) {
+                            hasM5ListLocalSpiderData = true;
+                        }
+                        if ("m5GetLocalSpiderConfig".equals(name)
+                                && "(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                            hasM5GetLocalSpiderConfig = true;
+                        }
                         if ("getInfo".equals(name)
                                 && "(Lcom/teamdev/jxbrowser/js/JsFunction;)V".equals(descriptor)) {
                             MethodVisitor mv =
@@ -648,6 +901,24 @@ public final class M4AuthPatch {
                             MethodVisitor mv =
                                     super.visitMethod(access, name, descriptor, signature, exceptions);
                             writeMiJavaGetCloudSpiderConfigBridgeMethod(mv);
+                            result.patchedMiJavaDictBridge = true;
+                            return null;
+                        }
+                        if ("getSpiderDataList".equals(name)
+                                && "(Ljava/lang/String;Ljava/lang/String;IILcom/teamdev/jxbrowser/js/JsFunction;)V"
+                                        .equals(descriptor)) {
+                            MethodVisitor mv =
+                                    super.visitMethod(access, name, descriptor, signature, exceptions);
+                            writeMiJavaGetSpiderDataListBridgeMethod(mv);
+                            result.patchedMiJavaDictBridge = true;
+                            return null;
+                        }
+                        if ("getSpiderTableDataInfo".equals(name)
+                                && "(Ljava/lang/String;Lcom/teamdev/jxbrowser/js/JsFunction;)V"
+                                        .equals(descriptor)) {
+                            MethodVisitor mv =
+                                    super.visitMethod(access, name, descriptor, signature, exceptions);
+                            writeMiJavaGetSpiderTableDataInfoBridgeMethod(mv);
                             result.patchedMiJavaDictBridge = true;
                             return null;
                         }
@@ -732,6 +1003,28 @@ public final class M4AuthPatch {
                             writeMiJavaLocalCollectTaskListMethod(mv);
                             result.patchedMiJavaDictBridge = true;
                         }
+                        if (!hasM5ListLocalSpiderData) {
+                            MethodVisitor mv =
+                                    super.visitMethod(
+                                            Opcodes.ACC_PUBLIC,
+                                            "m5ListLocalSpiderData",
+                                            "(Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;",
+                                            null,
+                                            null);
+                            writeMiJavaLocalSpiderDataListMethod(mv);
+                            result.patchedMiJavaDictBridge = true;
+                        }
+                        if (!hasM5GetLocalSpiderConfig) {
+                            MethodVisitor mv =
+                                    super.visitMethod(
+                                            Opcodes.ACC_PUBLIC,
+                                            "m5GetLocalSpiderConfig",
+                                            "(Ljava/lang/String;)Ljava/lang/String;",
+                                            null,
+                                            null);
+                            writeMiJavaLocalSpiderConfigMethod(mv);
+                            result.patchedMiJavaDictBridge = true;
+                        }
                         super.visitEnd();
                     }
                 },
@@ -800,7 +1093,14 @@ public final class M4AuthPatch {
         mv.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
         mv.visitInsn(Opcodes.DUP);
         mv.visitInsn(Opcodes.ICONST_0);
-        mv.visitLdcInsn(LOCAL_WHATSAPP_USERS_CONFIG_JSON);
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "com/sbf/main/StartApp", "a", "Ljava/lang/String;");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "spiderConfig",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                false);
         mv.visitInsn(Opcodes.AASTORE);
         mv.visitMethodInsn(
                 Opcodes.INVOKEINTERFACE,
@@ -809,7 +1109,116 @@ public final class M4AuthPatch {
                 "(Lcom/teamdev/jxbrowser/js/JsObject;[Ljava/lang/Object;)Ljava/lang/Object;",
                 true);
         mv.visitInsn(Opcodes.POP);
-        emitPrint(mv, "M5A_LOCAL_DATACOLLECT_CONFIG_JSON whatsapp_users_lists");
+        emitPrint(mv, "M5D11_LOCAL_DATACOLLECT_CONFIG_JSON");
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private static void writeMiJavaLocalSpiderConfigMethod(MethodVisitor mv) {
+        mv.visitAnnotation("Lcom/teamdev/jxbrowser/js/JsAccessible;", true).visitEnd();
+        mv.visitCode();
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "com/sbf/main/StartApp", "a", "Ljava/lang/String;");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "spiderConfig",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                false);
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private static void writeMiJavaGetSpiderDataListBridgeMethod(MethodVisitor mv) {
+        mv.visitAnnotation("Lcom/teamdev/jxbrowser/js/JsAccessible;", true).visitEnd();
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 5);
+        mv.visitVarInsn(Opcodes.ALOAD, 5);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsFunction",
+                "frame",
+                "()Lcom/teamdev/jxbrowser/frame/Frame;",
+                true);
+        mv.visitLdcInsn("window");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/frame/Frame",
+                "executeJavaScript",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                true);
+        mv.visitTypeInsn(Opcodes.CHECKCAST, "com/teamdev/jxbrowser/js/JsObject");
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "com/sbf/main/StartApp", "a", "Ljava/lang/String;");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitVarInsn(Opcodes.ILOAD, 4);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "listSpiderData",
+                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;",
+                false);
+        mv.visitInsn(Opcodes.AASTORE);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsFunction",
+                "invoke",
+                "(Lcom/teamdev/jxbrowser/js/JsObject;[Ljava/lang/Object;)Ljava/lang/Object;",
+                true);
+        mv.visitInsn(Opcodes.POP);
+        emitPrint(mv, "M5D8_MIJAVA_GET_SPIDER_DATA_LIST_LOCAL");
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private static void writeMiJavaGetSpiderTableDataInfoBridgeMethod(MethodVisitor mv) {
+        mv.visitAnnotation("Lcom/teamdev/jxbrowser/js/JsAccessible;", true).visitEnd();
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsFunction",
+                "frame",
+                "()Lcom/teamdev/jxbrowser/frame/Frame;",
+                true);
+        mv.visitLdcInsn("window");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/frame/Frame",
+                "executeJavaScript",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                true);
+        mv.visitTypeInsn(Opcodes.CHECKCAST, "com/teamdev/jxbrowser/js/JsObject");
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "com/sbf/main/StartApp", "a", "Ljava/lang/String;");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "getSpiderTableDataInfo",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                false);
+        mv.visitInsn(Opcodes.AASTORE);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "com/teamdev/jxbrowser/js/JsFunction",
+                "invoke",
+                "(Lcom/teamdev/jxbrowser/js/JsObject;[Ljava/lang/Object;)Ljava/lang/Object;",
+                true);
+        mv.visitInsn(Opcodes.POP);
+        emitPrint(mv, "M5D8_MIJAVA_GET_SPIDER_TABLE_DATA_INFO_LOCAL");
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
@@ -859,6 +1268,25 @@ public final class M4AuthPatch {
         mv.visitInsn(Opcodes.POP);
         emitPrint(mv, "M5C_AI_FILTER_EXECUTION_GATED");
         mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private static void writeMiJavaLocalSpiderDataListMethod(MethodVisitor mv) {
+        mv.visitAnnotation("Lcom/teamdev/jxbrowser/js/JsAccessible;", true).visitEnd();
+        mv.visitCode();
+        mv.visitFieldInsn(Opcodes.GETSTATIC, "com/sbf/main/StartApp", "a", "Ljava/lang/String;");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ALOAD, 2);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitVarInsn(Opcodes.ILOAD, 4);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "listSpiderData",
+                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;",
+                false);
+        mv.visitInsn(Opcodes.ARETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
@@ -1098,19 +1526,23 @@ public final class M4AuthPatch {
                         + "var __m5RoutersBody=" + jsSingleQuoted(WEB_BOOTSTRAP_ROUTERS_JSON) + ";"
                         + "var __m5AicloudMylistBody=" + jsSingleQuoted(WEB_BOOTSTRAP_AICLOUD_MYLIST_JSON) + ";"
                         + "var __m5YesNoDictBody=" + jsSingleQuoted(WEB_BOOTSTRAP_YES_NO_DICT_JSON) + ";"
-                        + "var __m5SpiderConfigBody=" + jsSingleQuoted("{\"code\":200,\"msg\":\"success\",\"data\":" + LOCAL_WHATSAPP_USERS_CONFIG_JSON + "}") + ";"
+                        + "var __m5SpiderConfigBody=" + jsSingleQuoted(LOCAL_WHATSAPP_USERS_HTTP_CONFIG_JSON) + ";"
+                        + "var __m5CloudHostListBody=" + jsSingleQuoted(WEB_BOOTSTRAP_CLOUD_HOST_LIST_JSON) + ";"
                         + "var __m5AreaOptionsBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"data\\\":[{\\\"label\\\":\\\"北美\\\",\\\"children\\\":[{\\\"code\\\":\\\"+1\\\",\\\"label\\\":\\\"美国/加拿大 +1\\\",\\\"iconUrl\\\":\\\"\\\"}]}]}';"
                         + "var __m5PlatformOptionsBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"data\\\":[{\\\"label\\\":\\\"搜索平台\\\",\\\"children\\\":[{\\\"code\\\":\\\"facebook.com\\\",\\\"label\\\":\\\"Facebook\\\",\\\"iconUrl\\\":\\\"\\\"},{\\\"code\\\":\\\"google.com\\\",\\\"label\\\":\\\"Google\\\",\\\"iconUrl\\\":\\\"\\\"}]}]}';"
                         + "var __m5KeywordsOptionsBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"data\\\":[{\\\"label\\\":\\\"关键词\\\",\\\"children\\\":[{\\\"code\\\":\\\"local-test\\\",\\\"label\\\":\\\"local-test\\\",\\\"iconUrl\\\":\\\"\\\"}]}]}';"
-                        + "var __m5SpiderDataEmptyBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"rows\\\":[],\\\"total\\\":0}';"
                         + "function __m5BootstrapBody(u,body,method){u=String(u||'');method=String(method||'GET').toUpperCase();"
+                        + "function qp(k,d){try{var x=new URL(u,location.href).searchParams.get(k);return x||d;}catch(e){return d;}}"
+                        + "function sc(prefix,d){try{var x=new URL(u,location.href);var p=x.pathname;var i=p.indexOf(prefix);if(i>=0){var s=p.substring(i+prefix.length).split('/')[0];return decodeURIComponent(s||d);}return x.searchParams.get('spiderCode')||x.searchParams.get('modal')||d;}catch(e){return d;}}"
+                        + "function cfg(o){try{['fields','spiderParams','hookurls','steps'].forEach(function(k){if(o&&o[k]!=null&&typeof o[k]!=='string'){o[k]=JSON.stringify(o[k]);}});}catch(e){}return o;}"
                         + "if(u.indexOf('/prod-api/getInfo')>=0){return __m5GetInfoBody;}"
                         + "if(u.indexOf('/prod-api/getRouters')>=0){return __m5RoutersBody;}"
                         + "if(u.indexOf('/prod-api/mnq/mnqAuthAccounts/mylist')>=0){return __m5AicloudMylistBody;}"
                         + "if(u.indexOf('/prod-api/system/dict/data/type/yes_no_1_0')>=0){return __m5YesNoDictBody;}"
-                        + "if(u.indexOf('/cloud/spider/code/')>=0){return __m5SpiderConfigBody;}"
+                        + "if(u.indexOf('/rpa/cloudHost/lists')>=0){return __m5CloudHostListBody;}"
+                        + "if(u.indexOf('/cloud/spider/code/')>=0){try{var cc=sc('/cloud/spider/code/','whatsapp_users_lists');if(window.mijava&&window.mijava.m5GetLocalSpiderConfig){return JSON.stringify({code:200,msg:'success',data:cfg(JSON.parse(window.mijava.m5GetLocalSpiderConfig(cc)))});}}catch(e){console.error('M5D11_LOCAL_SPIDER_CONFIG_HTTP_FAILED '+e);}return __m5SpiderConfigBody;}"
                         + "if(u.indexOf('/dataCollect/platform/list')>=0){if(u.indexOf('type=area_code')>=0){return __m5AreaOptionsBody;}if(u.indexOf('type=platform')>=0){return __m5PlatformOptionsBody;}return __m5KeywordsOptionsBody;}"
-                        + "if(u.indexOf('/cloud/spider/data/')>=0){return __m5SpiderDataEmptyBody;}"
+                        + "if(u.indexOf('/cloud/spider/data/')>=0){try{var dc=sc('/cloud/spider/data/',qp('spiderCode',qp('modal','whatsapp_users_lists')));if(window.mijava&&window.mijava.m5ListLocalSpiderData){return window.mijava.m5ListLocalSpiderData('whatsapp',dc,parseInt(qp('pageNum','1'),10)||1,parseInt(qp('pageSize','10'),10)||10);}}catch(e){console.error('M5D8_LOCAL_SPIDER_DATA_HTTP_FAILED '+e);}return '{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"rows\\\":[],\\\"total\\\":0}';}"
                         + "if(method==='POST'&&u.indexOf('/cloud/task')>=0){try{var p=typeof body==='string'&&body?JSON.parse(body):(body||{});var m=p.moduleCode||'whatsapp';var s=p.spiderCode||'whatsapp_users_lists';var sp=p.spiderParams||{};var tc=p.taskConfig||{};if(window.mijava&&window.mijava.m5SubmitLocalCollectTask){return window.mijava.m5SubmitLocalCollectTask(m,s,JSON.stringify(sp),JSON.stringify(tc));}}catch(e){console.error('M5C_COLLECT_LOCAL_TASK_POST_FAILED '+e);}return '{\\\"code\\\":500,\\\"submitted\\\":false,\\\"msg\\\":\\\"local task submit failed\\\"}';}"
                         + "return null;}"
                         + "function __m5PatchXhrValue(x,k,v){try{Object.defineProperty(x,k,{value:v,configurable:true});}catch(e){try{x[k]=v;}catch(y){}}}"
@@ -1132,39 +1564,6 @@ public final class M4AuthPatch {
                         + "setTimeout(function(){try{if(x.onreadystatechange){x.onreadystatechange();}if(x.dispatchEvent){x.dispatchEvent(new Event('readystatechange'));}if(x.onload){x.onload();}if(x.dispatchEvent){x.dispatchEvent(new Event('load'));}if(x.onloadend){x.onloadend();}if(x.dispatchEvent){x.dispatchEvent(new Event('loadend'));}}catch(e){console.error('M5_V26_WEB_BOOTSTRAP_XHR_FAIL '+e);}},0);return;}"
                         + "return __m5XhrSend.apply(this,arguments);};"
                         + "window.XMLHttpRequest.prototype.__m5BootstrapWrapped=true;}"
-                        + "if(!window.__m5LocalSpider){window.__m5LocalSpider={seedWhatsAppMockResult:function(){"
-                        + "var row='{\\\"googSite\\\":\\\"google.com\\\",\\\"pltCode\\\":\\\"example.com\\\",\\\"keywords\\\":\\\"local-test\\\",\\\"phone\\\":\\\"+10000000000\\\",\\\"date\\\":\\\"2026-06-25\\\",\\\"url\\\":\\\"https://example.com/local-ui-mock\\\",\\\"source\\\":\\\"local-ui-mock\\\",\\\"submitted\\\":false}';"
-                        + "console.log('M5A_LOCAL_DATACOLLECT_SEED');"
-                        + "var r=(window.mijava&&window.mijava.m5WriteLocalMockResult)?window.mijava.m5WriteLocalMockResult('whatsapp','whatsapp_users_lists',row):'{\\\"code\\\":500,\\\"submitted\\\":false}';"
-                        + "try{if(window.reloadData){window.reloadData(JSON.stringify({jsonData:JSON.parse(row)}));}}catch(e){console.error('M5A_LOCAL_DATACOLLECT_RELOAD_FAILED '+e);}"
-                        + "return r;}};}"
-                        + "if(!window.__m5CollectFullShape){window.__m5CollectFullShape={install:function(){"
-                        + "if(String(location.href).indexOf('/pc/dataCollect/collectionTask/data_index')<0||String(location.href).indexOf('whatsapp_users_lists')<0){return;}"
-                        + "if(document.getElementById('m5cCollectFullShape')){return;}"
-                        + "var root=document.querySelector('#app')||document.body;if(!root){return;}"
-                        + "var box=document.createElement('div');box.id='m5cCollectFullShape';box.style.cssText='margin:12px 16px;padding:12px;border:1px solid #dcdfe6;background:#fff;border-radius:4px;font-size:13px;color:#303133;';"
-                        + "box.innerHTML='<div style=\"display:flex;align-items:center;gap:12px;flex-wrap:wrap\">'"
-                        + "+'<strong>采集任务</strong>'"
-                        + "+'<label><input type=\"checkbox\" name=\"m5c_area_code\" value=\"+1\" checked> 美国/加拿大 +1</label>'"
-                        + "+'<label><input type=\"checkbox\" name=\"m5c_platform\" value=\"facebook.com\" checked> facebook.com</label>'"
-                        + "+'<label><input type=\"checkbox\" name=\"m5c_platform\" value=\"google.com\"> google.com</label>'"
-                        + "+'<input id=\"m5c_keywords\" placeholder=\"关键词\" value=\"local-test\" style=\"height:28px;border:1px solid #dcdfe6;border-radius:4px;padding:0 8px;min-width:180px\">'"
-                        + "+'<button id=\"m5c_create_task\" style=\"height:30px;border:0;border-radius:4px;background:#059D81;color:#fff;padding:0 14px;cursor:pointer\">创建任务</button>'"
-                        + "+'<span id=\"m5c_task_status\" style=\"color:#606266\"></span>'"
-                        + "+'</div><div style=\"margin-top:10px;font-weight:600\">任务列表</div>'"
-                        + "+'<table style=\"width:100%;margin-top:6px;border-collapse:collapse\"><thead><tr style=\"background:#f5f7fa\"><th style=\"text-align:left;padding:6px;border:1px solid #ebeef5\">taskId</th><th style=\"text-align:left;padding:6px;border:1px solid #ebeef5\">状态</th><th style=\"text-align:left;padding:6px;border:1px solid #ebeef5\">参数</th></tr></thead><tbody id=\"m5c_task_rows\"><tr><td colspan=\"3\" style=\"padding:8px;border:1px solid #ebeef5;color:#909399\">暂无任务</td></tr></tbody></table>';"
-                        + "root.insertBefore(box,root.firstChild);"
-                        + "function vals(n){var a=[];box.querySelectorAll('input[name='+n+']:checked').forEach(function(x){a.push(x.value);});return a;}"
-                        + "function renderTasks(){try{var raw=window.mijava&&window.mijava.m5ListLocalCollectTasks?window.mijava.m5ListLocalCollectTasks('whatsapp','whatsapp_users_lists'):'{\\\"rows\\\":[],\\\"total\\\":0}';var data=JSON.parse(raw);var rows=data.rows||[];var html='';rows.forEach(function(r){html+='<tr><td style=\"padding:6px;border:1px solid #ebeef5\">'+r.taskId+'</td><td style=\"padding:6px;border:1px solid #ebeef5\">'+(r.message||r.status)+'</td><td style=\"padding:6px;border:1px solid #ebeef5\">'+String(r.spiderParams||'').replace(/[<>]/g,'')+'</td></tr>';});document.getElementById('m5c_task_rows').innerHTML=html||'<tr><td colspan=\"3\" style=\"padding:8px;border:1px solid #ebeef5;color:#909399\">暂无任务</td></tr>';}catch(e){console.error('M5C_COLLECT_TASK_LIST_RENDER_FAILED '+e);}}"
-                        + "document.getElementById('m5c_create_task').onclick=function(){var p={googSite:'google.com',areaCode:vals('m5c_area_code').join(','),pltCode:vals('m5c_platform').join(','),keywords:document.getElementById('m5c_keywords').value||''};var tc={cloudServer:'local',moduleCode:'whatsapp'};var out='{\\\"code\\\":500,\\\"submitted\\\":false}';try{out=window.mijava.m5SubmitLocalCollectTask('whatsapp','whatsapp_users_lists',JSON.stringify(p),JSON.stringify(tc));console.log('M5C_COLLECT_UI_CREATE_TASK '+out);document.getElementById('m5c_task_status').innerText='已创建任务';renderTasks();}catch(e){document.getElementById('m5c_task_status').innerText='创建失败';console.error('M5C_COLLECT_UI_CREATE_TASK_FAILED '+e);}return false;};"
-                        + "renderTasks();console.log('M5C_COLLECT_FULL_SHAPE_INSTALLED area_code platform keywords 任务列表 创建任务');"
-                        + "}};}"
-                        + "if(!window.__m5AutoSeedDataCollect&&String(location.href).indexOf('/pc/dataCollect/collectionTask/data_index')>=0&&String(location.href).indexOf('whatsapp_users_lists')>=0){"
-                        + "window.__m5AutoSeedDataCollect=true;var __m5SeedAttempts=0;var __m5SeedTimer=setInterval(function(){__m5SeedAttempts++;try{"
-                        + "if(window.__m5CollectFullShape&&window.__m5CollectFullShape.install){window.__m5CollectFullShape.install();}"
-                        + "if(window.__m5LocalSpider&&window.__m5LocalSpider.seedWhatsAppMockResult&&window.mijava&&window.reloadData){console.log('M5A_LOCAL_DATACOLLECT_AUTO_SEED');window.__m5LocalSpider.seedWhatsAppMockResult();clearInterval(__m5SeedTimer);}"
-                        + "else if(__m5SeedAttempts>=10){clearInterval(__m5SeedTimer);}"
-                        + "}catch(e){console.error('M5A_LOCAL_DATACOLLECT_AUTO_SEED_FAILED '+e);clearInterval(__m5SeedTimer);}},1000);}"
                         + "var __m5OrigJsonParse=JSON.parse;"
                         + "JSON.parse=function(v){"
                         + "if(typeof v==='undefined'){try{console.error('M5_V23_JSON_PARSE_UNDEFINED stack='+(new Error()).stack);}catch(e){}}"
@@ -1343,6 +1742,160 @@ public final class M4AuthPatch {
                 "append",
                 "(Ljava/lang/Object;)Ljava/lang/StringBuilder;");
         mv.visitLabel(afterBridge);
+    }
+
+    private static byte[] patchGoogleCRHelper(byte[] original, PatchResult result) {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        cw.visit(
+                Opcodes.V1_8,
+                Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
+                "com/sbf/main/ext/gg/GoogleCRHelper",
+                null,
+                "java/lang/Object",
+                null);
+        writeDefaultConstructor(cw);
+        MethodVisitor mv =
+                cw.visitMethod(
+                        Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                        "a",
+                        "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                        null,
+                        null);
+        mv.visitCode();
+        emitPrint(mv, "M5D_YESCAPTCHA_GOOGLE_CR_TASK");
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/ext/gg/M5YesCaptchaBridge",
+                "solve",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                false);
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+        MethodVisitor main =
+                cw.visitMethod(
+                        Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                        "main",
+                        "([Ljava/lang/String;)V",
+                        null,
+                        null);
+        main.visitCode();
+        main.visitInsn(Opcodes.RETURN);
+        main.visitMaxs(0, 0);
+        main.visitEnd();
+        cw.visitEnd();
+        result.patchedGoogleCRHelper = true;
+        return cw.toByteArray();
+    }
+
+    private static byte[] patchSpiderCallback(byte[] original, final PatchResult result) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = computeFramesWriter(reader);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                if ("postData".equals(name) && "(Ljava/lang/String;)V".equals(descriptor)) {
+                    MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                    result.patchedSpiderCallbackPostData = true;
+                    return new MethodVisitor(Opcodes.ASM9, mv) {
+                        @Override
+                        public void visitCode() {
+                            super.visitCode();
+                            emitPrint(this, "M5D_POSTDATA_LOCAL_CALLBACK");
+                            visitVarInsn(Opcodes.ALOAD, 0);
+                            visitFieldInsn(
+                                    Opcodes.GETFIELD,
+                                    "com/sbf/main/cloud/spider/SpiderCallback",
+                                    "spider",
+                                    "Lcom/sbf/main/cloud/spider/b;");
+                            visitVarInsn(Opcodes.ALOAD, 1);
+                            visitMethodInsn(
+                                    Opcodes.INVOKESTATIC,
+                                    "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                                    "postCollectedData",
+                                    "(Ljava/lang/Object;Ljava/lang/String;)Z",
+                                    false);
+                            visitInsn(Opcodes.POP);
+                        }
+                    };
+                }
+                if ("endTask".equals(name) && "()V".equals(descriptor)) {
+                    MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                    result.patchedSpiderCallbackEndTask = true;
+                    return new MethodVisitor(Opcodes.ASM9, mv) {
+                        @Override
+                        public void visitCode() {
+                            super.visitCode();
+                            emitPrint(this, "M5D_ENDTASK_LOCAL_CALLBACK");
+                            visitVarInsn(Opcodes.ALOAD, 0);
+                            visitFieldInsn(
+                                    Opcodes.GETFIELD,
+                                    "com/sbf/main/cloud/spider/SpiderCallback",
+                                    "spider",
+                                    "Lcom/sbf/main/cloud/spider/b;");
+                            visitMethodInsn(
+                                    Opcodes.INVOKESTATIC,
+                                    "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                                    "endCollectedTask",
+                                    "(Ljava/lang/Object;)V",
+                                    false);
+                        }
+                    };
+                }
+                return super.visitMethod(access, name, descriptor, signature, exceptions);
+            }
+        };
+        reader.accept(visitor, ClassReader.EXPAND_FRAMES);
+        return writer.toByteArray();
+    }
+
+    private static void writeSpiderCallbackPostDataMethod(MethodVisitor mv) {
+        mv.visitCode();
+        emitPrint(mv, "M5D_POSTDATA_LOCAL_CALLBACK");
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(
+                Opcodes.GETFIELD,
+                "com/sbf/main/cloud/spider/SpiderCallback",
+                "spider",
+                "Lcom/sbf/main/cloud/spider/b;");
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "postCollectedData",
+                "(Ljava/lang/Object;Ljava/lang/String;)Z",
+                false);
+        mv.visitInsn(Opcodes.POP);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private static void writeSpiderCallbackEndTaskMethod(MethodVisitor mv) {
+        mv.visitCode();
+        emitPrint(mv, "M5D_ENDTASK_LOCAL_CALLBACK");
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitFieldInsn(
+                Opcodes.GETFIELD,
+                "com/sbf/main/cloud/spider/SpiderCallback",
+                "spider",
+                "Lcom/sbf/main/cloud/spider/b;");
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                "endCollectedTask",
+                "(Ljava/lang/Object;)V",
+                false);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
     }
 
     private static byte[] generateM5RequestObserver() {
@@ -2280,7 +2833,7 @@ public final class M4AuthPatch {
 
     private static byte[] patchModernMenuDispatchDiagnostics(byte[] original, PatchResult result) {
         ClassReader reader = new ClassReader(original);
-        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassWriter writer = computeFramesWriter(reader);
         ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
             @Override
             public MethodVisitor visitMethod(
@@ -2306,6 +2859,7 @@ public final class M4AuthPatch {
                     public void visitTypeInsn(int opcode, String type) {
                         if (opcode == Opcodes.NEW) {
                             if ("com/sbf/main/jxbrowser/c".equals(type)) {
+                                emitModernCollectTabJxBrowserUrlFix(this);
                                 emitPrint(this, "M4_V12_NEW_JXBROWSER");
                             } else if ("com/sbf/main/ext/j2026/ui/c".equals(type)) {
                                 emitPrint(this, "M4_V12_NEW_J2026_UI_C");
@@ -2318,7 +2872,7 @@ public final class M4AuthPatch {
                 };
             }
         };
-        reader.accept(visitor, 0);
+        reader.accept(visitor, ClassReader.EXPAND_FRAMES);
         return writer.toByteArray();
     }
 
@@ -3208,6 +3762,7 @@ public final class M4AuthPatch {
                 "java/lang/StringBuilder",
                 "append",
                 "(Ljava/lang/Object;)Ljava/lang/StringBuilder;");
+        emitPrint(mv, "M5D8_LOCAL_WEB_ASSET_ADD_SCHEME_ACTIVE");
         mv.visitVarInsn(Opcodes.ALOAD, 0);
         mv.visitLdcInsn(org.objectweb.asm.Type.getType(
                 "Lcom/teamdev/jxbrowser/browser/callback/InjectJsCallback;"));
@@ -3421,6 +3976,33 @@ public final class M4AuthPatch {
         mv.visitJumpInsn(Opcodes.GOTO, notJSinglepage);
         mv.visitLabel(notAiCloudJSinglepage);
         mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
+        mv.visitLdcInsn("JSinglepage:/");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "startsWith",
+                "(Ljava/lang/String;)Z",
+                false);
+        org.objectweb.asm.Label notExplicitJSinglepage = new org.objectweb.asm.Label();
+        mv.visitJumpInsn(Opcodes.IFEQ, notExplicitJSinglepage);
+        mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
+        mv.visitLdcInsn("JSinglepage:");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "length",
+                "()I",
+                false);
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "substring",
+                "(I)Ljava/lang/String;",
+                false);
+        mv.visitVarInsn(Opcodes.ASTORE, urlLocal);
+        mv.visitJumpInsn(Opcodes.GOTO, notJSinglepage);
+        mv.visitLabel(notExplicitJSinglepage);
+        mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
         mv.visitLdcInsn("JSinglepage");
         mv.visitMethodInsn(
                 Opcodes.INVOKEVIRTUAL,
@@ -3430,7 +4012,7 @@ public final class M4AuthPatch {
                 false);
         mv.visitJumpInsn(Opcodes.IFEQ, notJSinglepage);
         mv.visitLdcInsn(
-                "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp");
+                "/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp");
         mv.visitVarInsn(Opcodes.ASTORE, urlLocal);
         mv.visitLabel(notJSinglepage);
         mv.visitVarInsn(Opcodes.ALOAD, urlLocal);
@@ -3665,6 +4247,34 @@ public final class M4AuthPatch {
                 Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
         mv.visitMethodInsn(
                 Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+    }
+
+    private static void emitModernCollectTabJxBrowserUrlFix(MethodVisitor mv) {
+        org.objectweb.asm.Label done = new org.objectweb.asm.Label();
+        mv.visitVarInsn(Opcodes.ALOAD, 5);
+        mv.visitLdcInsn("JSinglepage");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "equals",
+                "(Ljava/lang/Object;)Z",
+                false);
+        mv.visitJumpInsn(Opcodes.IFEQ, done);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitJumpInsn(Opcodes.IFNULL, done);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitLdcInsn("/pc/dataCollect/collectionTask");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "startsWith",
+                "(Ljava/lang/String;)Z",
+                false);
+        mv.visitJumpInsn(Opcodes.IFEQ, done);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitVarInsn(Opcodes.ASTORE, 5);
+        emitPrint(mv, "M5D11_COLLECT_TAB_JXBROWSER_URL_FROM_LINKURL");
+        mv.visitLabel(done);
     }
 
     private static void emitModernMenuMouseDiagnostics(MethodVisitor mv, String marker) {
@@ -3989,9 +4599,15 @@ public final class M4AuthPatch {
         boolean patchedJxBrowserDiagnostics;
         boolean patchedJxBrowserLoadDiagnostics;
         boolean patchedJxBrowserEngine;
+        boolean patchedLocalWebSchemeCallback;
+        boolean patchedGoogleCRHelper;
+        boolean patchedSpiderCallbackPostData;
+        boolean patchedSpiderCallbackEndTask;
         boolean addedM5ConsoleObserver;
+        boolean addedM5AuthBootstrapCallback;
         boolean addedM5InjectJsCallback;
         boolean addedM5LocalSpiderBridge;
         boolean addedM5RequestObserver;
+        boolean addedM5YesCaptchaBridge;
     }
 }

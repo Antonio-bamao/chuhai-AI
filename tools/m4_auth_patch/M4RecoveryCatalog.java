@@ -2,8 +2,8 @@ public final class M4RecoveryCatalog {
     private static final int PRODUCT_ID_BASE = 9101;
     private static final int WHATSAPP_PRODUCT_ID = PRODUCT_ID_BASE;
     private static final int WHATSAPP_AI_COLLECT_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 5;
-    private static final int WHATSAPP_AI_COLLECT_ROUTE_CHILD_ID =
-            WHATSAPP_AI_COLLECT_MENU_ID * 100 + 1;
+    private static final int WHATSAPP_AI_COLLECT_ROUTE_CHILD_ID_BASE =
+            WHATSAPP_AI_COLLECT_MENU_ID * 100;
     private static final int WHATSAPP_AI_DATA_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 6;
     private static final int WHATSAPP_AI_DATA_ROUTE_CHILD_ID =
             WHATSAPP_AI_DATA_MENU_ID * 100 + 1;
@@ -154,7 +154,7 @@ public final class M4RecoveryCatalog {
                 appendMenu(json, productMenus[menuIndex], productId, menuIndex + 1);
                 if (isWhatsappCollectMenu(productId, productMenus[menuIndex])) {
                     json.append(',');
-                    appendWhatsappCollectRouteChild(json);
+                    appendWhatsappCollectRouteChildren(json);
                 }
                 if (isWhatsappAiDataMenu(productId, productMenus[menuIndex])) {
                     json.append(',');
@@ -234,7 +234,7 @@ public final class M4RecoveryCatalog {
             appendMenu(json, productMenus[menuIndex], id, menuIndex + 1);
             if (isWhatsappCollectMenu(id, productMenus[menuIndex])) {
                 json.append(',');
-                appendWhatsappCollectRouteChild(json);
+                appendWhatsappCollectRouteChildren(json);
             }
             if (isWhatsappAiDataMenu(id, productMenus[menuIndex])) {
                 json.append(',');
@@ -285,30 +285,62 @@ public final class M4RecoveryCatalog {
         return productId == WHATSAPP_PRODUCT_ID && "C4749_009".equals(menu.code);
     }
 
-    private static void appendWhatsappCollectRouteChild(StringBuilder json) {
+    private static void appendWhatsappCollectRouteChildren(StringBuilder json) {
+        appendWhatsappCollectRouteChild(
+                json,
+                1,
+                "REC_WHATSAPP_COLLECT_TAB_GLOBAL_NUMBER",
+                "全球号码采集",
+                "whatsapp_users_lists");
+        json.append(',');
+        appendWhatsappCollectRouteChild(
+                json,
+                2,
+                "REC_WHATSAPP_COLLECT_TAB_WS_NUMBER",
+                "WS号码采集",
+                "wap_global_clue_users");
+        json.append(',');
+        appendWhatsappCollectRouteChild(
+                json,
+                3,
+                "REC_WHATSAPP_COLLECT_TAB_WS_GROUP",
+                "WS小组采集",
+                "whatsapp_group_lists");
+        json.append(',');
+        appendWhatsappCollectRouteChild(
+                json,
+                4,
+                "REC_WHATSAPP_COLLECT_TAB_WS_REGION",
+                "WS地区采集",
+                "whatsapp_regional_collection");
+    }
+
+    private static void appendWhatsappCollectRouteChild(
+            StringBuilder json, int displayIndex, String code, String name, String spiderCode) {
+        String route =
+                "/pc/dataCollect/collectionTask?modal="
+                        + spiderCode
+                        + "&moduleCode=whatsapp";
         json.append('{');
-        appendNumber(json, "id", WHATSAPP_AI_COLLECT_ROUTE_CHILD_ID);
+        appendNumber(json, "id", WHATSAPP_AI_COLLECT_ROUTE_CHILD_ID_BASE + displayIndex);
         appendNumber(json, "sid", WHATSAPP_PRODUCT_ID);
         appendNumber(json, "fid", WHATSAPP_PRODUCT_ID);
         appendNumber(json, "productId", WHATSAPP_PRODUCT_ID);
         appendNumber(json, "parentId", WHATSAPP_AI_COLLECT_MENU_ID);
-        appendString(json, "code", "REC_WHATSAPP_COLLECT_USERS_ROUTE");
-        appendString(json, "name", "AI采集");
-        appendString(json, "displayName", "AI采集");
+        appendString(json, "code", code);
+        appendString(json, "name", name);
+        appendString(json, "displayName", name);
         appendString(json, "icon", "whatsapp_menu_icon_5");
-        appendString(
-                json,
-                "localCode",
-                "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp");
+        appendString(json, "localCode", route);
         appendString(json, "linkUrl", "JSinglepage");
         appendNumber(json, "webFlg", 1);
         appendNumber(json, "treeEndFlg", 1);
-        appendNumber(json, "displayIndex", 1);
-        appendNumber(json, "sort", 1);
+        appendNumber(json, "displayIndex", displayIndex);
+        appendNumber(json, "sort", displayIndex);
         appendString(
                 json,
                 "evidence",
-                "recovery-route-child:j2026-h-field-map:dataCollect:whatsapp_users_lists");
+                "m5d11-menu-tab:dataCollect:" + spiderCode);
         json.append("\"status\":1");
         json.append('}');
     }
@@ -434,7 +466,7 @@ public final class M4RecoveryCatalog {
                 name,
                 icon,
                 "JSinglepage",
-                "/pc/dataCollect/collectionTask/data_index?spiderCode="
+                "/pc/dataCollect/collectionTask?modal="
                         + spiderCode
                         + "&moduleCode=whatsapp",
                 "recovery-route:dataCollect:" + spiderCode);

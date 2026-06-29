@@ -20,6 +20,7 @@ DATA_LIBS = ROOT / "data" / "lib" / "*"
 SOURCE = ROOT / "tools" / "m4_auth_patch" / "M4AuthPatch.java"
 CATALOG_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M4RecoveryCatalog.java"
 LOCAL_SPIDER_BRIDGE_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M5LocalSpiderBridge.java"
+YES_CAPTCHA_BRIDGE_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M5YesCaptchaBridge.java"
 TMP_ROOT = ROOT / ".artifacts" / "tmp-tests"
 
 
@@ -51,6 +52,7 @@ class M4AuthPatchTests(unittest.TestCase):
                 str(self.classes),
                 str(CATALOG_SOURCE),
                 str(LOCAL_SPIDER_BRIDGE_SOURCE),
+                str(YES_CAPTCHA_BRIDGE_SOURCE),
                 str(SOURCE),
             ],
             cwd=ROOT,
@@ -81,6 +83,42 @@ class M4AuthPatchTests(unittest.TestCase):
                 "-cp",
                 classpath(self.probe_classes, JSON_JAR),
                 class_name,
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def compile_and_run_yescaptcha_bridge_probe(self, class_name, source, *args):
+        probe_dir = self.tmp_path / "yescaptcha-probe-src" / "com" / "sbf" / "main" / "ext" / "gg"
+        probe_dir.mkdir(parents=True)
+        probe_source = probe_dir / (class_name + ".java")
+        probe_source.write_text(textwrap.dedent(source).strip(), encoding="utf-8")
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                str(JSON_JAR),
+                "-d",
+                str(self.probe_classes),
+                str(YES_CAPTCHA_BRIDGE_SOURCE),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, JSON_JAR),
+                "com.sbf.main.ext.gg." + class_name,
+                *[str(arg) for arg in args],
             ],
             cwd=ROOT,
             text=True,
@@ -139,6 +177,103 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M4_RECOVERY_PRODUCTS_OK", probe.stdout)
 
+    def test_yescaptcha_bridge_loads_local_key_and_normalizes_solution(self):
+        runtime = self.tmp_path / "runtime"
+        (runtime / "config").mkdir(parents=True)
+        (runtime / "config" / ".env").write_text(
+            "YESCAPTCHA_CLIENT_KEY=abcd1234567890\n", encoding="utf-8"
+        )
+        probe = self.compile_and_run_yescaptcha_bridge_probe(
+            "M5YesCaptchaBridgeProbe",
+            """
+            package com.sbf.main.ext.gg;
+
+            import java.nio.file.Paths;
+            import org.json.JSONObject;
+
+            public class M5YesCaptchaBridgeProbe {
+                public static void main(String[] args) throws Exception {
+                    String key = M5YesCaptchaBridge.loadClientKeyForTest(Paths.get(args[0]));
+                    if (!"abcd1234567890".equals(key)) {
+                        throw new AssertionError("key not loaded: " + key);
+                    }
+                    if (!"abcd****7890".equals(M5YesCaptchaBridge.maskClientKeyForTest(key))) {
+                        throw new AssertionError("mask failed");
+                    }
+                    String normalized =
+                            M5YesCaptchaBridge.normalizeReadyResultForTest(
+                                    "{\\"solution\\":{\\"objects\\":[1,3],\\"hasObject\\":true}}");
+                    JSONObject solution = new JSONObject(normalized).getJSONObject("solution");
+                    if (solution.getJSONArray("objects").length() != 2
+                            || !solution.getBoolean("hasObject")) {
+                        throw new AssertionError("solution shape: " + normalized);
+                    }
+                    System.out.println("M5D_YESCAPTCHA_BRIDGE_PROBE_OK");
+                }
+            }
+            """,
+            runtime,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M5D_YESCAPTCHA_BRIDGE_PROBE_OK", probe.stdout)
+
+    def test_yescaptcha_bridge_does_not_treat_task_id_as_ready(self):
+        probe = self.compile_and_run_yescaptcha_bridge_probe(
+            "M5YesCaptchaBridgeReadyProbe",
+            """
+            package com.sbf.main.ext.gg;
+
+            public class M5YesCaptchaBridgeReadyProbe {
+                public static void main(String[] args) throws Exception {
+                    String createOnly = M5YesCaptchaBridge.readySolutionFromForTest(
+                            "{\\"errorId\\":0,\\"taskId\\":123456}");
+                    if (createOnly != null) {
+                        throw new AssertionError("taskId-only create response must poll: " + createOnly);
+                    }
+                    String emptyBareSolution = M5YesCaptchaBridge.readySolutionFromForTest(
+                            "{\\"errorId\\":0,\\"solution\\":{}}");
+                    if (emptyBareSolution != null) {
+                        throw new AssertionError("bare empty solution must not be immediate ready");
+                    }
+                    String ready = M5YesCaptchaBridge.readySolutionFromForTest(
+                            "{\\"errorId\\":0,\\"status\\":\\"ready\\",\\"solution\\":{\\"objects\\":[1,3,9],\\"hasObject\\":true}}");
+                    if (ready == null || !ready.contains("\\\"objects\\\"")) {
+                        throw new AssertionError("ready solution was not normalized: " + ready);
+                    }
+                    String summary = M5YesCaptchaBridge.responseSummaryForTest(
+                            "{\\"errorId\\":0,\\"status\\":\\"ready\\",\\"solution\\":{\\"objects\\":[1,3,9],\\"hasObject\\":true}}");
+                    if (!summary.contains("status=ready")
+                            || !summary.contains("objects=[1,3,9]")
+                            || !summary.contains("hasObject=true")) {
+                        throw new AssertionError("summary missing ready fields: " + summary);
+                    }
+                    System.out.println("M5D_YESCAPTCHA_READY_PROBE_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M5D_YESCAPTCHA_READY_PROBE_OK", probe.stdout)
+
+    def test_spider_callback_post_data_is_redirected_to_local_sink(self):
+        self.compile_patcher()
+
+        result = self.run_patcher()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        post_data_block = self.javap_method_block(
+            "public void postData(java.lang.String);",
+            "com.sbf.main.cloud.spider.SpiderCallback",
+        )
+        end_task_block = self.javap_method_block(
+            "public void endTask();",
+            "com.sbf.main.cloud.spider.SpiderCallback",
+        )
+        self.assertIn("M5D_POSTDATA_LOCAL_CALLBACK", post_data_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.postCollectedData", post_data_block)
+        self.assertIn("M5D_ENDTASK_LOCAL_CALLBACK", end_task_block)
+        self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.endCollectedTask", end_task_block)
+
     def test_recovery_catalog_has_product_specific_menus(self):
         probe = self.compile_and_run_catalog_probe(
             "M4RecoveryMenuProbe",
@@ -176,6 +311,8 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "C4749_006".equals(item.getString("code"));
                         boolean whatsappCollectChild =
                                 "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(item.getString("code"));
+                        boolean whatsappCollectTabChild =
+                                item.getString("code").startsWith("REC_WHATSAPP_COLLECT_TAB_");
                         boolean whatsappDataParent =
                                 "C4749_007".equals(item.getString("code"));
                         boolean whatsappDataChild =
@@ -186,17 +323,19 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "REC_WHATSAPP_AI_FILTER_ROUTE".equals(item.getString("code"));
                         if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
-                                    || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
+                                    || !"/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
                                     || !item.optString("evidence").contains("recovery-route")
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp collect recovery route: " + item);
                             }
                         } else if (whatsappCollectChild) {
-                            if (!"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("localCode"))
+                            throw new AssertionError("old single collect child route must be replaced by tab children: " + item);
+                        } else if (whatsappCollectTabChild) {
+                            if (!item.getString("localCode").startsWith("/pc/dataCollect/collectionTask?modal=")
                                     || !"JSinglepage".equals(item.getString("linkUrl"))
-                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map")
+                                    || !item.optString("evidence").contains("m5d11-menu-tab:dataCollect:")
                                     || item.getInt("webFlg") != 1) {
-                                throw new AssertionError("WhatsApp collect child recovery route: " + item);
+                                throw new AssertionError("WhatsApp collect tab child recovery route: " + item);
                             }
                         } else if (whatsappDataParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
@@ -237,7 +376,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {14, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {17, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -285,13 +424,13 @@ class M4AuthPatchTests(unittest.TestCase):
                     JSONArray entries =
                             new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
                     JSONObject target = null;
-                    JSONObject routeChild = null;
+                    int routeChildCount = 0;
                     for (int i = 0; i < entries.length(); i++) {
                         JSONObject item = entries.getJSONObject(i);
                         if ("C4749_006".equals(item.optString("code"))) {
                             target = item;
-                        } else if ("REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(item.optString("code"))) {
-                            routeChild = item;
+                        } else if (item.optString("code").startsWith("REC_WHATSAPP_COLLECT_TAB_")) {
+                            routeChildCount++;
                         }
                     }
                     if (target == null) {
@@ -305,22 +444,15 @@ class M4AuthPatchTests(unittest.TestCase):
                         throw new AssertionError("missing JSinglepage dataCollect opener recovery value: " + target);
                     }
                     String expectedLink =
-                            "/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp";
+                            "/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp";
                     if (!expectedLink.equals(target.optString("linkUrl"))) {
                         throw new AssertionError("missing WhatsApp spider route: " + target);
                     }
                     if (!target.optString("evidence").contains("recovery-route")) {
                         throw new AssertionError("route must be marked as recovered evidence: " + target);
                     }
-                    if (routeChild == null) {
-                        throw new AssertionError("missing WhatsApp collect child route");
-                    }
-                    if (routeChild.optInt("parentId") != target.optInt("id")
-                            || routeChild.optInt("productId") != 9101
-                            || !expectedLink.equals(routeChild.optString("localCode"))
-                            || !"JSinglepage".equals(routeChild.optString("linkUrl"))
-                            || !routeChild.optString("evidence").contains("recovery-route-child:j2026-h-field-map")) {
-                        throw new AssertionError("wrong WhatsApp collect child route: " + routeChild);
+                    if (routeChildCount != 4) {
+                        throw new AssertionError("missing WhatsApp collect tab children: " + routeChildCount);
                     }
                     System.out.println("M4_WHATSAPP_COLLECT_ROUTE_OK");
                 }
@@ -329,6 +461,76 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M4_WHATSAPP_COLLECT_ROUTE_OK", probe.stdout)
+
+    def test_recovery_catalog_adds_whatsapp_collect_top_tab_children(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M5D11WhatsAppCollectTabsProbe",
+            """
+            import java.util.LinkedHashMap;
+            import java.util.Map;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M5D11WhatsAppCollectTabsProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject parent = null;
+                    Map<String, JSONObject> children = new LinkedHashMap<String, JSONObject>();
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("C4749_006".equals(item.optString("code"))) {
+                            parent = item;
+                        }
+                    }
+                    if (parent == null) {
+                        throw new AssertionError("missing WhatsApp AI collect parent");
+                    }
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if (item.optInt("parentId") == parent.optInt("id")
+                                && item.optString("code").startsWith("REC_WHATSAPP_COLLECT_TAB_")) {
+                            children.put(item.optString("name"), item);
+                        }
+                    }
+                    String[][] expected = {
+                        {"全球号码采集", "REC_WHATSAPP_COLLECT_TAB_GLOBAL_NUMBER", "whatsapp_users_lists"},
+                        {"WS号码采集", "REC_WHATSAPP_COLLECT_TAB_WS_NUMBER", "wap_global_clue_users"},
+                        {"WS小组采集", "REC_WHATSAPP_COLLECT_TAB_WS_GROUP", "whatsapp_group_lists"},
+                        {"WS地区采集", "REC_WHATSAPP_COLLECT_TAB_WS_REGION", "whatsapp_regional_collection"}
+                    };
+                    if (children.size() != expected.length) {
+                        throw new AssertionError("wrong collect tab child count: " + children);
+                    }
+                    for (int i = 0; i < expected.length; i++) {
+                        JSONObject child = children.get(expected[i][0]);
+                        if (child == null) {
+                            throw new AssertionError("missing collect tab child: " + expected[i][0]);
+                        }
+                        String expectedPath =
+                                "/pc/dataCollect/collectionTask?modal="
+                                        + expected[i][2]
+                                        + "&moduleCode=whatsapp";
+                        if (!expected[i][1].equals(child.optString("code"))
+                                || child.optInt("parentId") != parent.optInt("id")
+                                || child.optInt("productId") != 9101
+                                || child.optInt("displayIndex") != i + 1
+                                || child.optInt("sort") != i + 1
+                                || child.optInt("treeEndFlg") != 1
+                                || child.optInt("webFlg") != 1
+                                || !expectedPath.equals(child.optString("localCode"))
+                                || !"JSinglepage".equals(child.optString("linkUrl"))
+                                || !child.optString("evidence").contains("m5d11-menu-tab:dataCollect:" + expected[i][2])) {
+                            throw new AssertionError("wrong collect tab child: " + child);
+                        }
+                    }
+                    System.out.println("M5D11_WHATSAPP_COLLECT_TABS_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M5D11_WHATSAPP_COLLECT_TABS_OK", probe.stdout)
 
     def test_recovery_catalog_keeps_whatsapp_ai_data_on_original_aicloud_route(self):
         probe = self.compile_and_run_catalog_probe(
@@ -432,6 +634,86 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M5C_WHATSAPP_AI_FILTER_ROUTE_OK", probe.stdout)
 
+    def test_local_spider_bridge_supports_collect_tab_configs_and_empty_data(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "M5D11CollectTabBridgeProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+                import java.nio.file.Path;
+                import java.nio.file.Paths;
+                import org.json.JSONObject;
+
+                public class M5D11CollectTabBridgeProbe {
+                    public static void main(String[] args) throws Exception {
+                        Path baseDir = Paths.get(args[0]);
+                        String[] spiderCodes = {
+                            "whatsapp_users_lists",
+                            "wap_global_clue_users",
+                            "whatsapp_group_lists",
+                            "whatsapp_regional_collection"
+                        };
+                        for (int i = 0; i < spiderCodes.length; i++) {
+                            JSONObject config = new JSONObject(
+                                    M5LocalSpiderBridge.spiderConfig(baseDir.toString(), spiderCodes[i]));
+                            if (!spiderCodes[i].equals(config.optString("code"))
+                                    || !"whatsapp".equals(config.optString("moduleCode"))
+                                    || config.optJSONArray("fields") == null
+                                    || config.optJSONArray("fields").length() == 0) {
+                                throw new AssertionError("bad tab spider config: " + config);
+                            }
+                            JSONObject page = new JSONObject(
+                                    M5LocalSpiderBridge.listSpiderData(
+                                            baseDir.toString(), "whatsapp", spiderCodes[i], 1, 50));
+                            if (page.optInt("code") != 200 || page.optJSONArray("rows") == null) {
+                                throw new AssertionError("bad tab data page: " + page);
+                            }
+                            if (!"whatsapp_users_lists".equals(spiderCodes[i])
+                                    && (page.optLong("total") != 0L
+                                            || page.optJSONArray("rows").length() != 0)) {
+                                throw new AssertionError("non-primary tabs must remain empty without fake rows: " + page);
+                            }
+                        }
+                        System.out.println("M5D11_COLLECT_TAB_BRIDGE_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.classes, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS),
+                "M5D11CollectTabBridgeProbe",
+                str(ROOT / "data" / "app"),
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M5D11_COLLECT_TAB_BRIDGE_OK", probe.stdout)
+
     def run_patcher(self):
         return subprocess.run(
             [
@@ -532,6 +814,8 @@ class M4AuthPatchTests(unittest.TestCase):
             self.assertEqual(
                 added,
                 [
+                    "com/sbf/main/ext/gg/M5YesCaptchaBridge.class",
+                    "com/sbf/main/jxbrowser/M5AuthBootstrapCallback.class",
                     "com/sbf/main/jxbrowser/M5ConsoleObserver.class",
                     "com/sbf/main/jxbrowser/M5InjectJsCallback.class",
                     "com/sbf/main/jxbrowser/M5LocalSpiderBridge$LocalPipelineRunner.class",
@@ -551,9 +835,12 @@ class M4AuthPatchTests(unittest.TestCase):
                 "com/sbf/main/StartApp$1.class",
                 "com/sbf/main/StartApp$3.class",
                 "com/sbf/main/StartApp.class",
+                "com/sbf/main/cloud/spider/SpiderCallback.class",
+                "com/sbf/main/ext/gg/GoogleCRHelper.class",
                 "com/sbf/main/ext/j2026/d$1.class",
                 "com/sbf/main/ext/j2026/d$2.class",
                 "com/sbf/main/ext/j2026/h$2.class",
+                "com/sbf/main/jxbrowser/b.class",
                 "com/sbf/main/jxbrowser/c$3.class",
                 "com/sbf/main/jxbrowser/c.class",
                 "com/sbf/main/jxbrowser/g.class",
@@ -642,6 +929,10 @@ class M4AuthPatchTests(unittest.TestCase):
             "private static void m5InstallWebDiagnostics(com.teamdev.jxbrowser.browser.Browser);",
             "com.sbf.main.jxbrowser.c",
         )
+        scheme_callback_block = self.javap_method_block(
+            "public final java.lang.Object on(java.lang.Object);",
+            "com.sbf.main.jxbrowser.b",
+        )
         console_observer_block = self.javap_method_block(
             "public void on(com.teamdev.jxbrowser.browser.event.ConsoleMessageReceived);",
             "com.sbf.main.jxbrowser.M5ConsoleObserver",
@@ -666,6 +957,10 @@ class M4AuthPatchTests(unittest.TestCase):
             "public void getCloudSpiderConfig(java.lang.String, com.teamdev.jxbrowser.js.JsFunction);",
             "com.sbf.main.jxbrowser.MiJava",
         )
+        mijava_get_local_spider_config_block = self.javap_method_block(
+            "public java.lang.String m5GetLocalSpiderConfig(java.lang.String);",
+            "com.sbf.main.jxbrowser.MiJava",
+        )
         sbfapi_get_local_task_block = self.javap_method_block(
             "public static org.json.JSONObject c(java.lang.Long);"
         )
@@ -687,6 +982,19 @@ class M4AuthPatchTests(unittest.TestCase):
         ws_filter_execute_block = self.javap_method_block(
             "public void doZwFilterWhataspp(java.lang.String, java.lang.String, com.teamdev.jxbrowser.js.JsFunction);",
             "com.sbf.main.jxbrowser.MiJava",
+        )
+        google_cr_helper_block = self.javap_method_block(
+            "public static java.lang.String a(java.lang.String, java.lang.String);",
+            "com.sbf.main.ext.gg.GoogleCRHelper",
+        )
+        google_cr_helper_class = self.javap_class_output("com.sbf.main.ext.gg.GoogleCRHelper")
+        yes_captcha_bridge_block = self.javap_method_block(
+            "public static java.lang.String solve(java.lang.String, java.lang.String);",
+            "com.sbf.main.ext.gg.M5YesCaptchaBridge",
+        )
+        yes_captcha_config_block = self.javap_method_block(
+            "private static java.lang.String loadClientKey();",
+            "com.sbf.main.ext.gg.M5YesCaptchaBridge",
         )
         ws_filter_list_worker_block = self.javap_method_block(
             "public final void run();",
@@ -727,6 +1035,8 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M4_DIAG_BRANCH_JxBrowser", menu_dispatch_block)
         self.assertIn("M4_V12_DISPATCH", modern_dispatch_block)
         self.assertIn("M4_V12_NEW_JXBROWSER", modern_dispatch_block)
+        self.assertIn("M5D11_COLLECT_TAB_JXBROWSER_URL_FROM_LINKURL", modern_dispatch_block)
+        self.assertIn("/pc/dataCollect/collectionTask", modern_dispatch_block)
         self.assertIn("com/sbf/main/ext/j2026/h.e:()Ljava/lang/String;", modern_dispatch_block)
         self.assertIn("com/sbf/main/ext/j2026/h.h:()Ljava/lang/String;", modern_dispatch_block)
         self.assertIn("com/sbf/main/ext/j2026/h.i:()Ljava/lang/String;", modern_dispatch_block)
@@ -774,6 +1084,11 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M5_V23_JS_HOOK_INSTALL browser=", browser_web_diag_block)
         self.assertNotIn("InterceptUrlRequestCallback", browser_web_diag_block)
         self.assertNotIn("Network.set", browser_web_diag_block)
+        self.assertIn("M5D8_LOCAL_WEB_ASSET_ADD_SCHEME_ACTIVE", browser_web_diag_block)
+        self.assertIn("M5D8_LOCAL_WEB_ASSET_ADD_SCHEME url=", scheme_callback_block)
+        self.assertIn("M5LocalSpiderBridge.localWebAssetBody", scheme_callback_block)
+        self.assertIn("M5LocalSpiderBridge.localWebAssetContentType", scheme_callback_block)
+        self.assertIn("UrlRequestJob.write", scheme_callback_block)
         self.assertIn("M5_V20_WEB_DIAG_INSTALL_FAILED", browser_web_diag_block)
         self.assertIn("M5_V20_WEB_CONSOLE level=", console_observer_block)
         self.assertIn("ConsoleMessage.message", console_observer_block)
@@ -811,14 +1126,13 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("*:*:*", mijava_get_info_block)
         self.assertIn("com/teamdev/jxbrowser/js/JsFunction.invoke", mijava_get_info_block)
         self.assertNotIn("com/sbf/main/StartApp.m", mijava_get_info_block)
-        self.assertIn("M5A_LOCAL_DATACOLLECT_CONFIG_JSON", mijava_get_cloud_spider_config_block)
-        self.assertIn("whatsapp_users_lists", mijava_get_cloud_spider_config_block)
-        self.assertIn("googSite", mijava_get_cloud_spider_config_block)
-        self.assertIn("pltCode", mijava_get_cloud_spider_config_block)
-        self.assertIn("keywords", mijava_get_cloud_spider_config_block)
-        self.assertIn("phone", mijava_get_cloud_spider_config_block)
-        self.assertIn("date", mijava_get_cloud_spider_config_block)
-        self.assertIn("url", mijava_get_cloud_spider_config_block)
+        self.assertIn("M5D11_LOCAL_DATACOLLECT_CONFIG_JSON", mijava_get_cloud_spider_config_block)
+        self.assertIn("M5LocalSpiderBridge.spiderConfig", mijava_get_cloud_spider_config_block)
+        self.assertIn("M5LocalSpiderBridge.spiderConfig", mijava_get_local_spider_config_block)
+        self.assertIn("m5GetLocalSpiderConfig", inject_js_callback_block)
+        self.assertIn("function cfg(o)", inject_js_callback_block)
+        self.assertIn("'fields','spiderParams','hookurls','steps'", inject_js_callback_block)
+        self.assertIn("M5D11_LOCAL_SPIDER_CONFIG_HTTP_FAILED", inject_js_callback_block)
         self.assertIn("com/sbf/main/jxbrowser/MiJava$171", ws_filter_list_block)
         self.assertIn("com/sbf/main/jxbrowser/MiJava$202", ws_filter_status_block)
         self.assertIn(
@@ -869,33 +1183,28 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("org/json/JSONObject", sbfapi_get_local_task_block)
         self.assertIn("M5C_COLLECT_SBFAPI_STATUS_LOCAL", sbfapi_update_local_task_status_block)
         self.assertIn("com/sbf/main/jxbrowser/M5LocalSpiderBridge.updateTaskStatus", sbfapi_update_local_task_status_block)
-        self.assertIn("__m5LocalSpider", inject_js_callback_block)
-        self.assertIn("seedWhatsAppMockResult", inject_js_callback_block)
-        self.assertIn("m5WriteLocalMockResult", inject_js_callback_block)
-        self.assertIn("__m5CollectFullShape", inject_js_callback_block)
-        self.assertIn("area_code", inject_js_callback_block)
+        self.assertIn("M5D_YESCAPTCHA_GOOGLE_CR_TASK", google_cr_helper_block)
+        self.assertIn("com/sbf/main/ext/gg/M5YesCaptchaBridge.solve", google_cr_helper_block)
+        self.assertNotIn("com/sbf/main/ext/gg/l.e", google_cr_helper_class)
+        self.assertIn("YESCAPTCHA_CLIENT_KEY", yes_captcha_config_block)
         self.assertIn("platform", inject_js_callback_block)
         self.assertIn("facebook.com", inject_js_callback_block)
         self.assertIn("google.com", inject_js_callback_block)
-        self.assertIn("m5c_create_task", inject_js_callback_block)
-        self.assertIn("m5c_task_rows", inject_js_callback_block)
-        self.assertIn("M5C_COLLECT_FULL_SHAPE_INSTALLED", inject_js_callback_block)
         self.assertIn("m5SubmitLocalCollectTask", inject_js_callback_block)
-        self.assertIn("m5ListLocalCollectTasks", inject_js_callback_block)
         self.assertIn("/cloud/spider/code/", inject_js_callback_block)
         self.assertIn("/dataCollect/platform/list", inject_js_callback_block)
         self.assertIn("/cloud/spider/data/", inject_js_callback_block)
         self.assertIn("/cloud/task", inject_js_callback_block)
-        self.assertIn("M5A_LOCAL_DATACOLLECT_SEED", inject_js_callback_block)
-        self.assertIn("local-ui-mock", inject_js_callback_block)
         self.assertIn("submitted", inject_js_callback_block)
         self.assertIn("false", inject_js_callback_block)
-        self.assertIn("__m5AutoSeedDataCollect", inject_js_callback_block)
-        self.assertIn("/pc/dataCollect/collectionTask/data_index", inject_js_callback_block)
         self.assertIn("whatsapp_users_lists", inject_js_callback_block)
-        self.assertIn("M5A_LOCAL_DATACOLLECT_AUTO_SEED", inject_js_callback_block)
-        self.assertIn("seedWhatsAppMockResult", inject_js_callback_block)
-        self.assertIn("JSON.stringify({jsonData:JSON.parse(row)})", inject_js_callback_block)
+        self.assertNotIn("__m5LocalSpider", inject_js_callback_block)
+        self.assertNotIn("__m5CollectFullShape", inject_js_callback_block)
+        self.assertNotIn("__m5AutoSeedDataCollect", inject_js_callback_block)
+        self.assertNotIn("M5A_LOCAL_DATACOLLECT_AUTO_SEED", inject_js_callback_block)
+        self.assertNotIn("m5WriteLocalMockResult", inject_js_callback_block)
+        self.assertNotIn("m5ListLocalCollectTasks", inject_js_callback_block)
+        self.assertNotIn("local-ui-mock", inject_js_callback_block)
         self.assertIn("M4_V13_LOAD_URL=", browser_load_block)
         self.assertIn("M4_V18_NORMALIZED_URL=", browser_load_block)
         self.assertIn("JSinglepage", browser_load_block)
@@ -903,7 +1212,9 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("/pc/aicloud/my", browser_load_block)
         self.assertIn("JSinglepage:/ws/wsfilter/home", browser_load_block)
         self.assertIn("/ws/wsfilter/home", browser_load_block)
-        self.assertIn("/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp", browser_load_block)
+        self.assertIn("JSinglepage:/", browser_load_block)
+        self.assertIn("String.substring:(I)Ljava/lang/String;", browser_load_block)
+        self.assertIn("/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp", browser_load_block)
         self.assertIn('String.startsWith:(Ljava/lang/String;)Z', browser_load_block)
         self.assertIn("com/sbf/util/http/SBFApi.c:()Ljava/lang/String;", browser_load_block)
         self.assertIn("https://", browser_load_block)
@@ -1058,8 +1369,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 79) {
-                            throw new AssertionError("expected 79 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 82) {
+                            throw new AssertionError("expected 82 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -1067,6 +1378,8 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "C4749_006".equals(recoveredMenu.optString("code"));
                             boolean whatsappCollectChild =
                                     "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappCollectTabChild =
+                                    recoveredMenu.optString("code").startsWith("REC_WHATSAPP_COLLECT_TAB_");
                             boolean whatsappDataParent =
                                     "C4749_007".equals(recoveredMenu.optString("code"));
                             boolean whatsappDataChild =
@@ -1087,15 +1400,17 @@ class M4AuthPatchTests(unittest.TestCase):
                             }
                             if (whatsappCollectParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
-                                        || !"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("linkUrl"))
+                                        || !"/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route")) {
                                     throw new AssertionError("bad WhatsApp collect recovery route: " + recoveredMenu);
                                 }
                             } else if (whatsappCollectChild) {
-                                if (!"/pc/dataCollect/collectionTask/data_index?spiderCode=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("localCode"))
+                                throw new AssertionError("old WhatsApp collect child route must be replaced: " + recoveredMenu);
+                            } else if (whatsappCollectTabChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/dataCollect/collectionTask?modal=")
                                         || !"JSinglepage".equals(recoveredMenu.optString("linkUrl"))
-                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map")) {
-                                    throw new AssertionError("bad WhatsApp collect child recovery route: " + recoveredMenu);
+                                        || !recoveredMenu.optString("evidence").contains("m5d11-menu-tab:dataCollect:")) {
+                                    throw new AssertionError("bad WhatsApp collect tab child route: " + recoveredMenu);
                                 }
                             } else if (whatsappDataParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
@@ -1217,6 +1532,18 @@ class M4AuthPatchTests(unittest.TestCase):
                 import org.json.JSONObject;
 
                 public class M5LocalSpiderBridgeProbe {
+                    private static final class FakeSpider {
+                        private final Long d;
+                        private final String e;
+                        private final String i;
+
+                        private FakeSpider(long taskId, String spiderCode, String moduleCode) {
+                            this.d = Long.valueOf(taskId);
+                            this.e = spiderCode;
+                            this.i = moduleCode;
+                        }
+                    }
+
                     public static void main(String[] args) throws Exception {
                         Path baseDir = Paths.get(args[0]);
                         String emptyQueue = M5LocalSpiderBridge.getNewTask(baseDir.toString(), "whatsapp", 0);
@@ -1253,8 +1580,8 @@ class M4AuthPatchTests(unittest.TestCase):
                                         baseDir.toString(),
                                         "whatsapp",
                                         "whatsapp_users_lists",
-                                        "{\\"googSite\\":\\"google.com\\",\\"areaCode\\":\\"+1\\",\\"pltCode\\":\\"facebook.com\\",\\"keywords\\":\\"local-test\\"}",
-                                        "{\\"cloudServer\\":\\"local\\"}"));
+                                        "{\\"googSite\\":\\"google.com\\",\\"areaCode\\":\\"+1\\",\\"pltCode\\":\\"facebook.com\\",\\"keywords\\":\\"soccer jersey\\"}",
+                                        "{\\"cloudServer\\":\\"local\\",\\"spiderMode\\":\\"google\\",\\"cookie\\":\\"AEC=test-cookie\\",\\"proxy\\":\\"socks5://127.0.0.1:12324\\",\\"spider_app_code\\":\\"whatsapp\\",\\"spider_exe_code\\":\\"whatsapp_users_lists\\"}"));
                         if (submit.optInt("code") != 200
                                 || !submit.optBoolean("submitted")
                                 || submit.optLong("taskId") <= 0
@@ -1288,7 +1615,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (claimed.length() != 1
                                 || claimed.getJSONObject(0).optLong("taskId") != submit.optLong("taskId")
                                 || !"whatsapp_users_lists".equals(claimed.getJSONObject(0).optString("spiderCode"))
-                                || !claimed.getJSONObject(0).toString().contains("facebook.com")) {
+                                || !claimed.getJSONObject(0).toString().contains("facebook.com")
+                                || !claimed.getJSONObject(0).toString().contains("soccer jersey")) {
                             throw new AssertionError("claimed task shape: " + claimed);
                         }
                         JSONObject running = new JSONObject(
@@ -1308,6 +1636,36 @@ class M4AuthPatchTests(unittest.TestCase):
                                 || !finished.getJSONArray("rows").getJSONObject(0).optString("message").contains("executor returned")) {
                             throw new AssertionError("finished task list shape: " + finished);
                         }
+                        boolean collected = M5LocalSpiderBridge.postCollectedData(
+                                baseDir.toString(),
+                                new FakeSpider(
+                                        submit.optLong("taskId"),
+                                        "whatsapp_users_lists",
+                                        "whatsapp"),
+                                "{\\"phone\\":\\"+19998887777\\",\\"source\\":\\"google-real\\",\\"url\\":\\"https://www.facebook.com/example\\"}");
+                        if (!collected) {
+                            throw new AssertionError("postCollectedData must report local write success");
+                        }
+                        JSONObject collectedList = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (collectedList.getJSONArray("rows").getJSONObject(0).optLong("total") != 2
+                                || !collectedList.getJSONArray("rows").getJSONObject(0).optString("message").contains("local postData")) {
+                            throw new AssertionError("collected task list shape: " + collectedList);
+                        }
+                        M5LocalSpiderBridge.endCollectedTask(
+                                baseDir.toString(),
+                                new FakeSpider(
+                                        submit.optLong("taskId"),
+                                        "whatsapp_users_lists",
+                                        "whatsapp"));
+                        JSONObject endCollected = new JSONObject(
+                                M5LocalSpiderBridge.listTasks(
+                                        baseDir.toString(), "whatsapp", "whatsapp_users_lists"));
+                        if (endCollected.getJSONArray("rows").getJSONObject(0).optInt("status") != 2
+                                || !endCollected.getJSONArray("rows").getJSONObject(0).optString("message").contains("local endTask")) {
+                            throw new AssertionError("endCollected task list shape: " + endCollected);
+                        }
                         JSONArray secondClaim = new JSONArray(
                                 M5LocalSpiderBridge.getNewTask(baseDir.toString(), "whatsapp", 0));
                         if (secondClaim.length() != 0) {
@@ -1318,12 +1676,47 @@ class M4AuthPatchTests(unittest.TestCase):
                                 M5LocalSpiderBridge.getTask(baseDir.toString(), submit.optLong("taskId")));
                         JSONObject task = envelope.optJSONObject("task");
                         JSONObject spider = envelope.optJSONObject("spider");
+                        JSONObject taskData = envelope.optJSONObject("task_data");
+                        JSONObject taskInfo = envelope.optJSONObject("task_info");
                         if (task == null
                                 || spider == null
+                                || taskData == null
+                                || taskInfo == null
                                 || !"whatsapp_users_lists".equals(spider.optString("code"))
-                                || !task.optString("spiderParams").contains("facebook.com")
+                                || task.optJSONArray("spiderParams") == null
+                                || task.optJSONArray("spiderParams").length() != 4
+                                || !task.optJSONArray("spiderParams").toString().contains("facebook.com")
+                                || !task.optJSONArray("spiderParams").toString().contains("soccer jersey")
+                                || !task.optString("steps").contains("ggSite")
+                                || !task.optString("steps").contains("allkeywords")
+                                || !task.optString("fields").contains("phone")
                                 || !task.optString("taskConfig").contains("local")) {
                             throw new AssertionError("task envelope shape: " + envelope);
+                        }
+                        JSONObject googSiteParam = task.optJSONArray("spiderParams").getJSONObject(0);
+                        if (!"googSite".equals(googSiteParam.optString("key"))
+                                || !"google.com".equals(googSiteParam.optString("code"))) {
+                            throw new AssertionError("spiderParams must use original key/code value shape: "
+                                    + task.optJSONArray("spiderParams"));
+                        }
+                        if (!"whatsapp_users_lists".equals(taskData.optString("spiderCode"))
+                                || !"whatsapp".equals(taskData.optString("moduleCode"))
+                                || !taskData.optString("taskConfig").contains("local")
+                                || taskData.optJSONArray("spiderParams") == null
+                                || !"google.com".equals(taskData.optString("googSite"))
+                                || !"+1".equals(taskData.optString("areaCode"))
+                                || !"facebook.com".equals(taskData.optString("pltCode"))
+                                || !"soccer jersey".equals(taskData.optString("keywords"))) {
+                            throw new AssertionError("task_data must preserve puncture params: " + envelope);
+                        }
+                        if (!"whatsapp_users_lists".equals(taskInfo.optString("spiderCode"))
+                                || !"whatsapp".equals(taskInfo.optString("moduleCode"))
+                                || !"google".equals(taskInfo.optString("spiderMode"))
+                                || !"AEC=test-cookie".equals(taskInfo.optString("cookie"))
+                                || !"socks5://127.0.0.1:12324".equals(taskInfo.optString("proxy"))
+                                || !"whatsapp".equals(taskInfo.optString("spider_app_code"))
+                                || !"whatsapp_users_lists".equals(taskInfo.optString("spider_exe_code"))) {
+                            throw new AssertionError("task_info must be runner-shaped: " + envelope);
                         }
                         M5LocalSpiderBridge.updateTaskStatus(
                                 baseDir.toString(), submit.optLong("taskId"), 2, "done", Long.valueOf(3));
@@ -1379,7 +1772,7 @@ class M4AuthPatchTests(unittest.TestCase):
                         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db.toAbsolutePath());
                                 Statement stmt = conn.createStatement();
                                 ResultSet rs = stmt.executeQuery(
-                                        "select spider_modal, spider_code, json_data from spider_data")) {
+                                        "select spider_modal, spider_code, json_data from spider_data order by id asc")) {
                             if (!rs.next()) {
                                 throw new AssertionError("missing inserted spider row");
                             }
@@ -1387,6 +1780,13 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || !"whatsapp_users_lists".equals(rs.getString(2))
                                     || !rs.getString(3).contains("local-mock")) {
                                 throw new AssertionError("bad inserted row");
+                            }
+                            if (rs.next()) {
+                                if (!rs.getString(3).contains("google-real")) {
+                                    throw new AssertionError("bad collected row: " + rs.getString(3));
+                                }
+                            } else {
+                                throw new AssertionError("missing collected postData row");
                             }
                             if (rs.next()) {
                                 throw new AssertionError("unexpected extra spider rows");
@@ -1462,6 +1862,34 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("offline-local-token-1234567890", login_block)
         self.assertIn("im", get_info_block)
         self.assertIn("udp", get_info_block)
+
+    def test_local_pipeline_initializes_original_cloud_spider_context(self):
+        source = LOCAL_SPIDER_BRIDGE_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'Class.forName("com.sbf.main.spide.cloud.JSpiderCloude")',
+            source,
+        )
+        self.assertIn(
+            '"https://app.xdxsoft.com/pc/cloudSpider?spiderCode="',
+            source,
+        )
+        self.assertIn('masterClass.getMethod("a").invoke(null)', source)
+        self.assertIn("registryField.get(master)", source)
+        self.assertIn("ensureDirectCloudSpiderContext(spiderCode)", source)
+        self.assertIn("M5D_CLOUD_SPIDER_CONTEXT_ORIGINAL_FAILED", source)
+        self.assertIn('Class.forName("com.sbf.main.cloud.spider.a")', source)
+        self.assertIn("SPIDER_RUNNER_MODE_EXTERNAL_SEARCH", source)
+        self.assertIn("getConstructor(String.class)", source)
+        self.assertIn(".newInstance(SPIDER_RUNNER_MODE_EXTERNAL_SEARCH)", source)
+        self.assertNotIn('runnerClass.getConstructor(String.class).newInstance("google")', source)
+        self.assertIn("runners.put(SPIDER_RUNNER_MODE_EXTERNAL_SEARCH, runner)", source)
+        self.assertIn("runners.put(spiderCode, runner)", source)
+        self.assertIn("getRegisteredCloudSpiderRunner(spiderCode)", source)
+        self.assertIn("localCloudSpiderContext", source)
+        self.assertIn("ensureCloudSpiderContext(spiderCode)", source)
+        self.assertIn("InvocationTargetException", source)
+        self.assertIn("rootCause(error).printStackTrace(System.out)", source)
 
 
 if __name__ == "__main__":

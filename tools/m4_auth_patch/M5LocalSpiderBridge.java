@@ -3,18 +3,38 @@ package com.sbf.main.jxbrowser;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class M5LocalSpiderBridge {
     private static final String MODULE_WHATSAPP = "whatsapp";
     private static final String SPIDER_WHATSAPP_USERS = "whatsapp_users_lists";
+    private static final String[] WHATSAPP_COLLECT_TAB_SPIDERS = {
+        "whatsapp_users_lists",
+        "wap_global_clue_users",
+        "whatsapp_group_lists",
+        "whatsapp_regional_collection"
+    };
+    private static final String SPIDER_RUNNER_MODE_EXTERNAL_SEARCH = "external_search";
+    private static final int SQLITE_BUSY_RETRIES = 5;
+    private static final long SQLITE_BUSY_RETRY_DELAY_MS = 800L;
+    private static final long CLOUD_SPIDER_CONTEXT_TIMEOUT_MS = 30000L;
+    private static final long CLOUD_SPIDER_ORIGINAL_GRACE_MS = 5000L;
     private static long lastTaskId;
+    private static volatile Object localCloudSpiderContext;
+    private static volatile Object localBrowserContext;
+    private static volatile String localCloudSpiderCode;
 
     private M5LocalSpiderBridge() {
     }
@@ -35,7 +55,7 @@ public final class M5LocalSpiderBridge {
             return "[]";
         }
         JSONArray rows = new JSONArray();
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+        try (Connection conn = openSqlite(dbPath)) {
             ensureTaskTable(conn);
             JSONObject task = null;
             try (PreparedStatement query =
@@ -142,46 +162,18 @@ public final class M5LocalSpiderBridge {
         requireSupportedSpider(moduleCode, spiderCode);
         Class.forName("org.sqlite.JDBC");
         long taskId = nextTaskId();
-        JSONObject envelope = buildTaskEnvelope(baseDir, moduleCode, spiderCode, spiderParamsJson, taskConfigJson);
+        JSONObject envelope = buildTaskEnvelope(
+                baseDir, taskId, moduleCode, spiderCode, spiderParamsJson, taskConfigJson);
         Path dbPath = taskDbPath(baseDir, moduleCode);
         Files.createDirectories(dbPath.getParent());
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
-            ensureTaskTable(conn);
-            JSONObject taskData = taskData(
-                    taskId,
-                    moduleCode,
-                    spiderCode,
-                    spiderParamsJson,
-                    taskConfigJson,
-                    envelope,
-                    0,
-                    "queued",
-                    0,
-                    0L);
-            try (PreparedStatement insert =
-                    conn.prepareStatement(
-                            "insert into rpa_task("
-                                    + "module,data,uuid,task_seq,type,baseParams,rpa,rpa_title,"
-                                    + "scheduledTime,scheduled_time,status,need_review,error,time) "
-                                    + "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
-                long now = System.currentTimeMillis();
-                insert.setString(1, moduleCode);
-                insert.setString(2, taskData.toString());
-                insert.setString(3, "m5c-" + taskId);
-                insert.setString(4, String.valueOf(taskId));
-                insert.setString(5, "m5_local_spider");
-                insert.setString(6, spiderParamsJson == null ? "{}" : spiderParamsJson);
-                insert.setString(7, spiderCode);
-                insert.setString(8, "AI采集");
-                insert.setString(9, "");
-                insert.setLong(10, 0L);
-                insert.setInt(11, 0);
-                insert.setInt(12, 0);
-                insert.setString(13, "queued");
-                insert.setLong(14, now);
-                insert.executeUpdate();
-            }
-        }
+        insertQueuedTaskWithRetry(
+                dbPath,
+                taskId,
+                moduleCode,
+                spiderCode,
+                spiderParamsJson,
+                taskConfigJson,
+                envelope);
         System.out.println(
                 "M5C_QUEUE_TASK_ENQUEUED taskId="
                         + taskId
@@ -203,6 +195,270 @@ public final class M5LocalSpiderBridge {
                 .toString();
     }
 
+    public static String localWebAssetBody(String url) {
+        try {
+            if (url != null
+                    && (url.indexOf("tos-public.volccdn.com") >= 0
+                            || url.indexOf("tos.umd.production.min.js") >= 0)) {
+                System.out.println("M5D8_LOCAL_WEB_ASSET_TOS_STUB " + String.valueOf(url));
+                return "window.TOS=window.TOS||{};";
+            }
+            Path asset = localWebAssetPath(url);
+            if (asset == null || !Files.exists(asset)) {
+                return null;
+            }
+            System.out.println("M5D8_LOCAL_WEB_ASSET " + asset.toAbsolutePath());
+            String body = new String(Files.readAllBytes(asset), "UTF-8");
+            if ("aicloud.html".equals(asset.getFileName().toString())) {
+                body =
+                        body.replace(
+                                "<script src=https://tos-public.volccdn.com/obj/volc-tos-public/@volcengine/tos-sdk@latest/browser/tos.umd.production.min.js></script>",
+                                "<script>window.TOS=window.TOS||{};</script>");
+            }
+            body = patchLocalWebAssetBody(asset.getFileName().toString(), body);
+            return body;
+        } catch (Throwable error) {
+            System.out.println("M5D8_LOCAL_WEB_ASSET_FAILED url=" + String.valueOf(url)
+                    + " error=" + String.valueOf(rootCause(error)));
+            return null;
+        }
+    }
+
+    private static String patchLocalWebAssetBody(String filename, String body) {
+        if ("chunk-00b3289e.51ab7483.js".equals(filename)) {
+            String patched =
+                    body.replace(
+                            "queryParams:{pageNum:1,pageSize:10}",
+                            "queryParams:{pageNum:1,pageSize:50}");
+            System.out.println(
+                    "M5D9_PAGE_SIZE_PATCH dataIndex50=" + String.valueOf(!patched.equals(body)));
+            return patched;
+        }
+        if (!"chunk-aab334e0.bf74703f.js".equals(filename)) {
+            return body;
+        }
+        String patched = body;
+        String progressStart = "taskProcessData:[";
+        String progressEnd = "],queryParams:{pageNum:1,spiderCode:this.$route.query.modal,pageSize:10}";
+        int start = patched.indexOf(progressStart);
+        int end = start < 0 ? -1 : patched.indexOf(progressEnd, start);
+        if (start >= 0 && end > start) {
+            patched = patched.substring(0, start)
+                    + "taskProcessData:[]"
+                    + patched.substring(end + 1);
+            System.out.println("M5D9_TASK_PROCESS_IDLE_PATCH clearedDemoProgress=true");
+        } else {
+            System.out.println("M5D9_TASK_PROCESS_IDLE_PATCH clearedDemoProgress=false");
+        }
+
+        String spinnerBefore =
+                "a(\"img\",{staticClass:\"task-loading\",attrs:{src:a(\"cfcf\")}}),t._e(),t._e(),null!=t.curTaskInfo?";
+        String spinnerAfter =
+                "null!=t.curTaskInfo?a(\"img\",{staticClass:\"task-loading\",attrs:{src:a(\"cfcf\")}}):t._e(),t._e(),t._e(),null!=t.curTaskInfo?";
+        if (patched.indexOf(spinnerBefore) >= 0) {
+            patched = patched.replace(spinnerBefore, spinnerAfter);
+            System.out.println("M5D9_TASK_PROCESS_IDLE_PATCH hideIdleSpinner=true");
+        } else if (patched.indexOf(
+                        "s(\"img\",{staticClass:\"task-loading\",attrs:{src:a(\"cfcf\")}}),t._e(),t._e(),null!=t.curTaskInfo?")
+                >= 0) {
+            patched =
+                    patched.replace(
+                            "s(\"img\",{staticClass:\"task-loading\",attrs:{src:a(\"cfcf\")}}),t._e(),t._e(),null!=t.curTaskInfo?",
+                            "null!=t.curTaskInfo?s(\"img\",{staticClass:\"task-loading\",attrs:{src:a(\"cfcf\")}}):t._e(),t._e(),t._e(),null!=t.curTaskInfo?");
+            System.out.println("M5D9_TASK_PROCESS_IDLE_PATCH hideIdleSpinner=true");
+        } else {
+            System.out.println("M5D9_TASK_PROCESS_IDLE_PATCH hideIdleSpinner=false");
+        }
+        String pageSizeBefore = "queryParams:{pageNum:1,spiderCode:this.$route.query.modal,pageSize:10}";
+        String pageSizeAfter = "queryParams:{pageNum:1,spiderCode:this.$route.query.modal,pageSize:50}";
+        if (patched.indexOf(pageSizeBefore) >= 0) {
+            patched = patched.replace(pageSizeBefore, pageSizeAfter);
+            System.out.println("M5D9_PAGE_SIZE_PATCH collectionTask50=true");
+        } else {
+            System.out.println("M5D9_PAGE_SIZE_PATCH collectionTask50=false");
+        }
+        return patched;
+    }
+
+    public static String localWebAssetContentType(String url) {
+        String lower = url == null ? "" : url.toLowerCase();
+        if (lower.indexOf("tos-public.volccdn.com") >= 0
+                || lower.indexOf("tos.umd.production.min.js") >= 0) {
+            return "application/javascript;charset=UTF-8";
+        }
+        String path = normalizedUrlPath(url);
+        if (path.endsWith(".js")) {
+            return "application/javascript;charset=UTF-8";
+        }
+        if (path.endsWith(".css")) {
+            return "text/css;charset=UTF-8";
+        }
+        if (path.endsWith(".html") || path.equals("/") || path.startsWith("/pc/")) {
+            return "text/html;charset=UTF-8";
+        }
+        return "application/json;charset=UTF-8";
+    }
+
+    private static Path localWebAssetPath(String url) {
+        String path = normalizedUrlPath(url);
+        if (path.length() == 0
+                || "/".equals(path)
+                || path.startsWith("/pc/")
+                || path.endsWith("/aicloud.html")) {
+            return localWebMirrorDir().resolve("aicloud.html");
+        }
+        String filename = path.substring(path.lastIndexOf('/') + 1);
+        if (filename.indexOf("..") >= 0 || filename.length() == 0) {
+            return null;
+        }
+        if (path.startsWith("/static/js/") || path.startsWith("/static/css/")) {
+            return localWebMirrorDir().resolve(filename);
+        }
+        return null;
+    }
+
+    private static Path localWebMirrorDir() {
+        String baseDir = resolveAppBaseDir();
+        Path[] candidates = {
+            Paths.get(".").toAbsolutePath().normalize().resolve(".artifacts").resolve("working").resolve("m5-online-js"),
+            Paths.get(".").toAbsolutePath().normalize().resolve("..").resolve("..").resolve(".artifacts").resolve("working").resolve("m5-online-js").normalize(),
+            Paths.get(baseDir).toAbsolutePath().normalize().resolve("..").resolve("..").resolve(".artifacts").resolve("working").resolve("m5-online-js").normalize(),
+            Paths.get(baseDir).toAbsolutePath().normalize().resolve("..").resolve(".artifacts").resolve("working").resolve("m5-online-js").normalize()
+        };
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate.resolve("aicloud.html"))) {
+                return candidate;
+            }
+        }
+        return candidates[0];
+    }
+
+    private static String normalizedUrlPath(String url) {
+        String text = url == null ? "" : url.trim();
+        int scheme = text.indexOf("://");
+        if (scheme >= 0) {
+            int slash = text.indexOf('/', scheme + 3);
+            text = slash >= 0 ? text.substring(slash) : "/";
+        }
+        int query = text.indexOf('?');
+        if (query >= 0) {
+            text = text.substring(0, query);
+        }
+        return text.length() == 0 ? "/" : text;
+    }
+
+    public static String listSpiderData(
+            String baseDir, String moduleCode, String spiderCode, int pageNum, int pageSize)
+            throws Exception {
+        JSONObject page = readSpiderDataPage(baseDir, moduleCode, spiderCode, pageNum, pageSize, true);
+        return page.toString();
+    }
+
+    public static String spiderConfig(String baseDir, String spiderCode) throws Exception {
+        requireSupportedSpider(MODULE_WHATSAPP, spiderCode);
+        Path configPath = Paths.get(baseDir)
+                .resolve("res")
+                .resolve("spider")
+                .resolve(spiderCode + ".cnf");
+        if (!Files.exists(configPath)) {
+            configPath = Paths.get("data")
+                    .resolve("app")
+                    .resolve("res")
+                    .resolve("spider")
+                    .resolve(spiderCode + ".cnf")
+                    .toAbsolutePath()
+                    .normalize();
+        }
+        if (!Files.exists(configPath)) {
+            throw new IllegalArgumentException("missing local spider config: " + spiderCode);
+        }
+        String body = new String(Files.readAllBytes(configPath), StandardCharsets.UTF_8);
+        JSONObject config = new JSONObject(body);
+        config.put("code", spiderCode);
+        config.put("moduleCode", MODULE_WHATSAPP);
+        return config.toString();
+    }
+
+    public static String getSpiderTableDataInfo(String baseDir, String queryJson) throws Exception {
+        JSONObject query = parseJsonObject(queryJson);
+        String spiderCode = query.optString("code", query.optString("spiderCode", SPIDER_WHATSAPP_USERS));
+        int pageNum = query.optInt("pageNum", 1);
+        int pageSize = query.optInt("pageSize", 10);
+        JSONObject page = readSpiderDataPage(baseDir, MODULE_WHATSAPP, spiderCode, pageNum, pageSize, false);
+        return page.toString();
+    }
+
+    private static JSONObject readSpiderDataPage(
+            String baseDir,
+            String moduleCode,
+            String spiderCode,
+            int pageNum,
+            int pageSize,
+            boolean wrapJsonData)
+            throws Exception {
+        requireSupportedSpider(moduleCode, spiderCode);
+        Class.forName("org.sqlite.JDBC");
+        if (pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize < 1) {
+            pageSize = 10;
+        }
+        Path dbPath = spiderDataDbPath(baseDir, moduleCode, spiderCode);
+        JSONArray rows = new JSONArray();
+        long total = 0L;
+        if (Files.exists(dbPath)) {
+            try (Connection conn = openSqlite(dbPath)) {
+                try (Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery("select count(*) from spider_data")) {
+                    total = rs.next() ? rs.getLong(1) : 0L;
+                }
+                try (PreparedStatement query =
+                        conn.prepareStatement(
+                                "select json_data,time,id from spider_data "
+                                        + "order by time desc,id desc limit ? offset ?")) {
+                    query.setInt(1, pageSize);
+                    query.setInt(2, (pageNum - 1) * pageSize);
+                    try (ResultSet rs = query.executeQuery()) {
+                        while (rs.next()) {
+                            JSONObject data = normalizeSpiderRow(rs.getString(1), rs.getLong(2));
+                            if (wrapJsonData) {
+                                rows.put(new JSONObject().put("jsonData", data.toString()));
+                            } else {
+                                rows.put(data);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println("M5D8_LOCAL_SPIDER_DATA_LIST moduleCode=" + moduleCode
+                + " spiderCode=" + spiderCode
+                + " pageNum=" + pageNum
+                + " pageSize=" + pageSize
+                + " total=" + total
+                + " rows=" + rows.length());
+        return new JSONObject()
+                .put("code", 200)
+                .put("msg", "success")
+                .put("total", total)
+                .put("rows", rows);
+    }
+
+    private static JSONObject normalizeSpiderRow(String jsonData, long time) {
+        JSONObject data = parseJsonObject(jsonData);
+        String[] keys = {"title", "url", "body", "googSite", "keywords", "pltCode", "phone"};
+        for (String key : keys) {
+            if (!data.has(key) || data.isNull(key)) {
+                data.put(key, "");
+            }
+        }
+        if (!data.has("date") || data.isNull("date") || data.optString("date").length() == 0) {
+            data.put("date", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(time)));
+        }
+        return data;
+    }
+
     public static String getTask(String baseDir, long taskId) throws Exception {
         Class.forName("org.sqlite.JDBC");
         Path dbPath = taskDbPath(baseDir, MODULE_WHATSAPP);
@@ -210,7 +466,7 @@ public final class M5LocalSpiderBridge {
             System.out.println("M5C_COLLECT_LOCAL_TASK_MISSING taskId=" + taskId);
             return "{}";
         }
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+        try (Connection conn = openSqlite(dbPath)) {
             ensureTaskTable(conn);
             try (PreparedStatement stmt =
                     conn.prepareStatement(
@@ -236,7 +492,7 @@ public final class M5LocalSpiderBridge {
         JSONArray rows = new JSONArray();
         long total = 0L;
         if (Files.exists(dbPath)) {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+            try (Connection conn = openSqlite(dbPath)) {
                 ensureTaskTable(conn);
                 try (PreparedStatement count =
                         conn.prepareStatement(
@@ -284,7 +540,7 @@ public final class M5LocalSpiderBridge {
         Class.forName("org.sqlite.JDBC");
         Path dbPath = taskDbPath(baseDir, MODULE_WHATSAPP);
         Files.createDirectories(dbPath.getParent());
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+        try (Connection conn = openSqlite(dbPath)) {
             ensureTaskTable(conn);
             JSONObject task = null;
             try (PreparedStatement query =
@@ -334,7 +590,7 @@ public final class M5LocalSpiderBridge {
         if (!Files.exists(dbPath)) {
             return;
         }
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+        try (Connection conn = openSqlite(dbPath)) {
             ensureTaskTable(conn);
             int currentStatus = 0;
             JSONObject task = null;
@@ -388,7 +644,7 @@ public final class M5LocalSpiderBridge {
         Path dbPath = taskDbPath(baseDir, moduleCode);
         int cancelled = 0;
         if (Files.exists(dbPath)) {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath())) {
+            try (Connection conn = openSqlite(dbPath)) {
                 ensureTaskTable(conn);
                 JSONArray taskIds = new JSONArray();
                 try (PreparedStatement query =
@@ -462,6 +718,98 @@ public final class M5LocalSpiderBridge {
     public static String writeMockResult(
             String baseDir, String moduleCode, String spiderCode, String jsonData) throws Exception {
         requireSupportedSpider(moduleCode, spiderCode);
+        JSONObject written = writeSpiderData(baseDir, moduleCode, spiderCode, jsonData);
+        long count = written.optLong("total");
+        System.out.println(
+                "M5A_LOCAL_SPIDER_RESULT_WRITTEN moduleCode="
+                        + moduleCode
+                        + " spiderCode="
+                        + spiderCode
+                        + " total="
+                        + count);
+        return "{"
+                + "\"code\":200,"
+                + "\"submitted\":false,"
+                + "\"localOnly\":true,"
+                + "\"moduleCode\":\"" + escapeJson(moduleCode) + "\","
+                + "\"spiderCode\":\"" + escapeJson(spiderCode) + "\","
+                + "\"dbPath\":\"" + escapeJson(written.optString("dbPath")) + "\","
+                + "\"total\":" + count
+                + "}";
+    }
+
+    public static boolean postCollectedData(Object spider, String jsonData) {
+        return postCollectedData(resolveAppBaseDir(), spider, jsonData);
+    }
+
+    public static boolean postCollectedData(String baseDir, Object spider, String jsonData) {
+        try {
+            long taskId = reflectedLong(spider, "d");
+            String spiderCode = reflectedString(spider, "e");
+            if (!SPIDER_WHATSAPP_USERS.equals(spiderCode)) {
+                spiderCode = firstNonBlank(localCloudSpiderCode, SPIDER_WHATSAPP_USERS);
+            }
+            String moduleCode = reflectedString(spider, "i");
+            if (!MODULE_WHATSAPP.equals(moduleCode)) {
+                moduleCode = MODULE_WHATSAPP;
+            }
+            requireSupportedSpider(moduleCode, spiderCode);
+            JSONObject written = writeSpiderData(baseDir, moduleCode, spiderCode, jsonData);
+            long count = written.optLong("total");
+            if (taskId > 0L) {
+                updateTaskStatus(
+                        baseDir, taskId, 1, "local postData: collected " + count, Long.valueOf(count));
+            }
+            System.out.println(
+                    "M5D_POSTDATA_LOCAL_SINK taskId="
+                            + taskId
+                            + " moduleCode="
+                            + moduleCode
+                            + " spiderCode="
+                            + spiderCode
+                            + " total="
+                            + count
+                            + " dbPath="
+                            + written.optString("dbPath"));
+            return true;
+        } catch (Throwable error) {
+            System.out.println("M5D_POSTDATA_LOCAL_SINK_FAILED error=" + String.valueOf(rootCause(error)));
+            rootCause(error).printStackTrace(System.out);
+            return false;
+        }
+    }
+
+    public static void endCollectedTask(Object spider) {
+        endCollectedTask(resolveAppBaseDir(), spider);
+    }
+
+    public static void endCollectedTask(String baseDir, Object spider) {
+        try {
+            long taskId = reflectedLong(spider, "d");
+            String spiderCode = reflectedString(spider, "e");
+            if (!SPIDER_WHATSAPP_USERS.equals(spiderCode)) {
+                spiderCode = firstNonBlank(localCloudSpiderCode, SPIDER_WHATSAPP_USERS);
+            }
+            long count = countSpiderDataRows(baseDir, MODULE_WHATSAPP, spiderCode);
+            if (taskId > 0L) {
+                updateTaskStatus(baseDir, taskId, 2, "local endTask: completed", Long.valueOf(count));
+            }
+            System.out.println(
+                    "M5D_ENDTASK_LOCAL_SINK taskId="
+                            + taskId
+                            + " spiderCode="
+                            + spiderCode
+                            + " total="
+                            + count);
+        } catch (Throwable error) {
+            System.out.println("M5D_ENDTASK_LOCAL_SINK_FAILED error=" + String.valueOf(rootCause(error)));
+            rootCause(error).printStackTrace(System.out);
+        }
+    }
+
+    private static JSONObject writeSpiderData(
+            String baseDir, String moduleCode, String spiderCode, String jsonData) throws Exception {
+        requireSupportedSpider(moduleCode, spiderCode);
         Class.forName("org.sqlite.JDBC");
         Path dbDir = Paths.get(baseDir).resolve("data").resolve(moduleCode + "data");
         Files.createDirectories(dbDir);
@@ -469,7 +817,7 @@ public final class M5LocalSpiderBridge {
         String url = "jdbc:sqlite:" + dbPath.toAbsolutePath().toString();
         long now = System.currentTimeMillis();
         long count;
-        try (Connection conn = DriverManager.getConnection(url)) {
+        try (Connection conn = openSqlite(dbPath)) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.executeUpdate(
                         "create table if not exists spider_data ("
@@ -494,29 +842,30 @@ public final class M5LocalSpiderBridge {
                 count = rs.next() ? rs.getLong(1) : 0L;
             }
         }
-        System.out.println(
-                "M5A_LOCAL_SPIDER_RESULT_WRITTEN moduleCode="
-                        + moduleCode
-                        + " spiderCode="
-                        + spiderCode
-                        + " total="
-                        + count);
-        return "{"
-                + "\"code\":200,"
-                + "\"submitted\":false,"
-                + "\"localOnly\":true,"
-                + "\"moduleCode\":\"" + escapeJson(moduleCode) + "\","
-                + "\"spiderCode\":\"" + escapeJson(spiderCode) + "\","
-                + "\"dbPath\":\"" + escapeJson(dbPath.toAbsolutePath().toString()) + "\","
-                + "\"total\":" + count
-                + "}";
+        return new JSONObject()
+                .put("code", 200)
+                .put("submitted", false)
+                .put("localOnly", true)
+                .put("moduleCode", moduleCode)
+                .put("spiderCode", spiderCode)
+                .put("dbPath", dbPath.toAbsolutePath().toString())
+                .put("total", count);
     }
 
     private static void requireSupportedSpider(String moduleCode, String spiderCode) {
-        if (!MODULE_WHATSAPP.equals(moduleCode) || !SPIDER_WHATSAPP_USERS.equals(spiderCode)) {
+        if (!MODULE_WHATSAPP.equals(moduleCode) || !isSupportedWhatsappCollectSpider(spiderCode)) {
             throw new IllegalArgumentException(
-                    "M5 local spider bridge only supports whatsapp/whatsapp_users_lists");
+                    "M5 local spider bridge only supports whatsapp collect tab spiders");
         }
+    }
+
+    private static boolean isSupportedWhatsappCollectSpider(String spiderCode) {
+        for (String supported : WHATSAPP_COLLECT_TAB_SPIDERS) {
+            if (supported.equals(spiderCode)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static synchronized long nextTaskId() {
@@ -526,6 +875,224 @@ public final class M5LocalSpiderBridge {
         }
         lastTaskId = now;
         return now;
+    }
+
+    private static Connection openSqlite(Path dbPath) throws Exception {
+        Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("pragma busy_timeout=10000");
+        }
+        return conn;
+    }
+
+    private static long countSpiderDataRows(String baseDir, String moduleCode, String spiderCode)
+            throws Exception {
+        requireSupportedSpider(moduleCode, spiderCode);
+        Class.forName("org.sqlite.JDBC");
+        Path dbPath = spiderDataDbPath(baseDir, moduleCode, spiderCode);
+        if (!Files.exists(dbPath)) {
+            return 0L;
+        }
+        try (Connection conn = openSqlite(dbPath);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select count(*) from spider_data")) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        }
+    }
+
+    private static Path spiderDataDbPath(String baseDir, String moduleCode, String spiderCode) {
+        return Paths.get(baseDir)
+                .resolve("data")
+                .resolve(moduleCode + "data")
+                .resolve("db_spider_data_" + spiderCode + ".data");
+    }
+
+    private static String resolveAppBaseDir() {
+        String startAppBase = reflectedStaticString("com.sbf.main.StartApp", "a");
+        if (isBlank(startAppBase)) {
+            startAppBase = reflectedStaticString("com.sbf.main.StartApp", "b");
+        }
+        if (!isBlank(startAppBase)) {
+            return startAppBase;
+        }
+        return Paths.get("data").resolve("app").toAbsolutePath().normalize().toString();
+    }
+
+    private static String reflectedStaticString(String className, String fieldName) {
+        try {
+            Class<?> type = Class.forName(className);
+            Field field = findField(type, fieldName);
+            if (field == null) {
+                return "";
+            }
+            field.setAccessible(true);
+            Object value = field.get(null);
+            return value == null ? "" : String.valueOf(value);
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
+    private static long reflectedLong(Object target, String fieldName) {
+        Object value = reflectedValue(target, fieldName);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value != null) {
+            try {
+                return Long.parseLong(String.valueOf(value));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0L;
+    }
+
+    private static String reflectedString(Object target, String fieldName) {
+        Object value = reflectedValue(target, fieldName);
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static Object reflectedValue(Object target, String fieldName) {
+        if (target == null) {
+            return null;
+        }
+        try {
+            Field field = findField(target.getClass(), fieldName);
+            if (field == null) {
+                return null;
+            }
+            field.setAccessible(true);
+            return field.get(target);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static Field findField(Class<?> type, String fieldName) {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                return current.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        return null;
+    }
+
+    private static String firstNonBlank(String first, String fallback) {
+        return isBlank(first) ? fallback : first;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private static void insertQueuedTaskWithRetry(
+            Path dbPath,
+            long taskId,
+            String moduleCode,
+            String spiderCode,
+            String spiderParamsJson,
+            String taskConfigJson,
+            JSONObject envelope)
+            throws Exception {
+        Exception last = null;
+        for (int attempt = 1; attempt <= SQLITE_BUSY_RETRIES; attempt++) {
+            try {
+                insertQueuedTask(
+                        dbPath,
+                        taskId,
+                        moduleCode,
+                        spiderCode,
+                        spiderParamsJson,
+                        taskConfigJson,
+                        envelope);
+                return;
+            } catch (Exception error) {
+                last = error;
+                if (!isSqliteBusy(error) || attempt == SQLITE_BUSY_RETRIES) {
+                    break;
+                }
+                System.out.println(
+                        "M5C_QUEUE_SQLITE_BUSY_RETRY op=submitTask attempt="
+                                + attempt
+                                + " db="
+                                + dbPath.toAbsolutePath());
+                sleep(SQLITE_BUSY_RETRY_DELAY_MS);
+            }
+        }
+        throw last;
+    }
+
+    private static void insertQueuedTask(
+            Path dbPath,
+            long taskId,
+            String moduleCode,
+            String spiderCode,
+            String spiderParamsJson,
+            String taskConfigJson,
+            JSONObject envelope)
+            throws Exception {
+        try (Connection conn = openSqlite(dbPath)) {
+            ensureTaskTable(conn);
+            JSONObject taskData = taskData(
+                    taskId,
+                    moduleCode,
+                    spiderCode,
+                    spiderParamsJson,
+                    taskConfigJson,
+                    envelope,
+                    0,
+                    "queued",
+                    0,
+                    0L);
+            try (PreparedStatement insert =
+                    conn.prepareStatement(
+                            "insert into rpa_task("
+                                    + "module,data,uuid,task_seq,type,baseParams,rpa,rpa_title,"
+                                    + "scheduledTime,scheduled_time,status,need_review,error,time) "
+                                    + "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
+                long now = System.currentTimeMillis();
+                insert.setString(1, moduleCode);
+                insert.setString(2, taskData.toString());
+                insert.setString(3, "m5c-" + taskId);
+                insert.setString(4, String.valueOf(taskId));
+                insert.setString(5, "m5_local_spider");
+                insert.setString(6, spiderParamsJson == null ? "{}" : spiderParamsJson);
+                insert.setString(7, spiderCode);
+                insert.setString(8, "AI采集");
+                insert.setString(9, "");
+                insert.setLong(10, 0L);
+                insert.setInt(11, 0);
+                insert.setInt(12, 0);
+                insert.setString(13, "queued");
+                insert.setLong(14, now);
+                insert.executeUpdate();
+            }
+        }
+    }
+
+    private static boolean isSqliteBusy(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null
+                    && (message.indexOf("SQLITE_BUSY") >= 0
+                            || message.indexOf("database is locked") >= 0)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static Path taskDbPath(String baseDir, String moduleCode) {
@@ -613,6 +1180,7 @@ public final class M5LocalSpiderBridge {
 
     private static JSONObject buildTaskEnvelope(
             String baseDir,
+            long taskId,
             String moduleCode,
             String spiderCode,
             String spiderParamsJson,
@@ -620,31 +1188,80 @@ public final class M5LocalSpiderBridge {
             throws Exception {
         JSONObject config = readSpiderConfig(baseDir, spiderCode);
         JSONArray params = normalizeSpiderParams(spiderParamsJson);
+        JSONObject taskConfig = parseJsonObject(taskConfigJson);
         JSONObject task = new JSONObject();
-        task.put("taskConfig", normalizeJsonObjectText(taskConfigJson));
-        task.put("spiderParams", params.toString());
+        task.put("taskId", taskId);
+        task.put("taskConfig", taskConfig.toString());
+        task.put("spiderParams", params);
         task.put("moduleCode", moduleCode);
         task.put("spiderCode", spiderCode);
+        JSONArray hookurls = config.optJSONArray("hookurls") == null ? new JSONArray() : config.optJSONArray("hookurls");
+        JSONArray steps = config.optJSONArray("steps") == null ? new JSONArray() : config.optJSONArray("steps");
+        JSONArray fields = config.optJSONArray("fields") == null ? localFields() : config.optJSONArray("fields");
+        String homeUrl = config.optString("homeUrl", "https://www.google.com");
+        String injectionjs = config.optString("injectionjs");
+        String postApis = config.optString("postApis");
+        String sipderJson = config.optString("sipderJson");
+        task.put("homeUrl", homeUrl);
+        task.put("injectionjs", injectionjs);
+        task.put("postApis", postApis);
+        task.put("sipderJson", sipderJson);
+        task.put("hookurls", hookurls.toString());
+        task.put("steps", steps.toString());
+        task.put("fields", fields.toString());
         JSONObject data = new JSONObject();
+        data.put("taskId", taskId);
         data.put("moduleCode", moduleCode);
         data.put("spiderCode", spiderCode);
-        data.put("spiderParams", params.toString());
+        data.put("taskConfig", taskConfig.toString());
+        data.put("spiderParams", params);
         for (int i = 0; i < params.length(); i++) {
             JSONObject item = params.getJSONObject(i);
-            data.put(item.optString("code"), item.optString("value"));
+            String key = item.optString("key", item.optString("code"));
+            data.put(key, item.optString("value", item.optString("code")));
         }
         task.put("data", data);
 
         JSONObject spider = new JSONObject();
         spider.put("code", spiderCode);
-        spider.put("homeUrl", config.optString("homeUrl", "https://www.google.com"));
-        spider.put("injectionjs", config.optString("injectionjs"));
-        spider.put("postApis", config.optString("postApis"));
-        spider.put("sipderJson", config.optString("sipderJson"));
-        spider.put("hookurls", config.optJSONArray("hookurls") == null ? new JSONArray() : config.optJSONArray("hookurls"));
-        spider.put("steps", config.optJSONArray("steps") == null ? new JSONArray() : config.optJSONArray("steps"));
-        spider.put("fields", config.optJSONArray("fields") == null ? localFields() : config.optJSONArray("fields"));
-        return new JSONObject().put("task", task).put("spider", spider);
+        spider.put("homeUrl", homeUrl);
+        spider.put("injectionjs", injectionjs);
+        spider.put("postApis", postApis);
+        spider.put("sipderJson", sipderJson);
+        spider.put("hookurls", hookurls);
+        spider.put("steps", steps);
+        spider.put("fields", fields);
+
+        JSONObject taskInfo = new JSONObject();
+        taskInfo.put("taskId", taskId);
+        taskInfo.put("moduleCode", moduleCode);
+        taskInfo.put("spiderCode", spiderCode);
+        taskInfo.put("spiderParams", params);
+        taskInfo.put("taskConfig", taskConfig.toString());
+        taskInfo.put("spiderMode", configOrEnv(taskConfig, "spiderMode", "M5_SPIDER_MODE", "google"));
+        taskInfo.put("cookie", configOrEnv(taskConfig, "cookie", "M5_SPIDER_COOKIE", ""));
+        taskInfo.put("proxy", configOrEnv(taskConfig, "proxy", "M5_SPIDER_PROXY", ""));
+        taskInfo.put("spider_app_code", configOrEnv(taskConfig, "spider_app_code", "M5_SPIDER_APP_CODE", moduleCode));
+        taskInfo.put("spider_exe_code", configOrEnv(taskConfig, "spider_exe_code", "M5_SPIDER_EXE_CODE", spiderCode));
+
+        return new JSONObject()
+                .put("taskId", taskId)
+                .put("moduleCode", moduleCode)
+                .put("spiderCode", spiderCode)
+                .put("spiderParams", params)
+                .put("taskConfig", taskConfig.toString())
+                .put("spiderMode", taskInfo.optString("spiderMode"))
+                .put("cookie", taskInfo.optString("cookie"))
+                .put("proxy", taskInfo.optString("proxy"))
+                .put("spider_app_code", taskInfo.optString("spider_app_code"))
+                .put("spider_exe_code", taskInfo.optString("spider_exe_code"))
+                .put("data", data)
+                .put("task_data", data)
+                .put("task_info", taskInfo)
+                .put("taskData", data)
+                .put("taskInfo", taskInfo)
+                .put("task", task)
+                .put("spider", spider);
     }
 
     private static JSONObject readSpiderConfig(String baseDir, String spiderCode) throws Exception {
@@ -686,9 +1303,9 @@ public final class M5LocalSpiderBridge {
             JSONArray input = new JSONArray(trimmed);
             for (int i = 0; i < input.length(); i++) {
                 JSONObject item = input.getJSONObject(i);
-                String code = item.optString("code", item.optString("key"));
+                String key = item.optString("key", item.optString("code"));
                 String value = item.optString("value", item.optString("code"));
-                params.put(param(code, value));
+                params.put(param(key, value));
             }
             return params;
         }
@@ -700,10 +1317,10 @@ public final class M5LocalSpiderBridge {
         return params;
     }
 
-    private static JSONObject param(String code, String value) {
+    private static JSONObject param(String key, String value) {
         return new JSONObject()
-                .put("key", code)
-                .put("code", code)
+                .put("key", key)
+                .put("code", value == null ? "" : value)
                 .put("value", value == null ? "" : value);
     }
 
@@ -713,6 +1330,21 @@ public final class M5LocalSpiderBridge {
             return trimmed;
         }
         return "{}";
+    }
+
+    private static JSONObject parseJsonObject(String value) {
+        return new JSONObject(normalizeJsonObjectText(value));
+    }
+
+    private static String configOrEnv(JSONObject config, String key, String envKey, String fallback) {
+        String value = config.optString(key, "");
+        if (value == null || value.length() == 0) {
+            value = System.getenv(envKey);
+        }
+        if (value == null || value.length() == 0) {
+            return fallback == null ? "" : fallback;
+        }
+        return value;
     }
 
     private static JSONArray localSpiderParams() {
@@ -764,15 +1396,15 @@ public final class M5LocalSpiderBridge {
                         "M5C_COLLECT_LOCAL_PIPELINE_ENTER taskId="
                                 + taskId
                                 + " target=com.sbf.main.cloud.spider.a.a(Long)");
-                Class<?> runnerClass = Class.forName("com.sbf.main.cloud.spider.a");
-                Object runner = runnerClass.getConstructor(String.class).newInstance(spiderCode);
-                runnerClass.getMethod("a", Long.class).invoke(runner, Long.valueOf(taskId));
-                M5LocalSpiderBridge.finishDispatchedTask(baseDir, taskId, true, "executor returned");
-                System.out.println("M5C_COLLECT_LOCAL_PIPELINE_RETURN taskId=" + taskId);
+                ensureCloudSpiderContext(spiderCode);
+                Object runner = getRegisteredCloudSpiderRunner(spiderCode);
+                runner.getClass().getMethod("a", Long.class).invoke(runner, Long.valueOf(taskId));
+                System.out.println("M5C_COLLECT_LOCAL_PIPELINE_DISPATCHED taskId=" + taskId);
             } catch (Throwable error) {
+                Throwable root = rootCause(error);
                 if (taskId > 0L) {
                     try {
-                        M5LocalSpiderBridge.finishDispatchedTask(baseDir, taskId, false, String.valueOf(error));
+                        M5LocalSpiderBridge.finishDispatchedTask(baseDir, taskId, false, String.valueOf(root));
                     } catch (Throwable ignored) {
                     }
                 }
@@ -780,8 +1412,138 @@ public final class M5LocalSpiderBridge {
                         "M5C_COLLECT_LOCAL_PIPELINE_FAILED moduleCode="
                                 + moduleCode
                                 + " error="
-                                + String.valueOf(error));
+                                + String.valueOf(root));
+                rootCause(error).printStackTrace(System.out);
             }
+        }
+    }
+
+    private static Throwable rootCause(Throwable error) {
+        Throwable current = error;
+        while (current instanceof InvocationTargetException
+                && ((InvocationTargetException) current).getTargetException() != null) {
+            current = ((InvocationTargetException) current).getTargetException();
+        }
+        return current == null ? error : current;
+    }
+
+    private static synchronized void ensureCloudSpiderContext(final String spiderCode) throws Exception {
+        if (spiderCode.equals(localCloudSpiderCode)
+                && localCloudSpiderContext != null
+                && isCloudSpiderRegistered(spiderCode)) {
+            return;
+        }
+        String route =
+                "https://app.xdxsoft.com/pc/cloudSpider?spiderCode="
+                        + java.net.URLEncoder.encode(spiderCode, "UTF-8");
+        try {
+            Class<?> componentClass =
+                    Class.forName("com.sbf.main.spide.cloud.JSpiderCloude");
+            localCloudSpiderContext =
+                    componentClass.getConstructor(String.class).newInstance(route);
+            localCloudSpiderCode = spiderCode;
+            System.out.println(
+                    "M5D_CLOUD_SPIDER_CONTEXT_CREATED spiderCode="
+                            + spiderCode
+                            + " route="
+                            + route);
+        } catch (Throwable error) {
+            System.out.println(
+                    "M5D_CLOUD_SPIDER_CONTEXT_ORIGINAL_FAILED spiderCode="
+                            + spiderCode
+                            + " error="
+                            + String.valueOf(rootCause(error)));
+            localCloudSpiderContext = null;
+        }
+
+        long start = System.currentTimeMillis();
+        long originalDeadline = start + CLOUD_SPIDER_ORIGINAL_GRACE_MS;
+        while (System.currentTimeMillis() < originalDeadline) {
+            if (isCloudSpiderRegistered(spiderCode)) {
+                System.out.println(
+                        "M5D_CLOUD_SPIDER_CONTEXT_READY spiderCode=" + spiderCode);
+                return;
+            }
+            Thread.sleep(200L);
+        }
+
+        ensureDirectCloudSpiderContext(spiderCode);
+        long deadline = start + CLOUD_SPIDER_CONTEXT_TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            if (isCloudSpiderRegistered(spiderCode)) {
+                System.out.println(
+                        "M5D_CLOUD_SPIDER_CONTEXT_READY spiderCode=" + spiderCode);
+                return;
+            }
+            Thread.sleep(200L);
+        }
+        throw new IllegalStateException(
+                "cloud spider context registration timed out: " + spiderCode);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void ensureDirectCloudSpiderContext(String spiderCode) throws Exception {
+        Class<?> runnerClass = Class.forName("com.sbf.main.cloud.spider.a");
+        Object runner =
+                runnerClass
+                        .getConstructor(String.class)
+                        .newInstance(SPIDER_RUNNER_MODE_EXTERNAL_SEARCH);
+        Class<?> masterClass = Class.forName("com.sbf.main.cloud.spider.JCloudSpiderMaster");
+        Object master = masterClass.getMethod("a").invoke(null);
+        Field registryField = masterClass.getDeclaredField("d");
+        registryField.setAccessible(true);
+        Object registry = registryField.get(master);
+        if (!(registry instanceof Map)) {
+            throw new IllegalStateException("cloud spider registry unavailable");
+        }
+        Map runners = (Map) registry;
+        runners.put(SPIDER_RUNNER_MODE_EXTERNAL_SEARCH, runner);
+        runners.put(spiderCode, runner);
+        localBrowserContext = runner;
+        System.out.println(
+                "M5D_CLOUD_SPIDER_CONTEXT_DIRECT_READY spiderCode=" + spiderCode);
+    }
+
+    private static Object getRegisteredCloudSpiderRunner(String spiderCode) throws Exception {
+        Class<?> masterClass = Class.forName("com.sbf.main.cloud.spider.JCloudSpiderMaster");
+        Object master = masterClass.getMethod("a").invoke(null);
+        Field registryField = masterClass.getDeclaredField("d");
+        registryField.setAccessible(true);
+        Object registry = registryField.get(master);
+        if (!(registry instanceof Map)) {
+            throw new IllegalStateException("cloud spider registry unavailable");
+        }
+        Map<?, ?> runners = (Map<?, ?>) registry;
+        Object runner = runners.get(spiderCode);
+        if (runner != null) {
+            return runner;
+        }
+        for (Map.Entry<?, ?> entry : runners.entrySet()) {
+            if (spiderCode.equals(String.valueOf(entry.getKey()))) {
+                return entry.getValue();
+            }
+        }
+        if (runners.size() == 1) {
+            return runners.values().iterator().next();
+        }
+        throw new IllegalStateException("cloud spider runner missing: " + spiderCode);
+    }
+
+    private static boolean isCloudSpiderRegistered(String spiderCode) {
+        try {
+            Class<?> masterClass =
+                    Class.forName("com.sbf.main.cloud.spider.JCloudSpiderMaster");
+            Object master = masterClass.getMethod("a").invoke(null);
+            Object registered = masterClass.getMethod("a", String.class).invoke(master, spiderCode);
+            if (Boolean.TRUE.equals(registered)) {
+                return true;
+            }
+            Field registryField = masterClass.getDeclaredField("d");
+            registryField.setAccessible(true);
+            Object registry = registryField.get(master);
+            return registry instanceof Map && ((Map<?, ?>) registry).containsKey(spiderCode);
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 

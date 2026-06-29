@@ -2,3 +2,25 @@
 __pycache__/
 bscache/
 spider_data
+.env
+yescaptcha.properties
+config/.env
+config/yescaptcha.properties
+data/app/config/.env
+data/app/config/yescaptcha.properties
+
+# Runtime-generated application state
+/activemq-data/
+/data/app/activemq-data/
+/data/app/app/
+/data/app/data/
+/data/app/logs/
+/data/app/qkstart/
+/data/app/rfhtml/
+/data/app/temp/
+/data/app/mydocuments.path
+
+# Runtime-extracted device helpers
+/data/adbv4/
+/data/app/btcall/
+/data/lib/scrcpysv4.jar

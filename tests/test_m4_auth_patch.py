@@ -321,6 +321,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "C4749_009".equals(item.getString("code"));
                         boolean whatsappFilterChild =
                                 "REC_WHATSAPP_AI_FILTER_ROUTE".equals(item.getString("code"));
+                        boolean whatsappKefuParent =
+                                "C4749_011".equals(item.getString("code"));
+                        boolean whatsappKefuChild =
+                                "REC_WHATSAPP_AI_KEFU_ROUTE".equals(item.getString("code"));
                         if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
                                     || !"/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
@@ -365,6 +369,20 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp AI filter child recovery route: " + item);
                             }
+                        } else if (whatsappKefuParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/ingsale/aggregationKefu/index".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route:aggregation-kefu")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp AI kefu recovery route: " + item);
+                            }
+                        } else if (whatsappKefuChild) {
+                            if (!"/ingsale/aggregationKefu/index".equals(item.getString("localCode"))
+                                    || !"JSinglepage:/ingsale/aggregationKefu/index".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aggregation-kefu")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp AI kefu child recovery route: " + item);
+                            }
                         } else if (!"JSinglepage".equals(item.getString("localCode"))
                                 || !"/pc/aicloud/my".equals(item.getString("linkUrl"))
                                 || item.getInt("webFlg") != 1) {
@@ -376,7 +394,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {17, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {18, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -633,6 +651,119 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M5C_WHATSAPP_AI_FILTER_ROUTE_OK", probe.stdout)
+
+    def test_recovery_catalog_routes_whatsapp_ai_kefu_to_aggregation_component(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M8RecoveryWhatsAppAiKefuRouteProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M8RecoveryWhatsAppAiKefuRouteProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject target = null;
+                    JSONObject child = null;
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("C4749_011".equals(item.optString("code"))) {
+                            target = item;
+                        }
+                        if ("REC_WHATSAPP_AI_KEFU_ROUTE".equals(item.optString("code"))) {
+                            child = item;
+                        }
+                    }
+                    if (target == null) {
+                        throw new AssertionError("missing WhatsApp AI kefu menu");
+                    }
+                    if (child == null) {
+                        throw new AssertionError("missing WhatsApp AI kefu route child");
+                    }
+                    String expectedLink = "/ingsale/aggregationKefu/index";
+                    if (!"JSinglepage".equals(target.optString("localCode"))
+                            || !expectedLink.equals(target.optString("linkUrl"))
+                            || !target.optString("evidence").contains("recovery-route:aggregation-kefu")) {
+                        throw new AssertionError("wrong WhatsApp AI kefu route: " + target);
+                    }
+                    if (!expectedLink.equals(child.optString("localCode"))
+                            || !"JSinglepage:/ingsale/aggregationKefu/index".equals(child.optString("linkUrl"))
+                            || child.optInt("parentId") != target.optInt("id")
+                            || !child.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aggregation-kefu")) {
+                        throw new AssertionError("wrong WhatsApp AI kefu route child: " + child);
+                    }
+                    System.out.println("M8_WHATSAPP_AI_KEFU_ROUTE_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M8_WHATSAPP_AI_KEFU_ROUTE_OK", probe.stdout)
+
+    def test_local_web_asset_bridge_prefers_full_mirror_for_ai_kefu_chunks(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "M8FullMirrorAssetProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class M8FullMirrorAssetProbe {
+                    public static void main(String[] args) throws Exception {
+                        String body = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/static/js/chunk-49bd57a4.df38da93.js");
+                        String contentType = M5LocalSpiderBridge.localWebAssetContentType(
+                                "https://app.xdxsoft.com/static/js/chunk-49bd57a4.df38da93.js");
+                        if (!contentType.contains("application/javascript")) {
+                            throw new AssertionError("wrong content type: " + contentType);
+                        }
+                        if (!body.contains("aggregationKefu")
+                                && !body.contains("/kefu/conversation/getUnread")
+                                && !body.contains("/upmee/api/getConversationList")) {
+                            throw new AssertionError("full mirror did not serve AI kefu chunk");
+                        }
+                        String css = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/static/css/chunk-49bd57a4.5c79b182.css");
+                        if (css.length() == 0) {
+                            throw new AssertionError("full mirror did not serve AI kefu css");
+                        }
+                        System.out.println("M8_FULL_MIRROR_AI_KEFU_ASSETS_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.classes, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS),
+                "M8FullMirrorAssetProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M8_FULL_MIRROR_AI_KEFU_ASSETS_OK", probe.stdout)
 
     def test_local_spider_bridge_supports_collect_tab_configs_and_empty_data(self):
         self.compile_patcher()
@@ -1115,6 +1246,21 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("total", inject_js_callback_block)
         self.assertIn("dictLabel", inject_js_callback_block)
         self.assertIn("dictValue", inject_js_callback_block)
+        self.assertIn("/kefu/pageInfo/page", inject_js_callback_block)
+        self.assertIn("/kefu/conversation/getUnread", inject_js_callback_block)
+        self.assertIn("/kefu/conversation/member/", inject_js_callback_block)
+        self.assertIn("/kefu/conversation/send", inject_js_callback_block)
+        self.assertIn("/system/userconfig/getOneByUserNameAndCode", inject_js_callback_block)
+        self.assertIn("/helplook/", inject_js_callback_block)
+        self.assertIn("/world/tg/v2/platformToken", inject_js_callback_block)
+        self.assertIn("/upmee/", inject_js_callback_block)
+        self.assertIn("M8_AI_KEFU_XHR_STUB", inject_js_callback_block)
+        self.assertIn("M8_AI_KEFU_MIJAVA_SHIM", inject_js_callback_block)
+        self.assertIn("/ingsale/aggregationKefu/index", inject_js_callback_block)
+        self.assertIn("Proxy", inject_js_callback_block)
+        self.assertIn("regMessageEvent", inject_js_callback_block)
+        self.assertIn("toOpenFileSelect", inject_js_callback_block)
+        self.assertIn("uploadFileDoHK", inject_js_callback_block)
         self.assertIn('\\"code\\":200', inject_js_callback_block)
         self.assertIn("InjectJsCallback$Response.proceed", inject_js_callback_block)
         self.assertIn("Frame.executeJavaScript", inject_js_callback_block)
@@ -1369,8 +1515,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 82) {
-                            throw new AssertionError("expected 82 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 83) {
+                            throw new AssertionError("expected 83 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -1388,6 +1534,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "C4749_009".equals(recoveredMenu.optString("code"));
                             boolean whatsappFilterChild =
                                     "REC_WHATSAPP_AI_FILTER_ROUTE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappKefuParent =
+                                    "C4749_011".equals(recoveredMenu.optString("code"));
+                            boolean whatsappKefuChild =
+                                    "REC_WHATSAPP_AI_KEFU_ROUTE".equals(recoveredMenu.optString("code"));
                             if (recoveredMenu.optInt("productId") < 9101
                                     || recoveredMenu.optInt("productId") > 9108
                                     || recoveredMenu.optString("code").startsWith("C2850000")
@@ -1435,6 +1585,18 @@ class M4AuthPatchTests(unittest.TestCase):
                                         || !"JSinglepage:/ws/wsfilter/home".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:wsfilter-home")) {
                                     throw new AssertionError("bad WhatsApp AI filter child route: " + recoveredMenu);
+                                }
+                            } else if (whatsappKefuParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/ingsale/aggregationKefu/index".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route:aggregation-kefu")) {
+                                    throw new AssertionError("bad WhatsApp AI kefu recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappKefuChild) {
+                                if (!"/ingsale/aggregationKefu/index".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage:/ingsale/aggregationKefu/index".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aggregation-kefu")) {
+                                    throw new AssertionError("bad WhatsApp AI kefu child route: " + recoveredMenu);
                                 }
                             } else if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                     || !"/pc/aicloud/my".equals(recoveredMenu.optString("linkUrl"))) {

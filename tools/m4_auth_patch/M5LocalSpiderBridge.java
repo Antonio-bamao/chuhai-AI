@@ -312,9 +312,29 @@ public final class M5LocalSpiderBridge {
             return null;
         }
         if (path.startsWith("/static/js/") || path.startsWith("/static/css/")) {
+            Path fullMirrorAsset = localWebFullMirrorDir().resolve(path.substring(1));
+            if (Files.exists(fullMirrorAsset)) {
+                return fullMirrorAsset;
+            }
             return localWebMirrorDir().resolve(filename);
         }
         return null;
+    }
+
+    private static Path localWebFullMirrorDir() {
+        String baseDir = resolveAppBaseDir();
+        Path[] candidates = {
+            Paths.get(".").toAbsolutePath().normalize().resolve(".artifacts").resolve("working").resolve("m5-online-full"),
+            Paths.get(".").toAbsolutePath().normalize().resolve("..").resolve("..").resolve(".artifacts").resolve("working").resolve("m5-online-full").normalize(),
+            Paths.get(baseDir).toAbsolutePath().normalize().resolve("..").resolve("..").resolve(".artifacts").resolve("working").resolve("m5-online-full").normalize(),
+            Paths.get(baseDir).toAbsolutePath().normalize().resolve("..").resolve(".artifacts").resolve("working").resolve("m5-online-full").normalize()
+        };
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate.resolve("static").resolve("js").resolve("chunk-49bd57a4.df38da93.js"))) {
+                return candidate;
+            }
+        }
+        return candidates[0];
     }
 
     private static Path localWebMirrorDir() {

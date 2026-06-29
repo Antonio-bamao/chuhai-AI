@@ -10,6 +10,9 @@ public final class M4RecoveryCatalog {
     private static final int WHATSAPP_AI_FILTER_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 7;
     private static final int WHATSAPP_AI_FILTER_ROUTE_CHILD_ID =
             WHATSAPP_AI_FILTER_MENU_ID * 100 + 1;
+    private static final int WHATSAPP_AI_KEFU_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 11;
+    private static final int WHATSAPP_AI_KEFU_ROUTE_CHILD_ID =
+            WHATSAPP_AI_KEFU_MENU_ID * 100 + 1;
     private static final String EXPIRATION = "2099-12-31 23:59:59";
 
     private static final ProductSpec[] PRODUCTS = {
@@ -36,7 +39,7 @@ public final class M4RecoveryCatalog {
             original("C4749_005", "AI群发", "svg/whatsapp_menu_icon_8.svg"),
             original("C4749_", "API", "svg/whatsapp_menu_icon_9.svg"),
             original("C3460_001", "广告", "svg/whatsapp_menu_icon_8.svg"),
-            original("C4749_011", "AI客服", "svg/whatsapp_menu_icon_9.svg")
+            kefuRoute("C4749_011", "AI客服", "svg/whatsapp_menu_icon_9.svg")
         },
         {
             original("C3461_002", "TK AI采集", "svg/menu_tk_1.svg"),
@@ -164,6 +167,10 @@ public final class M4RecoveryCatalog {
                     json.append(',');
                     appendWhatsappAiFilterRouteChild(json);
                 }
+                if (isWhatsappAiKefuMenu(productId, productMenus[menuIndex])) {
+                    json.append(',');
+                    appendWhatsappAiKefuRouteChild(json);
+                }
                 first = false;
             }
         }
@@ -244,6 +251,10 @@ public final class M4RecoveryCatalog {
                 json.append(',');
                 appendWhatsappAiFilterRouteChild(json);
             }
+            if (isWhatsappAiKefuMenu(id, productMenus[menuIndex])) {
+                json.append(',');
+                appendWhatsappAiKefuRouteChild(json);
+            }
         }
         json.append(']');
         json.append('}');
@@ -283,6 +294,10 @@ public final class M4RecoveryCatalog {
 
     private static boolean isWhatsappAiFilterMenu(int productId, MenuSpec menu) {
         return productId == WHATSAPP_PRODUCT_ID && "C4749_009".equals(menu.code);
+    }
+
+    private static boolean isWhatsappAiKefuMenu(int productId, MenuSpec menu) {
+        return productId == WHATSAPP_PRODUCT_ID && "C4749_011".equals(menu.code);
     }
 
     private static void appendWhatsappCollectRouteChildren(StringBuilder json) {
@@ -398,6 +413,31 @@ public final class M4RecoveryCatalog {
         json.append('}');
     }
 
+    private static void appendWhatsappAiKefuRouteChild(StringBuilder json) {
+        json.append('{');
+        appendNumber(json, "id", WHATSAPP_AI_KEFU_ROUTE_CHILD_ID);
+        appendNumber(json, "sid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "fid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "productId", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "parentId", WHATSAPP_AI_KEFU_MENU_ID);
+        appendString(json, "code", "REC_WHATSAPP_AI_KEFU_ROUTE");
+        appendString(json, "name", "AI客服");
+        appendString(json, "displayName", "AI客服");
+        appendString(json, "icon", "whatsapp_menu_icon_9");
+        appendString(json, "localCode", "/ingsale/aggregationKefu/index");
+        appendString(json, "linkUrl", "JSinglepage:/ingsale/aggregationKefu/index");
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(
+                json,
+                "evidence",
+                "recovery-route-child:j2026-h-field-map:aggregation-kefu");
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
     private static String iconResourceName(String iconPath) {
         String icon = iconPath;
         int slash = icon.lastIndexOf('/');
@@ -480,6 +520,16 @@ public final class M4RecoveryCatalog {
                 "JSinglepage",
                 "/ws/wsfilter/home",
                 "recovery-route:wsfilter-home");
+    }
+
+    private static MenuSpec kefuRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                "/ingsale/aggregationKefu/index",
+                "recovery-route:aggregation-kefu");
     }
 
     private static final class ProductSpec {

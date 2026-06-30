@@ -321,6 +321,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "REC_WHATSAPP_AGENT_MODEL".equals(item.getString("code"));
                         boolean whatsappAgentModelChild =
                                 "REC_WHATSAPP_AGENT_MODEL_ROUTE".equals(item.getString("code"));
+                        boolean whatsappClawParent =
+                                "REC_WHATSAPP_CLAW".equals(item.getString("code"));
+                        boolean whatsappClawTabChild =
+                                item.getString("code").startsWith("REC_WHATSAPP_CLAW_TAB_");
                         boolean whatsappDataParent =
                                 "C4749_007".equals(item.getString("code"));
                         boolean whatsappDataChild =
@@ -360,6 +364,20 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:smart-ai")
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp smartAi child recovery route: " + item);
+                            }
+                        } else if (whatsappClawParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/wsClaw/browser".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route:ws-claw")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp claw recovery route: " + item);
+                            }
+                        } else if (whatsappClawTabChild) {
+                            if (!item.getString("localCode").startsWith("/wsClaw/")
+                                    || !"JSinglepage".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("m8-6-b-menu-tab:wsClaw:")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp claw tab child recovery route: " + item);
                             }
                         } else if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
@@ -430,7 +448,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {20, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {23, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -638,6 +656,78 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M5D11_WHATSAPP_COLLECT_TABS_OK", probe.stdout)
+
+    def test_recovery_catalog_adds_whatsapp_claw_three_tab_children(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M8BRecoveryWhatsAppClawTabsProbe",
+            """
+            import java.util.LinkedHashMap;
+            import java.util.Map;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M8BRecoveryWhatsAppClawTabsProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject parent = null;
+                    Map<String, JSONObject> children = new LinkedHashMap<String, JSONObject>();
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("REC_WHATSAPP_CLAW".equals(item.optString("code"))) {
+                            parent = item;
+                        }
+                    }
+                    if (parent == null) {
+                        throw new AssertionError("missing WhatsApp claw parent");
+                    }
+                    if (!"JSinglepage".equals(parent.optString("localCode"))
+                            || !"/wsClaw/browser".equals(parent.optString("linkUrl"))
+                            || !"AI龙虾".equals(parent.optString("name"))
+                            || !parent.optString("evidence").contains("recovery-route:ws-claw")) {
+                        throw new AssertionError("wrong WhatsApp claw parent: " + parent);
+                    }
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if (item.optInt("parentId") == parent.optInt("id")
+                                && item.optString("code").startsWith("REC_WHATSAPP_CLAW_TAB_")) {
+                            children.put(item.optString("name"), item);
+                        }
+                        if ("REC_WHATSAPP_CLAW_LICENSE".equals(item.optString("code"))
+                                || "/pc/longxialicense/manager".equals(item.optString("localCode"))
+                                || "/pc/longxialicense/manager".equals(item.optString("linkUrl"))) {
+                            throw new AssertionError("license manager must not be a menu or tab: " + item);
+                        }
+                    }
+                    String[][] expected = {
+                        {"指纹浏览器", "REC_WHATSAPP_CLAW_TAB_BROWSER", "/wsClaw/browser"},
+                        {"虚拟账号", "REC_WHATSAPP_CLAW_TAB_ACCOUNT", "/wsClaw/account"},
+                        {"ADS服务器", "REC_WHATSAPP_CLAW_TAB_SERVER", "/wsClaw/server"}
+                    };
+                    if (children.size() != expected.length) {
+                        throw new AssertionError("wrong claw tab child count: " + children);
+                    }
+                    for (int i = 0; i < expected.length; i++) {
+                        JSONObject child = children.get(expected[i][0]);
+                        if (child == null
+                                || !expected[i][1].equals(child.optString("code"))
+                                || !expected[i][2].equals(child.optString("localCode"))
+                                || !"JSinglepage".equals(child.optString("linkUrl"))
+                                || child.optInt("displayIndex") != i + 1
+                                || child.optInt("sort") != i + 1
+                                || child.optInt("treeEndFlg") != 1
+                                || child.optInt("webFlg") != 1
+                                || !child.optString("evidence").contains("m8-6-b-menu-tab:wsClaw:")) {
+                            throw new AssertionError("wrong claw tab child: " + child);
+                        }
+                    }
+                    System.out.println("M8B_WHATSAPP_CLAW_TABS_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M8B_WHATSAPP_CLAW_TABS_OK", probe.stdout)
 
     def test_recovery_catalog_keeps_whatsapp_ai_data_on_original_aicloud_route(self):
         probe = self.compile_and_run_catalog_probe(
@@ -922,6 +1012,131 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M8_SMART_AI_FULL_MIRROR_ASSETS_OK", probe.stdout)
+
+    def test_whatsapp_claw_assets_and_terminal_local_stubs_are_patched(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "M8BWhatsAppClawAssetsProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class M8BWhatsAppClawAssetsProbe {
+                    private static void requireContains(String url, String... needles)
+                            throws Exception {
+                        String body = M5LocalSpiderBridge.localWebAssetBody(url);
+                        if (body == null || body.length() == 0) {
+                            throw new AssertionError("missing mirrored asset: " + url);
+                        }
+                        for (String needle : needles) {
+                            if (!body.contains(needle)) {
+                                throw new AssertionError(
+                                        "asset " + url + " is missing " + needle);
+                            }
+                        }
+                    }
+
+                    public static void main(String[] args) throws Exception {
+                        requireContains(
+                                "https://app.xdxsoft.com/static/js/app.988d65c1.js",
+                                "./wsClaw/browser",
+                                "\\"4c23\\"",
+                                "chunk-3353acce",
+                                "./wsClaw/account",
+                                "\\"3e2f\\"",
+                                "chunk-2beceb10",
+                                "./wsClaw/server",
+                                "\\"f67c\\"",
+                                "chunk-b2d575a6");
+                        requireContains(
+                                "https://app.xdxsoft.com/static/js/chunk-3353acce.95b8bf91.js",
+                                "/wsClaw/browser/list",
+                                "dataAllAccount",
+                                "bindBatch");
+                        requireContains(
+                                "https://app.xdxsoft.com/static/js/chunk-2beceb10.77b6e5ea.js",
+                                "/wsClaw/account/list",
+                                "checkAccountExist");
+                        requireContains(
+                                "https://app.xdxsoft.com/static/js/chunk-b2d575a6.f6ef85a8.js",
+                                "/wsClaw/server/list");
+                        requireContains(
+                                "https://app.xdxsoft.com/static/css/app.99741a48.css",
+                                ".app-container");
+                        System.out.println("M8B_WHATSAPP_CLAW_MIRROR_ASSETS_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.classes, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS),
+                "M8BWhatsAppClawAssetsProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M8B_WHATSAPP_CLAW_MIRROR_ASSETS_OK", probe.stdout)
+
+        result = self.run_patcher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        inject_js_callback_block = self.javap_method_block(
+            "public com.teamdev.jxbrowser.browser.callback.InjectJsCallback$Response on(com.teamdev.jxbrowser.browser.callback.InjectJsCallback$Params);",
+            "com.sbf.main.jxbrowser.M5InjectJsCallback",
+        )
+        modern_dispatch_block = self.javap_method_block(
+            "public final void a(javax.swing.JComponent, java.lang.String);",
+            "com.sbf.main.JSBFMain$4",
+        )
+        self.assertIn("M8B_WSCLAW_TAB_JXBROWSER_URL_FROM_LINKURL", modern_dispatch_block)
+        scheme_callback_block = self.javap_method_block(
+            "public final java.lang.Object on(java.lang.Object);",
+            "com.sbf.main.jxbrowser.b",
+        )
+        for marker in (
+            "M8B_WSCLAW_LOCAL_PUBLIC_PATH",
+            "/static/js/app.ae0af1a5.js",
+            "/static/js/app.988d65c1.js",
+            "/static/css/app.b4573062.css",
+            "/static/css/app.99741a48.css",
+        ):
+            self.assertIn(marker, scheme_callback_block)
+        for marker in (
+            "M8B_WSCLAW_XHR_STUB",
+            "/wsClaw/",
+            "p.indexOf('/system/longxia_license')",
+            "dataAllAccount",
+            "checkAccountExist",
+            "exist:false",
+            "rows:[],total:0",
+            "code:200,msg:'success',data:",
+            "M8B_COPY_TO_CLIPBOARD_TERMINAL",
+            "copyToClipboard",
+        ):
+            self.assertIn(marker, inject_js_callback_block)
 
     def test_local_spider_bridge_supports_collect_tab_configs_and_empty_data(self):
         self.compile_patcher()
@@ -1702,8 +1917,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 85) {
-                            throw new AssertionError("expected 85 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 88) {
+                            throw new AssertionError("expected 88 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -1721,6 +1936,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "REC_WHATSAPP_AGENT_MODEL".equals(recoveredMenu.optString("code"));
                             boolean whatsappAgentModelChild =
                                     "REC_WHATSAPP_AGENT_MODEL_ROUTE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappClawParent =
+                                    "REC_WHATSAPP_CLAW".equals(recoveredMenu.optString("code"));
+                            boolean whatsappClawTabChild =
+                                    recoveredMenu.optString("code").startsWith("REC_WHATSAPP_CLAW_TAB_");
                             boolean whatsappDataParent =
                                     "C4749_007".equals(recoveredMenu.optString("code"));
                             boolean whatsappDataChild =
@@ -1766,6 +1985,18 @@ class M4AuthPatchTests(unittest.TestCase):
                                         || !"JSinglepage:/aiAgent/smartAi".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:smart-ai")) {
                                     throw new AssertionError("bad WhatsApp smartAi child route: " + recoveredMenu);
+                                }
+                            } else if (whatsappClawParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/wsClaw/browser".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route:ws-claw")) {
+                                    throw new AssertionError("bad WhatsApp claw recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappClawTabChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/wsClaw/")
+                                        || !"JSinglepage".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("m8-6-b-menu-tab:wsClaw:")) {
+                                    throw new AssertionError("bad WhatsApp claw tab child route: " + recoveredMenu);
                                 }
                             } else if (whatsappCollectParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))

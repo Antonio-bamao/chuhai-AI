@@ -411,6 +411,35 @@ public final class M4AuthPatch {
                         "()Ljava/lang/String;",
                         true);
                 mv.visitVarInsn(Opcodes.ASTORE, 3);
+                Label checkFullMirrorCss = new Label();
+                Label fullMirrorPublicPathReady = new Label();
+                mv.visitVarInsn(Opcodes.ALOAD, 3);
+                mv.visitLdcInsn("/static/js/app.ae0af1a5.js");
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEVIRTUAL,
+                        "java/lang/String",
+                        "contains",
+                        "(Ljava/lang/CharSequence;)Z",
+                        false);
+                mv.visitJumpInsn(Opcodes.IFEQ, checkFullMirrorCss);
+                mv.visitLdcInsn("https://app.xdxsoft.com/static/js/app.988d65c1.js");
+                mv.visitVarInsn(Opcodes.ASTORE, 3);
+                emitPrint(mv, "M8B_WSCLAW_LOCAL_PUBLIC_PATH js=app.988d65c1.js");
+                mv.visitJumpInsn(Opcodes.GOTO, fullMirrorPublicPathReady);
+                mv.visitLabel(checkFullMirrorCss);
+                mv.visitVarInsn(Opcodes.ALOAD, 3);
+                mv.visitLdcInsn("/static/css/app.b4573062.css");
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEVIRTUAL,
+                        "java/lang/String",
+                        "contains",
+                        "(Ljava/lang/CharSequence;)Z",
+                        false);
+                mv.visitJumpInsn(Opcodes.IFEQ, fullMirrorPublicPathReady);
+                mv.visitLdcInsn("https://app.xdxsoft.com/static/css/app.99741a48.css");
+                mv.visitVarInsn(Opcodes.ASTORE, 3);
+                emitPrint(mv, "M8B_WSCLAW_LOCAL_PUBLIC_PATH css=app.99741a48.css");
+                mv.visitLabel(fullMirrorPublicPathReady);
                 mv.visitVarInsn(Opcodes.ALOAD, 3);
                 mv.visitMethodInsn(
                         Opcodes.INVOKESTATIC,
@@ -1531,6 +1560,12 @@ public final class M4AuthPatch {
                         + "var __m5AreaOptionsBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"data\\\":[{\\\"label\\\":\\\"北美\\\",\\\"children\\\":[{\\\"code\\\":\\\"+1\\\",\\\"label\\\":\\\"美国/加拿大 +1\\\",\\\"iconUrl\\\":\\\"\\\"}]}]}';"
                         + "var __m5PlatformOptionsBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"data\\\":[{\\\"label\\\":\\\"搜索平台\\\",\\\"children\\\":[{\\\"code\\\":\\\"facebook.com\\\",\\\"label\\\":\\\"Facebook\\\",\\\"iconUrl\\\":\\\"\\\"},{\\\"code\\\":\\\"google.com\\\",\\\"label\\\":\\\"Google\\\",\\\"iconUrl\\\":\\\"\\\"}]}]}';"
                         + "var __m5KeywordsOptionsBody='{\\\"code\\\":200,\\\"msg\\\":\\\"success\\\",\\\"data\\\":[{\\\"label\\\":\\\"关键词\\\",\\\"children\\\":[{\\\"code\\\":\\\"local-test\\\",\\\"label\\\":\\\"local-test\\\",\\\"iconUrl\\\":\\\"\\\"}]}]}';"
+                        + "function __m8EnsureTerminalCopyBridge(){try{if(window.__m8TerminalCopyBridgeInstalled){return;}window.__m8TerminalCopyBridgeInstalled=true;"
+                        + "var native=null;try{native=window.mijava||window.java||null;}catch(e){native=null;}"
+                        + "var shim={copyToClipboard:function(text,cb){console.log('M8B_COPY_TO_CLIPBOARD_TERMINAL');setTimeout(function(){try{if(cb){cb('\\u590d\\u5236\\u6210\\u529f');}}catch(e){console.error('M8B_COPY_TO_CLIPBOARD_CALLBACK_FAIL '+e);}},0);return null;}};"
+                        + "function delegate(prop){return function(){try{var v=native&&native[prop];if(typeof v==='function'){return v.apply(native,arguments);}if(v!=null){return v;}}catch(e){}return null;};}"
+                        + "window.mijava=(typeof Proxy==='function')?new Proxy(shim,{get:function(t,p){if(p in t){return t[p];}return delegate(p);},set:function(t,p,v){t[p]=v;return true;}}):shim;window.java=window.mijava;"
+                        + "}catch(e){console.error('M8B_COPY_TO_CLIPBOARD_BRIDGE_FAIL '+e);}}__m8EnsureTerminalCopyBridge();"
                         + "function __m8EnsureAiKefuMiJavaShim(){try{if(String(location.href).indexOf('/ingsale/aggregationKefu/index')<0){return;}"
                         + "if(window.__m8AiKefuMiJavaShimInstalled){return;}window.__m8AiKefuMiJavaShimInstalled=true;"
                         + "var native=null;try{native=window.mijava||window.java||null;}catch(e){native=null;}window.__m8NativeMijava=native;"
@@ -1612,8 +1647,17 @@ public final class M4AuthPatch {
                         + "if(p.indexOf('/upmee/')>=0){return js({code:200,msg:'M8_AI_KEFU_XHR_STUB',data:[],rows:[],total:0});}"
                         + "if(p.indexOf('/system/userconfig/getOneByUserNameAndCode')>=0){return js({code:200,msg:'success',data:{configValue:'0'}});}"
                         + "return null;}"
+                        + "function m8Claw(){var p=path();var claw=p.indexOf('/wsClaw/')>=0;var license=p.indexOf('/system/longxia_license')>=0;"
+                        + "if(!claw&&!license){return null;}"
+                        + "if(p.indexOf('/dataAllAccount')>=0){return js({code:200,msg:'success',data:[]});}"
+                        + "if(p.indexOf('/checkAccountExist')>=0){return js({code:200,msg:'success',exist:false,data:{exist:false}});}"
+                        + "if(p.substring(p.length-5)==='/list'){return js({code:200,msg:'success',rows:[],total:0});}"
+                        + "if(method==='GET'){return js({code:200,msg:'success',data:{}});}"
+                        + "var result={};try{result=(typeof body==='string'&&body)?JSON.parse(body):(body||{});}catch(e){result={};}"
+                        + "return js({code:200,msg:'success',data:result});}"
                         + "var smartAiStub=m8SmartAi();if(smartAiStub!==null){console.log('M8_SMART_AI_XHR_STUB url='+u);return smartAiStub;}"
                         + "var kefuStub=m8Kefu();if(kefuStub!==null){console.log((kefuStub.indexOf('M8_AI_KEFU_WA_STUB')>=0?'M8_AI_KEFU_WA_STUB':'M8_AI_KEFU_XHR_STUB')+' url='+u);return kefuStub;}"
+                        + "var clawStub=m8Claw();if(clawStub!==null){console.log('M8B_WSCLAW_XHR_STUB url='+u+' method='+method);return clawStub;}"
                         + "if(u.indexOf('/system/user/profile')>=0){return js({code:200,msg:'success',data:{userId:1,userName:'local@test.com',nickName:'HuoChaiAI Local User',nickname:'HuoChaiAI Local User',avatar:'',phonenumber:'',invitationCode:'LOCAL-OFFLINE'}});}"
                         + "if(u.indexOf('/ads/inivitationCode/balance')>=0){return js({code:200,msg:'success',data:{invitationCode:'LOCAL-OFFLINE',balance:0}});}"
                         + "if(u.indexOf('/prod-api/getInfo')>=0){return __m5GetInfoBody;}"
@@ -4332,6 +4376,7 @@ public final class M4AuthPatch {
 
     private static void emitModernCollectTabJxBrowserUrlFix(MethodVisitor mv) {
         org.objectweb.asm.Label done = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label notCollectTab = new org.objectweb.asm.Label();
         mv.visitVarInsn(Opcodes.ALOAD, 5);
         mv.visitLdcInsn("JSinglepage");
         mv.visitMethodInsn(
@@ -4351,10 +4396,24 @@ public final class M4AuthPatch {
                 "startsWith",
                 "(Ljava/lang/String;)Z",
                 false);
-        mv.visitJumpInsn(Opcodes.IFEQ, done);
+        mv.visitJumpInsn(Opcodes.IFEQ, notCollectTab);
         mv.visitVarInsn(Opcodes.ALOAD, 4);
         mv.visitVarInsn(Opcodes.ASTORE, 5);
         emitPrint(mv, "M5D11_COLLECT_TAB_JXBROWSER_URL_FROM_LINKURL");
+        mv.visitJumpInsn(Opcodes.GOTO, done);
+        mv.visitLabel(notCollectTab);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitLdcInsn("/wsClaw/");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "startsWith",
+                "(Ljava/lang/String;)Z",
+                false);
+        mv.visitJumpInsn(Opcodes.IFEQ, done);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitVarInsn(Opcodes.ASTORE, 5);
+        emitPrint(mv, "M8B_WSCLAW_TAB_JXBROWSER_URL_FROM_LINKURL");
         mv.visitLabel(done);
     }
 

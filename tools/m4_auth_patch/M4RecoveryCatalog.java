@@ -13,6 +13,9 @@ public final class M4RecoveryCatalog {
     private static final int WHATSAPP_AGENT_MODEL_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 2;
     private static final int WHATSAPP_AGENT_MODEL_ROUTE_CHILD_ID =
             WHATSAPP_AGENT_MODEL_MENU_ID * 100 + 1;
+    private static final int WHATSAPP_CLAW_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 3;
+    private static final int WHATSAPP_CLAW_ROUTE_CHILD_ID_BASE =
+            WHATSAPP_CLAW_MENU_ID * 100;
     private static final int WHATSAPP_AI_FILTER_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 7;
     private static final int WHATSAPP_AI_FILTER_ROUTE_CHILD_ID =
             WHATSAPP_AI_FILTER_MENU_ID * 100 + 1;
@@ -37,7 +40,7 @@ public final class M4RecoveryCatalog {
         {
             oneLineRoute("REC_WHATSAPP_ONELINE", "一句话", "svg/whatsapp_menu_icon_1.svg"),
             agentModelRoute("REC_WHATSAPP_AGENT_MODEL", "智能体模型", "svg/whatsapp_menu_icon_2.svg"),
-            recovered("REC_WHATSAPP_CLAW", "AI龙虾", "svg/whatsapp_menu_icon_3.svg"),
+            clawRoute("REC_WHATSAPP_CLAW", "AI龙虾", "svg/whatsapp_menu_icon_3.svg"),
             recovered("REC_WHATSAPP_SUPER", "超级号", "svg/whatsapp_menu_icon_4.svg"),
             spiderRoute("C4749_006", "AI采集", "svg/whatsapp_menu_icon_5.svg", "whatsapp_users_lists"),
             original("C4749_007", "AI数据", "svg/whatsapp_menu_icon_6.svg"),
@@ -169,6 +172,10 @@ public final class M4RecoveryCatalog {
                     json.append(',');
                     appendWhatsappAgentModelRouteChild(json);
                 }
+                if (isWhatsappClawMenu(productId, productMenus[menuIndex])) {
+                    json.append(',');
+                    appendWhatsappClawRouteChildren(json);
+                }
                 if (isWhatsappCollectMenu(productId, productMenus[menuIndex])) {
                     json.append(',');
                     appendWhatsappCollectRouteChildren(json);
@@ -261,6 +268,10 @@ public final class M4RecoveryCatalog {
                 json.append(',');
                 appendWhatsappAgentModelRouteChild(json);
             }
+            if (isWhatsappClawMenu(id, productMenus[menuIndex])) {
+                json.append(',');
+                appendWhatsappClawRouteChildren(json);
+            }
             if (isWhatsappCollectMenu(id, productMenus[menuIndex])) {
                 json.append(',');
                 appendWhatsappCollectRouteChildren(json);
@@ -318,6 +329,10 @@ public final class M4RecoveryCatalog {
         return productId == WHATSAPP_PRODUCT_ID && "REC_WHATSAPP_AGENT_MODEL".equals(menu.code);
     }
 
+    private static boolean isWhatsappClawMenu(int productId, MenuSpec menu) {
+        return productId == WHATSAPP_PRODUCT_ID && "REC_WHATSAPP_CLAW".equals(menu.code);
+    }
+
     private static boolean isWhatsappAiDataMenu(int productId, MenuSpec menu) {
         return productId == WHATSAPP_PRODUCT_ID && "C4749_007".equals(menu.code);
     }
@@ -358,6 +373,60 @@ public final class M4RecoveryCatalog {
                 "REC_WHATSAPP_COLLECT_TAB_WS_REGION",
                 "WS地区采集",
                 "whatsapp_regional_collection");
+    }
+
+    private static void appendWhatsappClawRouteChildren(StringBuilder json) {
+        appendWhatsappClawRouteChild(
+                json,
+                1,
+                "REC_WHATSAPP_CLAW_TAB_BROWSER",
+                "指纹浏览器",
+                "/wsClaw/browser",
+                "browser");
+        json.append(',');
+        appendWhatsappClawRouteChild(
+                json,
+                2,
+                "REC_WHATSAPP_CLAW_TAB_ACCOUNT",
+                "虚拟账号",
+                "/wsClaw/account",
+                "account");
+        json.append(',');
+        appendWhatsappClawRouteChild(
+                json,
+                3,
+                "REC_WHATSAPP_CLAW_TAB_SERVER",
+                "ADS服务器",
+                "/wsClaw/server",
+                "server");
+    }
+
+    private static void appendWhatsappClawRouteChild(
+            StringBuilder json,
+            int displayIndex,
+            String code,
+            String name,
+            String route,
+            String component) {
+        json.append('{');
+        appendNumber(json, "id", WHATSAPP_CLAW_ROUTE_CHILD_ID_BASE + displayIndex);
+        appendNumber(json, "sid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "fid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "productId", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "parentId", WHATSAPP_CLAW_MENU_ID);
+        appendString(json, "code", code);
+        appendString(json, "name", name);
+        appendString(json, "displayName", name);
+        appendString(json, "icon", "whatsapp_menu_icon_3");
+        appendString(json, "localCode", route);
+        appendString(json, "linkUrl", "JSinglepage");
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", displayIndex);
+        appendNumber(json, "sort", displayIndex);
+        appendString(json, "evidence", "m8-6-b-menu-tab:wsClaw:" + component);
+        json.append("\"status\":1");
+        json.append('}');
     }
 
     private static void appendWhatsappCollectRouteChild(
@@ -630,6 +699,16 @@ public final class M4RecoveryCatalog {
                 "JSinglepage",
                 "/aiAgent/smartAi",
                 "recovery-route:smart-ai");
+    }
+
+    private static MenuSpec clawRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                "/wsClaw/browser",
+                "recovery-route:ws-claw:browser-default");
     }
 
     private static final class ProductSpec {

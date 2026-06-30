@@ -313,6 +313,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(item.getString("code"));
                         boolean whatsappCollectTabChild =
                                 item.getString("code").startsWith("REC_WHATSAPP_COLLECT_TAB_");
+                        boolean whatsappOneLineParent =
+                                "REC_WHATSAPP_ONELINE".equals(item.getString("code"));
+                        boolean whatsappOneLineChild =
+                                "REC_WHATSAPP_ONELINE_ROUTE".equals(item.getString("code"));
                         boolean whatsappDataParent =
                                 "C4749_007".equals(item.getString("code"));
                         boolean whatsappDataChild =
@@ -325,7 +329,21 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "C4749_011".equals(item.getString("code"));
                         boolean whatsappKefuChild =
                                 "REC_WHATSAPP_AI_KEFU_ROUTE".equals(item.getString("code"));
-                        if (whatsappCollectParent) {
+                        if (whatsappOneLineParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/pc/aigc/aichat_dialog".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route:aichat-dialog")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp one-line recovery route: " + item);
+                            }
+                        } else if (whatsappOneLineChild) {
+                            if (!"/pc/aigc/aichat_dialog".equals(item.getString("localCode"))
+                                    || !"JSinglepage:/pc/aigc/aichat_dialog".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aichat-dialog")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp one-line child recovery route: " + item);
+                            }
+                        } else if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
                                     || !"/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp".equals(item.getString("linkUrl"))
                                     || !item.optString("evidence").contains("recovery-route")
@@ -394,7 +412,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {18, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {19, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -1237,6 +1255,9 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("mijava", inject_js_callback_block)
         self.assertIn("java", inject_js_callback_block)
         self.assertIn("/prod-api/getInfo", inject_js_callback_block)
+        self.assertIn("/system/user/profile", inject_js_callback_block)
+        self.assertIn("/ads/inivitationCode/balance", inject_js_callback_block)
+        self.assertIn("LOCAL-OFFLINE", inject_js_callback_block)
         self.assertIn("/prod-api/getRouters", inject_js_callback_block)
         self.assertIn("/prod-api/mnq/mnqAuthAccounts/mylist", inject_js_callback_block)
         self.assertIn("/prod-api/system/dict/data/type/yes_no_1_0", inject_js_callback_block)
@@ -1263,6 +1284,12 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("M8_AI_KEFU_MIJAVA_SHIM", inject_js_callback_block)
         self.assertIn("M8_AI_KEFU_MIJAVA_EVENT_FINAL", inject_js_callback_block)
         self.assertIn("/ingsale/aggregationKefu/index", inject_js_callback_block)
+        self.assertIn("M8_ONELINE_AIBOT_SHIM", inject_js_callback_block)
+        self.assertIn("/pc/aigc/aichat_dialog", inject_js_callback_block)
+        self.assertIn("aibotChat", inject_js_callback_block)
+        self.assertIn("cmpl", inject_js_callback_block)
+        self.assertIn("all_done", inject_js_callback_block)
+        self.assertIn("\\u672c\\u5730 AI \\u751f\\u6210", inject_js_callback_block)
         self.assertIn("Proxy", inject_js_callback_block)
         self.assertIn("regMessageEvent", inject_js_callback_block)
         self.assertIn("toOpenFileSelect", inject_js_callback_block)
@@ -1521,8 +1548,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 83) {
-                            throw new AssertionError("expected 83 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 84) {
+                            throw new AssertionError("expected 84 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -1532,6 +1559,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "REC_WHATSAPP_COLLECT_USERS_ROUTE".equals(recoveredMenu.optString("code"));
                             boolean whatsappCollectTabChild =
                                     recoveredMenu.optString("code").startsWith("REC_WHATSAPP_COLLECT_TAB_");
+                            boolean whatsappOneLineParent =
+                                    "REC_WHATSAPP_ONELINE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappOneLineChild =
+                                    "REC_WHATSAPP_ONELINE_ROUTE".equals(recoveredMenu.optString("code"));
                             boolean whatsappDataParent =
                                     "C4749_007".equals(recoveredMenu.optString("code"));
                             boolean whatsappDataChild =
@@ -1554,7 +1585,19 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || recoveredMenu.optString("linkUrl").contains("offline-home.html")) {
                                 throw new AssertionError("bad recovered menu: " + recoveredMenu);
                             }
-                            if (whatsappCollectParent) {
+                            if (whatsappOneLineParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/pc/aigc/aichat_dialog".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route:aichat-dialog")) {
+                                    throw new AssertionError("bad WhatsApp one-line recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappOneLineChild) {
+                                if (!"/pc/aigc/aichat_dialog".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage:/pc/aigc/aichat_dialog".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aichat-dialog")) {
+                                    throw new AssertionError("bad WhatsApp one-line child route: " + recoveredMenu);
+                                }
+                            } else if (whatsappCollectParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
                                         || !"/pc/dataCollect/collectionTask?modal=whatsapp_users_lists&moduleCode=whatsapp".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route")) {

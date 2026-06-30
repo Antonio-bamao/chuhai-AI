@@ -317,6 +317,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "REC_WHATSAPP_ONELINE".equals(item.getString("code"));
                         boolean whatsappOneLineChild =
                                 "REC_WHATSAPP_ONELINE_ROUTE".equals(item.getString("code"));
+                        boolean whatsappAgentModelParent =
+                                "REC_WHATSAPP_AGENT_MODEL".equals(item.getString("code"));
+                        boolean whatsappAgentModelChild =
+                                "REC_WHATSAPP_AGENT_MODEL_ROUTE".equals(item.getString("code"));
                         boolean whatsappDataParent =
                                 "C4749_007".equals(item.getString("code"));
                         boolean whatsappDataChild =
@@ -342,6 +346,20 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aichat-dialog")
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp one-line child recovery route: " + item);
+                            }
+                        } else if (whatsappAgentModelParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/aiAgent/smartAi".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route:smart-ai")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp smartAi recovery route: " + item);
+                            }
+                        } else if (whatsappAgentModelChild) {
+                            if (!"/aiAgent/smartAi".equals(item.getString("localCode"))
+                                    || !"JSinglepage:/aiAgent/smartAi".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("recovery-route-child:j2026-h-field-map:smart-ai")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("WhatsApp smartAi child recovery route: " + item);
                             }
                         } else if (whatsappCollectParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
@@ -412,7 +430,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {19, 10, 10, 9, 9, 11, 9, 7};
+                    int[] expectedCounts = {20, 10, 10, 9, 9, 11, 9, 7};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -447,6 +465,59 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M4_RECOVERY_MENUS_OK", probe.stdout)
+
+    def test_recovery_catalog_routes_whatsapp_agent_model_to_smart_ai_component(self):
+        probe = self.compile_and_run_catalog_probe(
+            "M8RecoveryWhatsAppAgentModelRouteProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class M8RecoveryWhatsAppAgentModelRouteProbe {
+                public static void main(String[] args) {
+                    JSONArray entries =
+                            new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject target = null;
+                    JSONObject child = null;
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        if ("REC_WHATSAPP_AGENT_MODEL".equals(item.optString("code"))) {
+                            target = item;
+                        }
+                        if ("REC_WHATSAPP_AGENT_MODEL_ROUTE".equals(item.optString("code"))) {
+                            child = item;
+                        }
+                    }
+                    if (target == null) {
+                        throw new AssertionError("missing WhatsApp agent model menu");
+                    }
+                    if (child == null) {
+                        throw new AssertionError("missing WhatsApp agent model route child");
+                    }
+                    String expectedLink = "/aiAgent/smartAi";
+                    if (!"JSinglepage".equals(target.optString("localCode"))
+                            || !expectedLink.equals(target.optString("linkUrl"))
+                            || !"智能体模型".equals(target.optString("name"))
+                            || !"REC_WHATSAPP_AGENT_MODEL".equals(target.optString("code"))
+                            || target.optString("code").startsWith("C4749_")
+                            || !target.optString("evidence").contains("recovery-route:smart-ai")) {
+                        throw new AssertionError("wrong WhatsApp agent model route: " + target);
+                    }
+                    if (!expectedLink.equals(child.optString("localCode"))
+                            || !"JSinglepage:/aiAgent/smartAi".equals(child.optString("linkUrl"))
+                            || child.optInt("parentId") != target.optInt("id")
+                            || child.optInt("productId") != 9101
+                            || !"智能体模型".equals(child.optString("name"))
+                            || !child.optString("evidence").contains("recovery-route-child:j2026-h-field-map:smart-ai")) {
+                        throw new AssertionError("wrong WhatsApp agent model route child: " + child);
+                    }
+                    System.out.println("M8_WHATSAPP_AGENT_MODEL_ROUTE_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M8_WHATSAPP_AGENT_MODEL_ROUTE_OK", probe.stdout)
 
     def test_recovery_catalog_marks_whatsapp_ai_collect_as_data_collect_recovery_route(self):
         probe = self.compile_and_run_catalog_probe(
@@ -782,6 +853,75 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M8_FULL_MIRROR_AI_KEFU_ASSETS_OK", probe.stdout)
+
+    def test_local_web_asset_bridge_serves_smart_ai_chunks_from_full_mirror(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "M8SmartAiFullMirrorAssetProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class M8SmartAiFullMirrorAssetProbe {
+                    public static void main(String[] args) throws Exception {
+                        String main = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/static/js/chunk-567555bc.7b08c58f.js");
+                        String shared = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/static/js/chunk-76ba7557.5b4ba796.js");
+                        String css = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/static/css/chunk-567555bc.2ce5b02a.css");
+                        if (main == null
+                                || !main.contains("smartAi")
+                                || !main.contains("我的智能体")
+                                || !main.contains("mijava.dowloadFile")) {
+                            throw new AssertionError("full mirror did not serve smartAi main chunk");
+                        }
+                        if (shared == null
+                                || !shared.contains("/volcengine/market/my")
+                                || !shared.contains("/volcengine/market/aiChat/")
+                                || !shared.contains("/volcengine/trains/tokens")) {
+                            throw new AssertionError("full mirror did not serve smartAi shared chunk");
+                        }
+                        if (css == null || !css.contains(".smartAi")) {
+                            throw new AssertionError("full mirror did not serve smartAi css");
+                        }
+                        System.out.println("M8_SMART_AI_FULL_MIRROR_ASSETS_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.classes, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS),
+                "M8SmartAiFullMirrorAssetProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("M8_SMART_AI_FULL_MIRROR_ASSETS_OK", probe.stdout)
 
     def test_local_spider_bridge_supports_collect_tab_configs_and_empty_data(self):
         self.compile_patcher()
@@ -1290,6 +1430,20 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertIn("cmpl", inject_js_callback_block)
         self.assertIn("all_done", inject_js_callback_block)
         self.assertIn("\\u672c\\u5730 AI \\u751f\\u6210", inject_js_callback_block)
+        self.assertIn("M8_SMART_AI_MIJAVA_SHIM", inject_js_callback_block)
+        self.assertIn("M8_SMART_AI_XHR_STUB", inject_js_callback_block)
+        self.assertIn("__m8SmartAiRows", inject_js_callback_block)
+        self.assertIn("agentFromBody", inject_js_callback_block)
+        self.assertIn("/aiAgent/smartAi", inject_js_callback_block)
+        self.assertIn("agent_template.txt", inject_js_callback_block)
+        self.assertIn("/volcengine/market/my", inject_js_callback_block)
+        self.assertIn("/volcengine/market/model/update", inject_js_callback_block)
+        self.assertIn("/volcengine/market/delete/", inject_js_callback_block)
+        self.assertIn("/volcengine/market/random", inject_js_callback_block)
+        self.assertIn("/volcengine/market/aiChat/", inject_js_callback_block)
+        self.assertIn("/volcengine/trains/tokens", inject_js_callback_block)
+        self.assertIn("/volcengine/trains/recharge", inject_js_callback_block)
+        self.assertIn("\\u672c\\u5730\\u667a\\u80fd\\u4f53\\u4f53\\u9a8c", inject_js_callback_block)
         self.assertIn("Proxy", inject_js_callback_block)
         self.assertIn("regMessageEvent", inject_js_callback_block)
         self.assertIn("toOpenFileSelect", inject_js_callback_block)
@@ -1548,8 +1702,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 84) {
-                            throw new AssertionError("expected 84 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 85) {
+                            throw new AssertionError("expected 85 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -1563,6 +1717,10 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "REC_WHATSAPP_ONELINE".equals(recoveredMenu.optString("code"));
                             boolean whatsappOneLineChild =
                                     "REC_WHATSAPP_ONELINE_ROUTE".equals(recoveredMenu.optString("code"));
+                            boolean whatsappAgentModelParent =
+                                    "REC_WHATSAPP_AGENT_MODEL".equals(recoveredMenu.optString("code"));
+                            boolean whatsappAgentModelChild =
+                                    "REC_WHATSAPP_AGENT_MODEL_ROUTE".equals(recoveredMenu.optString("code"));
                             boolean whatsappDataParent =
                                     "C4749_007".equals(recoveredMenu.optString("code"));
                             boolean whatsappDataChild =
@@ -1596,6 +1754,18 @@ class M4AuthPatchTests(unittest.TestCase):
                                         || !"JSinglepage:/pc/aigc/aichat_dialog".equals(recoveredMenu.optString("linkUrl"))
                                         || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:aichat-dialog")) {
                                     throw new AssertionError("bad WhatsApp one-line child route: " + recoveredMenu);
+                                }
+                            } else if (whatsappAgentModelParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/aiAgent/smartAi".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route:smart-ai")) {
+                                    throw new AssertionError("bad WhatsApp smartAi recovery route: " + recoveredMenu);
+                                }
+                            } else if (whatsappAgentModelChild) {
+                                if (!"/aiAgent/smartAi".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage:/aiAgent/smartAi".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:smart-ai")) {
+                                    throw new AssertionError("bad WhatsApp smartAi child route: " + recoveredMenu);
                                 }
                             } else if (whatsappCollectParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))

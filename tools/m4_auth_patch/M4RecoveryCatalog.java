@@ -10,6 +10,9 @@ public final class M4RecoveryCatalog {
     private static final int WHATSAPP_ONELINE_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 1;
     private static final int WHATSAPP_ONELINE_ROUTE_CHILD_ID =
             WHATSAPP_ONELINE_MENU_ID * 100 + 1;
+    private static final int WHATSAPP_AGENT_MODEL_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 2;
+    private static final int WHATSAPP_AGENT_MODEL_ROUTE_CHILD_ID =
+            WHATSAPP_AGENT_MODEL_MENU_ID * 100 + 1;
     private static final int WHATSAPP_AI_FILTER_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 7;
     private static final int WHATSAPP_AI_FILTER_ROUTE_CHILD_ID =
             WHATSAPP_AI_FILTER_MENU_ID * 100 + 1;
@@ -33,7 +36,7 @@ public final class M4RecoveryCatalog {
     private static final MenuSpec[][] MENUS = {
         {
             oneLineRoute("REC_WHATSAPP_ONELINE", "一句话", "svg/whatsapp_menu_icon_1.svg"),
-            recovered("REC_WHATSAPP_AGENT_MODEL", "智能体模型", "svg/whatsapp_menu_icon_2.svg"),
+            agentModelRoute("REC_WHATSAPP_AGENT_MODEL", "智能体模型", "svg/whatsapp_menu_icon_2.svg"),
             recovered("REC_WHATSAPP_CLAW", "AI龙虾", "svg/whatsapp_menu_icon_3.svg"),
             recovered("REC_WHATSAPP_SUPER", "超级号", "svg/whatsapp_menu_icon_4.svg"),
             spiderRoute("C4749_006", "AI采集", "svg/whatsapp_menu_icon_5.svg", "whatsapp_users_lists"),
@@ -162,6 +165,10 @@ public final class M4RecoveryCatalog {
                     json.append(',');
                     appendWhatsappOneLineRouteChild(json);
                 }
+                if (isWhatsappAgentModelMenu(productId, productMenus[menuIndex])) {
+                    json.append(',');
+                    appendWhatsappAgentModelRouteChild(json);
+                }
                 if (isWhatsappCollectMenu(productId, productMenus[menuIndex])) {
                     json.append(',');
                     appendWhatsappCollectRouteChildren(json);
@@ -250,6 +257,10 @@ public final class M4RecoveryCatalog {
                 json.append(',');
                 appendWhatsappOneLineRouteChild(json);
             }
+            if (isWhatsappAgentModelMenu(id, productMenus[menuIndex])) {
+                json.append(',');
+                appendWhatsappAgentModelRouteChild(json);
+            }
             if (isWhatsappCollectMenu(id, productMenus[menuIndex])) {
                 json.append(',');
                 appendWhatsappCollectRouteChildren(json);
@@ -301,6 +312,10 @@ public final class M4RecoveryCatalog {
 
     private static boolean isWhatsappOneLineMenu(int productId, MenuSpec menu) {
         return productId == WHATSAPP_PRODUCT_ID && "REC_WHATSAPP_ONELINE".equals(menu.code);
+    }
+
+    private static boolean isWhatsappAgentModelMenu(int productId, MenuSpec menu) {
+        return productId == WHATSAPP_PRODUCT_ID && "REC_WHATSAPP_AGENT_MODEL".equals(menu.code);
     }
 
     private static boolean isWhatsappAiDataMenu(int productId, MenuSpec menu) {
@@ -424,6 +439,31 @@ public final class M4RecoveryCatalog {
                 json,
                 "evidence",
                 "recovery-route-child:j2026-h-field-map:aichat-dialog");
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
+    private static void appendWhatsappAgentModelRouteChild(StringBuilder json) {
+        json.append('{');
+        appendNumber(json, "id", WHATSAPP_AGENT_MODEL_ROUTE_CHILD_ID);
+        appendNumber(json, "sid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "fid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "productId", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "parentId", WHATSAPP_AGENT_MODEL_MENU_ID);
+        appendString(json, "code", "REC_WHATSAPP_AGENT_MODEL_ROUTE");
+        appendString(json, "name", "智能体模型");
+        appendString(json, "displayName", "智能体模型");
+        appendString(json, "icon", "whatsapp_menu_icon_2");
+        appendString(json, "localCode", "/aiAgent/smartAi");
+        appendString(json, "linkUrl", "JSinglepage:/aiAgent/smartAi");
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(
+                json,
+                "evidence",
+                "recovery-route-child:j2026-h-field-map:smart-ai");
         json.append("\"status\":1");
         json.append('}');
     }
@@ -580,6 +620,16 @@ public final class M4RecoveryCatalog {
                 "JSinglepage",
                 "/pc/aigc/aichat_dialog",
                 "recovery-route:aichat-dialog");
+    }
+
+    private static MenuSpec agentModelRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                "/aiAgent/smartAi",
+                "recovery-route:smart-ai");
     }
 
     private static final class ProductSpec {

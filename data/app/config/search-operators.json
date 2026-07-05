@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "searchSites": [
+    {
+      "code": "google.com",
+      "label": "Google"
+    }
+  ],
+  "areas": [
+    {
+      "code": "+1",
+      "label": "美国/加拿大 +1"
+    }
+  ],
+  "operators": [
+    {
+      "code": "europages.com",
+      "label": "Europages B2B 公开电话线索",
+      "platform": "europages.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "legacy_site_dork",
+      "queryTemplate": "site:{pltCode} {keywords} {areaCode}",
+      "enabled": false
+    },
+    {
+      "code": "made-in-china.com",
+      "label": "Made-in-China 供应商公开电话线索",
+      "platform": "made-in-china.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "legacy_site_dork",
+      "queryTemplate": "site:{pltCode} {keywords} {areaCode}",
+      "enabled": false
+    },
+    {
+      "code": "facebook.com",
+      "label": "Facebook 公开电话线索",
+      "platform": "facebook.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "legacy_site_dork",
+      "queryTemplate": "site:{pltCode} {keywords} {areaCode}",
+      "enabled": true
+    },
+    {
+      "code": "google.com",
+      "label": "Google",
+      "platform": "google.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "legacy_web",
+      "queryTemplate": "{keywords} {areaCode}",
+      "enabled": true
+    }
+  ],
+  "keywords": [
+    {
+      "code": "local-test",
+      "label": "local-test"
+    },
+    {
+      "code": "wholesale supplier",
+      "label": "wholesale supplier"
+    }
+  ]
+}

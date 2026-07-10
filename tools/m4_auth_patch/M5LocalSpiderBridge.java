@@ -44,6 +44,339 @@ public final class M5LocalSpiderBridge {
         return "[]";
     }
 
+    public static String upsertWhatsAppAccount(
+            String baseDir, String profileId, String phone, String status, String statusJson) throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        String normalizedProfileId = normalizeProfileId(profileId);
+        String normalizedPhone = phone == null ? "" : phone.trim();
+        String normalizedStatus = isBlank(status) ? "unknown" : status.trim();
+        String normalizedStatusJson = isBlank(statusJson) ? "{}" : statusJson;
+        Path profilePath = whatsappProfilePath(baseDir, normalizedProfileId);
+        Files.createDirectories(profilePath);
+        Path dbPath = whatsappAccountDbPath(baseDir);
+        Files.createDirectories(dbPath.getParent());
+        long now = System.currentTimeMillis();
+        try (Connection conn = openSqlite(dbPath)) {
+            ensureWhatsAppAccountTable(conn);
+            try (PreparedStatement update =
+                    conn.prepareStatement(
+                            "update b_whatsapp_accounts set phone=?,status=?,last_status_json=?,"
+                                    + "profile_path=?,updated_at=? where profile_id=?")) {
+                update.setString(1, normalizedPhone);
+                update.setString(2, normalizedStatus);
+                update.setString(3, normalizedStatusJson);
+                update.setString(4, profilePath.toAbsolutePath().toString());
+                update.setLong(5, now);
+                update.setString(6, normalizedProfileId);
+                if (update.executeUpdate() == 0) {
+                    try (PreparedStatement insert =
+                            conn.prepareStatement(
+                                    "insert into b_whatsapp_accounts "
+                                            + "(profile_id,phone,status,last_status_json,profile_path,created_at,updated_at) "
+                                            + "values (?,?,?,?,?,?,?)")) {
+                        insert.setString(1, normalizedProfileId);
+                        insert.setString(2, normalizedPhone);
+                        insert.setString(3, normalizedStatus);
+                        insert.setString(4, normalizedStatusJson);
+                        insert.setString(5, profilePath.toAbsolutePath().toString());
+                        insert.setLong(6, now);
+                        insert.setLong(7, now);
+                        insert.executeUpdate();
+                    }
+                }
+            }
+        }
+        JSONObject data =
+                new JSONObject()
+                        .put("profileId", normalizedProfileId)
+                        .put("phone", normalizedPhone)
+                        .put("status", normalizedStatus)
+                        .put("profilePath", profilePath.toAbsolutePath().toString())
+                        .put("updatedAt", now);
+        System.out.println(
+                "M8B1A_WHATSAPP_ACCOUNT_UPSERT profileId="
+                        + normalizedProfileId
+                        + " phone="
+                        + normalizedPhone
+                        + " status="
+                        + normalizedStatus);
+        return new JSONObject().put("code", 200).put("msg", "success").put("data", data).toString();
+    }
+
+    public static String listWhatsAppAccounts(String baseDir) throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        Path dbPath = whatsappAccountDbPath(baseDir);
+        String activeProfileId = activeWhatsAppProfileId(baseDir);
+        JSONArray rows = new JSONArray();
+        if (Files.exists(dbPath)) {
+            try (Connection conn = openSqlite(dbPath)) {
+                ensureWhatsAppAccountTable(conn);
+                try (Statement stmt = conn.createStatement();
+                        ResultSet rs =
+                                stmt.executeQuery(
+                                        "select profile_id,phone,status,last_status_json,profile_path,created_at,updated_at "
+                                                + "from b_whatsapp_accounts order by updated_at desc,profile_id asc")) {
+                    while (rs.next()) {
+                        rows.put(
+                                new JSONObject()
+                                        .put("profileId", rs.getString(1))
+                                        .put("phone", rs.getString(2))
+                                        .put("status", rs.getString(3))
+                                        .put("lastStatusJson", rs.getString(4))
+                                        .put("profilePath", rs.getString(5))
+                                        .put("createdAt", rs.getLong(6))
+                                        .put("updatedAt", rs.getLong(7))
+                                        .put("active", rs.getString(1).equals(activeProfileId)));
+                    }
+                }
+            }
+        }
+        System.out.println("M8B1A_WHATSAPP_ACCOUNT_LIST total=" + rows.length());
+        return new JSONObject().put("code", 200).put("msg", "success").put("rows", rows).put("total", rows.length()).toString();
+    }
+
+    public static String setActiveWhatsAppProfile(String baseDir, String profileId) throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        String normalizedProfileId = normalizeProfileId(profileId);
+        Path profilePath = whatsappProfilePath(baseDir, normalizedProfileId);
+        Files.createDirectories(profilePath);
+        Path dbPath = whatsappAccountDbPath(baseDir);
+        Files.createDirectories(dbPath.getParent());
+        long now = System.currentTimeMillis();
+        try (Connection conn = openSqlite(dbPath)) {
+            ensureWhatsAppAccountTable(conn);
+            ensureWhatsAppStateTable(conn);
+            ensureWhatsAppAccountRow(conn, normalizedProfileId, profilePath, now);
+            try (PreparedStatement update =
+                    conn.prepareStatement(
+                            "insert or replace into b_whatsapp_state (state_key,state_value,updated_at) "
+                                    + "values (?,?,?)")) {
+                update.setString(1, "active_profile_id");
+                update.setString(2, normalizedProfileId);
+                update.setLong(3, now);
+                update.executeUpdate();
+            }
+        }
+        JSONObject data =
+                new JSONObject()
+                        .put("profileId", normalizedProfileId)
+                        .put("profilePath", profilePath.toAbsolutePath().toString())
+                        .put("updatedAt", now);
+        System.out.println("M8B1C_WHATSAPP_ACTIVE_PROFILE_SET profileId=" + normalizedProfileId);
+        return new JSONObject().put("code", 200).put("msg", "success").put("data", data).toString();
+    }
+
+    public static String getActiveWhatsAppProfile(String baseDir) throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        String profileId = activeWhatsAppProfileId(baseDir);
+        if (isBlank(profileId)) {
+            profileId = firstWhatsAppProfileId(baseDir);
+        }
+        if (isBlank(profileId)) {
+            profileId = "wa-default";
+        }
+        Path profilePath = whatsappProfilePath(baseDir, profileId);
+        Files.createDirectories(profilePath);
+        JSONObject data =
+                new JSONObject()
+                        .put("profileId", profileId)
+                        .put("profilePath", profilePath.toAbsolutePath().toString());
+        System.out.println("M8B1C_WHATSAPP_ACTIVE_PROFILE_GET profileId=" + profileId);
+        return new JSONObject().put("code", 200).put("msg", "success").put("data", data).toString();
+    }
+
+    public static String upsertWhatsAppMessage(
+            String baseDir,
+            String profileId,
+            String conversationKey,
+            String contactPhone,
+            String contactName,
+            String direction,
+            String sender,
+            String messageText,
+            long messageTime,
+            String externalId,
+            String rawJson)
+            throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        String normalizedProfileId = normalizeProfileId(profileId);
+        String normalizedConversationKey =
+                normalizeMessageKey(firstNonBlank(conversationKey, firstNonBlank(contactPhone, contactName)), "chat");
+        String normalizedContactPhone = contactPhone == null ? "" : contactPhone.trim();
+        String normalizedContactName = contactName == null ? "" : contactName.trim();
+        String title = firstNonBlank(normalizedContactName, normalizedContactPhone);
+        if (isBlank(title)) {
+            title = normalizedConversationKey;
+        }
+        String normalizedDirection = isBlank(direction) ? "inbound" : direction.trim();
+        String normalizedSender = sender == null ? "" : sender.trim();
+        String normalizedMessageText = messageText == null ? "" : messageText.trim();
+        long normalizedMessageTime = messageTime > 0L ? messageTime : System.currentTimeMillis();
+        String normalizedRawJson = isBlank(rawJson) ? "{}" : rawJson;
+        String messageId =
+                normalizeMessageKey(
+                        firstNonBlank(
+                                externalId,
+                                normalizedConversationKey
+                                        + "|"
+                                        + normalizedSender
+                                        + "|"
+                                        + normalizedMessageTime
+                                        + "|"
+                                        + normalizedMessageText),
+                        "msg");
+        String contactKey =
+                normalizeMessageKey(firstNonBlank(normalizedContactPhone, normalizedConversationKey), "contact");
+        Path dbPath = whatsappMessageDbPath(baseDir);
+        Files.createDirectories(dbPath.getParent());
+        long now = System.currentTimeMillis();
+        try (Connection conn = openSqlite(dbPath)) {
+            ensureWhatsAppMessageTables(conn);
+            upsertWhatsAppContact(
+                    conn,
+                    normalizedProfileId,
+                    contactKey,
+                    normalizedContactPhone,
+                    normalizedContactName,
+                    normalizedRawJson,
+                    now);
+            upsertWhatsAppConversation(
+                    conn,
+                    normalizedProfileId,
+                    normalizedConversationKey,
+                    contactKey,
+                    title,
+                    normalizedMessageText,
+                    normalizedMessageTime,
+                    normalizedRawJson,
+                    now);
+            try (PreparedStatement insert =
+                    conn.prepareStatement(
+                            "insert or ignore into b_whatsapp_messages "
+                                    + "(profile_id,conversation_key,message_id,direction,sender,message_text,"
+                                    + "message_time,raw_json,created_at) values (?,?,?,?,?,?,?,?,?)")) {
+                insert.setString(1, normalizedProfileId);
+                insert.setString(2, normalizedConversationKey);
+                insert.setString(3, messageId);
+                insert.setString(4, normalizedDirection);
+                insert.setString(5, normalizedSender);
+                insert.setString(6, normalizedMessageText);
+                insert.setLong(7, normalizedMessageTime);
+                insert.setString(8, normalizedRawJson);
+                insert.setLong(9, now);
+                insert.executeUpdate();
+            }
+        }
+        JSONObject data =
+                new JSONObject()
+                        .put("profileId", normalizedProfileId)
+                        .put("conversationKey", normalizedConversationKey)
+                        .put("contactKey", contactKey)
+                        .put("contactPhone", normalizedContactPhone)
+                        .put("contactName", normalizedContactName)
+                        .put("direction", normalizedDirection)
+                        .put("sender", normalizedSender)
+                        .put("messageText", normalizedMessageText)
+                        .put("messageTime", normalizedMessageTime)
+                        .put("messageId", messageId);
+        System.out.println(
+                "M8B1B_WHATSAPP_MESSAGE_UPSERT profileId="
+                        + normalizedProfileId
+                        + " conversationKey="
+                        + normalizedConversationKey
+                        + " messageId="
+                        + messageId);
+        return new JSONObject().put("code", 200).put("msg", "success").put("data", data).toString();
+    }
+
+    public static String listWhatsAppConversations(String baseDir, String profileId) throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        String normalizedProfileId = normalizeProfileId(profileId);
+        Path dbPath = whatsappMessageDbPath(baseDir);
+        JSONArray rows = new JSONArray();
+        if (Files.exists(dbPath)) {
+            try (Connection conn = openSqlite(dbPath)) {
+                ensureWhatsAppMessageTables(conn);
+                try (PreparedStatement query =
+                        conn.prepareStatement(
+                                "select profile_id,conversation_key,contact_key,title,last_message_text,"
+                                        + "last_message_time,unread_count,raw_json,created_at,updated_at "
+                                        + "from b_whatsapp_conversations where profile_id=? "
+                                        + "order by last_message_time desc,updated_at desc,conversation_key asc")) {
+                    query.setString(1, normalizedProfileId);
+                    try (ResultSet rs = query.executeQuery()) {
+                        while (rs.next()) {
+                            rows.put(
+                                    new JSONObject()
+                                            .put("profileId", rs.getString(1))
+                                            .put("conversationKey", rs.getString(2))
+                                            .put("contactKey", rs.getString(3))
+                                            .put("title", rs.getString(4))
+                                            .put("lastMessageText", rs.getString(5))
+                                            .put("lastMessageTime", rs.getLong(6))
+                                            .put("unreadCount", rs.getLong(7))
+                                            .put("rawJson", rs.getString(8))
+                                            .put("createdAt", rs.getLong(9))
+                                            .put("updatedAt", rs.getLong(10)));
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println(
+                "M8B1B_WHATSAPP_CONVERSATION_LIST profileId="
+                        + normalizedProfileId
+                        + " total="
+                        + rows.length());
+        return new JSONObject().put("code", 200).put("msg", "success").put("rows", rows).put("total", rows.length()).toString();
+    }
+
+    public static String listWhatsAppMessages(
+            String baseDir, String profileId, String conversationKey) throws Exception {
+        Class.forName("org.sqlite.JDBC");
+        String normalizedProfileId = normalizeProfileId(profileId);
+        String normalizedConversationKey = normalizeMessageKey(conversationKey, "chat");
+        Path dbPath = whatsappMessageDbPath(baseDir);
+        JSONArray rows = new JSONArray();
+        if (Files.exists(dbPath)) {
+            try (Connection conn = openSqlite(dbPath)) {
+                ensureWhatsAppMessageTables(conn);
+                try (PreparedStatement query =
+                        conn.prepareStatement(
+                                "select profile_id,conversation_key,message_id,direction,sender,message_text,"
+                                        + "message_time,raw_json,created_at from b_whatsapp_messages "
+                                        + "where profile_id=? and conversation_key=? "
+                                        + "order by message_time asc,created_at asc,message_id asc")) {
+                    query.setString(1, normalizedProfileId);
+                    query.setString(2, normalizedConversationKey);
+                    try (ResultSet rs = query.executeQuery()) {
+                        while (rs.next()) {
+                            rows.put(
+                                    new JSONObject()
+                                            .put("profileId", rs.getString(1))
+                                            .put("conversationKey", rs.getString(2))
+                                            .put("messageId", rs.getString(3))
+                                            .put("direction", rs.getString(4))
+                                            .put("sender", rs.getString(5))
+                                            .put("messageText", rs.getString(6))
+                                            .put("messageTime", rs.getLong(7))
+                                            .put("rawJson", rs.getString(8))
+                                            .put("createdAt", rs.getLong(9)));
+                        }
+                    }
+                }
+            }
+        }
+        System.out.println(
+                "M8B1B_WHATSAPP_MESSAGE_LIST profileId="
+                        + normalizedProfileId
+                        + " conversationKey="
+                        + normalizedConversationKey
+                        + " total="
+                        + rows.length());
+        return new JSONObject().put("code", 200).put("msg", "success").put("rows", rows).put("total", rows.length()).toString();
+    }
+
     public static String getNewTask(String baseDir, String moduleCode, int status) throws Exception {
         if (!MODULE_WHATSAPP.equals(moduleCode)) {
             return "[]";
@@ -196,19 +529,51 @@ public final class M5LocalSpiderBridge {
     }
 
     public static String localWebAssetBody(String url) {
+        byte[] body = localWebAssetBytes(url);
+        return body == null ? null : new String(body, StandardCharsets.UTF_8);
+    }
+
+    public static byte[] localWebAssetBytes(String url) {
         try {
+            String c6CommercePage = localC6CommercePage(url);
+            if (c6CommercePage != null) {
+                System.out.println("C6_COMMERCE_LOCAL_PAGE url=" + String.valueOf(url));
+                return c6CommercePage.getBytes(StandardCharsets.UTF_8);
+            }
+            if ("/static/img/cloudWords_background.fd301aa6.jpg"
+                    .equals(normalizedUrlPath(url))) {
+                System.out.println("C5_STATIC_IMAGE_STUB " + String.valueOf(url));
+                return java.util.Base64.getDecoder().decode(
+                        "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAAB//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==");
+            }
             if (url != null
                     && (url.indexOf("tos-public.volccdn.com") >= 0
                             || url.indexOf("tos.umd.production.min.js") >= 0)) {
                 System.out.println("M5D8_LOCAL_WEB_ASSET_TOS_STUB " + String.valueOf(url));
-                return "window.TOS=window.TOS||{};";
+                return "window.TOS=window.TOS||{};".getBytes(StandardCharsets.UTF_8);
+            }
+            String terminalJson = localWebTerminalJson(url);
+            if (terminalJson != null) {
+                System.out.println("M8D17_LOCAL_WEB_JSON url=" + String.valueOf(url));
+                return terminalJson.getBytes(StandardCharsets.UTF_8);
             }
             Path asset = localWebAssetPath(url);
             if (asset == null || !Files.exists(asset)) {
                 return null;
             }
             System.out.println("M5D8_LOCAL_WEB_ASSET " + asset.toAbsolutePath());
-            String body = new String(Files.readAllBytes(asset), "UTF-8");
+            byte[] raw = Files.readAllBytes(asset);
+            String path = normalizedUrlPath(url).toLowerCase();
+            if (!(path.endsWith(".html")
+                    || path.endsWith(".js")
+                    || path.endsWith(".css")
+                    || path.startsWith("/pc/")
+                    || path.startsWith("/aiagent/")
+                    || path.startsWith("/es/")
+                    || path.startsWith("/wsclaw/"))) {
+                return raw;
+            }
+            String body = new String(raw, StandardCharsets.UTF_8);
             if ("aicloud.html".equals(asset.getFileName().toString())) {
                 body =
                         body.replace(
@@ -216,12 +581,96 @@ public final class M5LocalSpiderBridge {
                                 "<script>window.TOS=window.TOS||{};</script>");
             }
             body = patchLocalWebAssetBody(asset.getFileName().toString(), body);
-            return body;
+            return body.getBytes(StandardCharsets.UTF_8);
         } catch (Throwable error) {
             System.out.println("M5D8_LOCAL_WEB_ASSET_FAILED url=" + String.valueOf(url)
                     + " error=" + String.valueOf(rootCause(error)));
             return null;
         }
+    }
+
+    public static String normalizeC6CommerceRoute(String url) {
+        if (url == null) {
+            return null;
+        }
+        String path = normalizedUrlPath(url);
+        if ("/pc/alipay/enterpriseAuth".equals(path)
+                || "/pc/alipay/personal/auth".equals(path)
+                || "/pc/userPayofflineOrder/my".equals(path)) {
+            System.out.println("C6_RUNTIME_ROUTE_NORMALIZED recharge=" + path);
+            return "/pc/c6/recharge";
+        }
+        if ("/views/overseasAds/dataBoard".equals(path)
+                || "/views/overseasAds/adsPeople".equals(path)
+                || "/views/overseasAds/addTask".equals(path)) {
+            System.out.println("C6_RUNTIME_ROUTE_NORMALIZED advertising=" + path);
+            return "/pc/c6/advertising";
+        }
+        return url;
+    }
+
+    private static String localC6CommercePage(String url) {
+        String path = normalizedUrlPath(normalizeC6CommerceRoute(url));
+        if ("/pc/c6/recharge".equals(path)) {
+            return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>充值</title>"
+                    + "<style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}"
+                    + "main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;}"
+                    + "h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}"
+                    + "button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}"
+                    + "</style></head><body><main data-c6-surface=\"recharge\">"
+                    + "<h1>充值</h1><p>C6_RECHARGE_UI</p><p>当前离线，支付与订单功能不可用。</p>"
+                    + "<button data-c6-action=\"disabled\" disabled>立即充值</button>"
+                    + "</main></body></html>";
+        }
+        if ("/pc/c6/advertising".equals(path)) {
+            return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>广告获客</title>"
+                    + "<style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}"
+                    + "main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;}"
+                    + "h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}"
+                    + "button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}"
+                    + "</style></head><body><main data-c6-surface=\"advertising\">"
+                    + "<h1>广告获客</h1><p>C6_ADVERTISING_UI</p><p>当前离线，广告计划、授权与投放功能不可用。</p>"
+                    + "<button data-c6-action=\"disabled\" disabled>创建广告计划</button>"
+                    + "</main></body></html>";
+        }
+        return null;
+    }
+
+    private static String localWebTerminalJson(String url) {
+        String path = normalizedUrlPath(url);
+        if ("/prod-api/system/google_sites/lists".equals(path)) {
+            return "{\"code\":200,\"msg\":\"success\",\"data\":[],\"rows\":[],\"total\":0}";
+        }
+        if (path.startsWith("/prod-api/system/pagebanner/getByCodeSoftware")) {
+            return "{\"code\":200,\"msg\":\"success\",\"data\":{},\"rows\":[],\"total\":0}";
+        }
+        if (path.startsWith("/prod-api/es/bigData/code/")) {
+            if (path.endsWith("/fb_page_data")) {
+                return "{\"code\":200,\"msg\":\"success\",\"data\":{\"allowExport\":false,\"allowImport\":false,\"title\":\"Facebook Page data\",\"subTitle\":\"\",\"searchKeywords\":\"[]\",\"filterContact\":\"[]\",\"fields\":\"{\\\"bodyField\\\":[{\\\"label\\\":\\\"Page\\\",\\\"field\\\":\\\"page_name\\\",\\\"type\\\":\\\"title\\\"},{\\\"label\\\":\\\"Page URL\\\",\\\"field\\\":\\\"page_url\\\",\\\"type\\\":\\\"text\\\"}],\\\"tips\\\":[{\\\"label\\\":\\\"Followers\\\",\\\"field\\\":\\\"followers\\\",\\\"type\\\":\\\"text\\\"}]}\"},\"rows\":[],\"total\":0}";
+            }
+            if (path.endsWith("/twitter_new_data") || path.endsWith("/big_data_twitter_new")) {
+                return "{\"code\":200,\"msg\":\"success\",\"data\":{\"allowExport\":false,\"allowImport\":false,\"title\":\"X precise search data\",\"subTitle\":\"\",\"searchKeywords\":\"[]\",\"filterContact\":\"[]\",\"fields\":\"{\\\"bodyField\\\":[{\\\"label\\\":\\\"Keywords\\\",\\\"field\\\":\\\"keywords\\\",\\\"type\\\":\\\"text\\\"},{\\\"label\\\":\\\"Phone\\\",\\\"field\\\":\\\"phone\\\",\\\"type\\\":\\\"text\\\"},{\\\"label\\\":\\\"X URL\\\",\\\"field\\\":\\\"link\\\",\\\"type\\\":\\\"title\\\"}],\\\"tips\\\":[{\\\"label\\\":\\\"Title\\\",\\\"field\\\":\\\"title\\\",\\\"type\\\":\\\"text\\\"}]}\"},\"rows\":[],\"total\":0}";
+            }
+            if (path.endsWith("/tiktok_new_data") || path.endsWith("/big_data_tiktok_new")) {
+                return "{\"code\":200,\"msg\":\"success\",\"data\":{\"allowExport\":false,\"allowImport\":false,\"title\":\"TikTok data\",\"subTitle\":\"\",\"searchKeywords\":\"[]\",\"filterContact\":\"[]\",\"fields\":\"{\\\"bodyField\\\":[{\\\"label\\\":\\\"Keywords\\\",\\\"field\\\":\\\"keywords\\\",\\\"type\\\":\\\"text\\\"},{\\\"label\\\":\\\"Phone\\\",\\\"field\\\":\\\"phone\\\",\\\"type\\\":\\\"text\\\"},{\\\"label\\\":\\\"TikTok URL\\\",\\\"field\\\":\\\"link\\\",\\\"type\\\":\\\"title\\\"}],\\\"tips\\\":[{\\\"label\\\":\\\"Title\\\",\\\"field\\\":\\\"title\\\",\\\"type\\\":\\\"text\\\"}]}\"},\"rows\":[],\"total\":0}";
+            }
+            return "{\"code\":200,\"msg\":\"success\",\"data\":{\"allowExport\":false,\"allowImport\":false,\"title\":\"Instagram blogger data\",\"subTitle\":\"\",\"searchKeywords\":\"[]\",\"filterContact\":\"[]\",\"fields\":\"{\\\"bodyField\\\":[{\\\"label\\\":\\\"Instagram\\\",\\\"field\\\":\\\"user_name\\\",\\\"type\\\":\\\"title\\\"},{\\\"label\\\":\\\"Nick\\\",\\\"field\\\":\\\"nick_name\\\",\\\"type\\\":\\\"text\\\"},{\\\"label\\\":\\\"Homepage\\\",\\\"field\\\":\\\"homepage_url\\\",\\\"type\\\":\\\"text\\\"}],\\\"tips\\\":[{\\\"label\\\":\\\"Fans\\\",\\\"field\\\":\\\"fans_count\\\",\\\"type\\\":\\\"text\\\"}]}\"},\"rows\":[],\"total\":0}";
+        }
+        if ("/prod-api/es/bigDataConfig/userConfig".equals(path)) {
+            return "{\"code\":200,\"msg\":\"success\",\"data\":{\"xdxChineseSwitch\":1,\"xdxEnSwitch\":1},\"rows\":[],\"total\":0}";
+        }
+        if (path.startsWith("/prod-api/es/collectTask/my")
+                || path.startsWith("/prod-api/es/collectTask/list")
+                || path.startsWith("/prod-api/es/bigData/list")
+                || path.startsWith("/prod-api/es/bigData/data/")) {
+            return "{\"code\":200,\"msg\":\"success\",\"data\":[],\"rows\":[],\"total\":0}";
+        }
+        if (path.startsWith("/prod-api/tg/groupTask/list")
+                || path.startsWith("/prod-api/accessFlow/order/list")
+                || path.startsWith("/prod-api/kefu/conversation/list")) {
+            return "{\"code\":200,\"msg\":\"success\",\"data\":[],\"rows\":[],\"total\":0}";
+        }
+        return null;
     }
 
     private static String patchLocalWebAssetBody(String filename, String body) {
@@ -232,6 +681,28 @@ public final class M5LocalSpiderBridge {
                             "queryParams:{pageNum:1,pageSize:50}");
             System.out.println(
                     "M5D9_PAGE_SIZE_PATCH dataIndex50=" + String.valueOf(!patched.equals(body)));
+            return patched;
+        }
+        if ("chunk-2d0bd27f.b96f2a2b.js".equals(filename)) {
+            String patched =
+                    body.replaceAll(
+                            "\"img\":\"https://aisrc\\.oss-cn-hangzhou\\.aliyuncs\\.com/hd/[^\"]+\"",
+                            "\"img\":\"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==\"");
+            System.out.println(
+                    "C3A3_TWITTER_AVATAR_LOCALIZED changed=" + String.valueOf(!patched.equals(body)));
+            return patched;
+        }
+        if ("chunk-46942aaa.78ddab17.js".equals(filename)) {
+            String patched =
+                    body.replace(
+                            "\"big_data_twitter_new\"==this.funcModuleCode?this.tableData=this.twitter_new_data",
+                            "\"big_data_twitter_new\"==this.funcModuleCode?this.tableData=[]");
+            patched =
+                    patched.replace(
+                            "\"big_data_tiktok_new\"==this.funcModuleCode?this.tableData=this.tiktok_new_data",
+                            "\"big_data_tiktok_new\"==this.funcModuleCode?this.tableData=[]");
+            System.out.println(
+                    "C3A3_TWITTER_DEFAULT_EMPTY changed=" + String.valueOf(!patched.equals(body)));
             return patched;
         }
         if (!"chunk-aab334e0.bf74703f.js".equals(filename)) {
@@ -293,7 +764,21 @@ public final class M5LocalSpiderBridge {
         if (path.endsWith(".css")) {
             return "text/css;charset=UTF-8";
         }
-        if (path.endsWith(".html") || path.equals("/") || path.startsWith("/pc/")) {
+        if (path.endsWith(".woff")) {
+            return "font/woff";
+        }
+        if (path.endsWith(".png")) {
+            return "image/png";
+        }
+        if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+            return "image/jpeg";
+        }
+        if (path.endsWith(".html")
+                || path.equals("/")
+                || path.startsWith("/pc/")
+                || path.startsWith("/aiAgent/")
+                || path.startsWith("/es/")
+                || path.startsWith("/wsClaw/")) {
             return "text/html;charset=UTF-8";
         }
         return "application/json;charset=UTF-8";
@@ -304,14 +789,22 @@ public final class M5LocalSpiderBridge {
         if (path.length() == 0
                 || "/".equals(path)
                 || path.startsWith("/pc/")
+                || path.startsWith("/aiAgent/")
+                || path.startsWith("/es/")
+                || path.startsWith("/wsClaw/")
                 || path.endsWith("/aicloud.html")) {
             return localWebMirrorDir().resolve("aicloud.html");
+        }
+        if ("/static/js/app.09d7ef80.js".equals(path)) {
+            path = "/static/js/app.988d65c1.js";
+        } else if ("/static/css/app.0299bcba.css".equals(path)) {
+            path = "/static/css/app.99741a48.css";
         }
         String filename = path.substring(path.lastIndexOf('/') + 1);
         if (filename.indexOf("..") >= 0 || filename.length() == 0) {
             return null;
         }
-        if (path.startsWith("/static/js/") || path.startsWith("/static/css/")) {
+        if (path.startsWith("/static/")) {
             Path fullMirrorAsset = localWebFullMirrorDir().resolve(path.substring(1));
             if (Files.exists(fullMirrorAsset)) {
                 return fullMirrorAsset;
@@ -1008,6 +1501,71 @@ public final class M5LocalSpiderBridge {
         return value == null || value.trim().isEmpty();
     }
 
+    private static String activeWhatsAppProfileId(String baseDir) throws Exception {
+        Path dbPath = whatsappAccountDbPath(baseDir);
+        if (!Files.exists(dbPath)) {
+            return "";
+        }
+        try (Connection conn = openSqlite(dbPath)) {
+            ensureWhatsAppStateTable(conn);
+            try (PreparedStatement query =
+                    conn.prepareStatement(
+                            "select state_value from b_whatsapp_state where state_key=?")) {
+                query.setString(1, "active_profile_id");
+                try (ResultSet rs = query.executeQuery()) {
+                    if (rs.next()) {
+                        return normalizeProfileId(rs.getString(1));
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String firstWhatsAppProfileId(String baseDir) throws Exception {
+        Path dbPath = whatsappAccountDbPath(baseDir);
+        if (!Files.exists(dbPath)) {
+            return "";
+        }
+        try (Connection conn = openSqlite(dbPath)) {
+            ensureWhatsAppAccountTable(conn);
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs =
+                            stmt.executeQuery(
+                                    "select profile_id from b_whatsapp_accounts "
+                                            + "order by updated_at desc,profile_id asc limit 1")) {
+                return rs.next() ? normalizeProfileId(rs.getString(1)) : "";
+            }
+        }
+    }
+
+    private static void ensureWhatsAppAccountRow(
+            Connection conn, String profileId, Path profilePath, long now) throws Exception {
+        try (PreparedStatement query =
+                conn.prepareStatement("select profile_id from b_whatsapp_accounts where profile_id=?")) {
+            query.setString(1, profileId);
+            try (ResultSet rs = query.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+        }
+        try (PreparedStatement insert =
+                conn.prepareStatement(
+                        "insert into b_whatsapp_accounts "
+                                + "(profile_id,phone,status,last_status_json,profile_path,created_at,updated_at) "
+                                + "values (?,?,?,?,?,?,?)")) {
+            insert.setString(1, profileId);
+            insert.setString(2, "");
+            insert.setString(3, "profile_ready");
+            insert.setString(4, "{\"source\":\"m8b1c-profile-switch\"}");
+            insert.setString(5, profilePath.toAbsolutePath().toString());
+            insert.setLong(6, now);
+            insert.setLong(7, now);
+            insert.executeUpdate();
+        }
+    }
+
     private static void insertQueuedTaskWithRetry(
             Path dbPath,
             long taskId,
@@ -1121,6 +1679,151 @@ public final class M5LocalSpiderBridge {
                 .resolve("db_jtable_jrpatask.data");
     }
 
+    private static Path whatsappAccountDbPath(String baseDir) {
+        return Paths.get(baseDir).resolve("data").resolve("db_b_whatsapp_accounts.data");
+    }
+
+    private static Path whatsappMessageDbPath(String baseDir) {
+        return Paths.get(baseDir).resolve("data").resolve("db_b_whatsapp_messages.data");
+    }
+
+    private static Path whatsappProfilePath(String baseDir, String profileId) {
+        return Paths.get(baseDir).resolve("bscache").resolve("wa-profiles").resolve(profileId);
+    }
+
+    private static String normalizeProfileId(String profileId) {
+        String value = isBlank(profileId) ? "wa-default" : profileId.trim();
+        StringBuilder safe = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if ((ch >= 'a' && ch <= 'z')
+                    || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= '0' && ch <= '9')
+                    || ch == '-'
+                    || ch == '_') {
+                safe.append(ch);
+            } else {
+                safe.append('-');
+            }
+        }
+        return safe.length() == 0 ? "wa-default" : safe.toString();
+    }
+
+    private static String normalizeMessageKey(String value, String prefix) {
+        String text = isBlank(value) ? "" : value.trim();
+        StringBuilder safe = new StringBuilder(text.length() + 8);
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if ((ch >= 'a' && ch <= 'z')
+                    || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= '0' && ch <= '9')
+                    || ch == '-'
+                    || ch == '_'
+                    || ch == '+'
+                    || ch == '@'
+                    || ch == '.') {
+                safe.append(ch);
+            } else {
+                safe.append('-');
+            }
+        }
+        String normalized = safe.toString();
+        if (isBlank(normalized)) {
+            normalized = prefix + "-" + System.currentTimeMillis();
+        }
+        if (normalized.length() > 180) {
+            normalized = normalized.substring(0, 140) + "-" + Integer.toHexString(text.hashCode());
+        }
+        return normalized;
+    }
+
+    private static void upsertWhatsAppContact(
+            Connection conn,
+            String profileId,
+            String contactKey,
+            String phone,
+            String displayName,
+            String rawJson,
+            long now)
+            throws Exception {
+        try (PreparedStatement update =
+                conn.prepareStatement(
+                        "update b_whatsapp_contacts set phone=?,display_name=?,raw_json=?,updated_at=? "
+                                + "where profile_id=? and contact_key=?")) {
+            update.setString(1, phone);
+            update.setString(2, displayName);
+            update.setString(3, rawJson);
+            update.setLong(4, now);
+            update.setString(5, profileId);
+            update.setString(6, contactKey);
+            if (update.executeUpdate() > 0) {
+                return;
+            }
+        }
+        try (PreparedStatement insert =
+                conn.prepareStatement(
+                        "insert into b_whatsapp_contacts "
+                                + "(profile_id,contact_key,phone,display_name,raw_json,created_at,updated_at) "
+                                + "values (?,?,?,?,?,?,?)")) {
+            insert.setString(1, profileId);
+            insert.setString(2, contactKey);
+            insert.setString(3, phone);
+            insert.setString(4, displayName);
+            insert.setString(5, rawJson);
+            insert.setLong(6, now);
+            insert.setLong(7, now);
+            insert.executeUpdate();
+        }
+    }
+
+    private static void upsertWhatsAppConversation(
+            Connection conn,
+            String profileId,
+            String conversationKey,
+            String contactKey,
+            String title,
+            String lastMessageText,
+            long lastMessageTime,
+            String rawJson,
+            long now)
+            throws Exception {
+        try (PreparedStatement update =
+                conn.prepareStatement(
+                        "update b_whatsapp_conversations set contact_key=?,title=?,last_message_text=?,"
+                                + "last_message_time=?,raw_json=?,updated_at=? "
+                                + "where profile_id=? and conversation_key=?")) {
+            update.setString(1, contactKey);
+            update.setString(2, title);
+            update.setString(3, lastMessageText);
+            update.setLong(4, lastMessageTime);
+            update.setString(5, rawJson);
+            update.setLong(6, now);
+            update.setString(7, profileId);
+            update.setString(8, conversationKey);
+            if (update.executeUpdate() > 0) {
+                return;
+            }
+        }
+        try (PreparedStatement insert =
+                conn.prepareStatement(
+                        "insert into b_whatsapp_conversations "
+                                + "(profile_id,conversation_key,contact_key,title,last_message_text,"
+                                + "last_message_time,unread_count,raw_json,created_at,updated_at) "
+                                + "values (?,?,?,?,?,?,?,?,?,?)")) {
+            insert.setString(1, profileId);
+            insert.setString(2, conversationKey);
+            insert.setString(3, contactKey);
+            insert.setString(4, title);
+            insert.setString(5, lastMessageText);
+            insert.setLong(6, lastMessageTime);
+            insert.setLong(7, 0L);
+            insert.setString(8, rawJson);
+            insert.setLong(9, now);
+            insert.setLong(10, now);
+            insert.executeUpdate();
+        }
+    }
+
     private static void ensureTaskTable(Connection conn) throws Exception {
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(
@@ -1140,6 +1843,70 @@ public final class M5LocalSpiderBridge {
                             + "error varchar,"
                             + "time bigint,"
                             + "id integer primary key autoincrement)");
+        }
+    }
+
+    private static void ensureWhatsAppAccountTable(Connection conn) throws Exception {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                    "create table if not exists b_whatsapp_accounts ("
+                            + "profile_id varchar primary key,"
+                            + "phone varchar,"
+                            + "status varchar,"
+                            + "last_status_json varchar,"
+                            + "profile_path varchar,"
+                            + "created_at bigint,"
+                            + "updated_at bigint)");
+        }
+    }
+
+    private static void ensureWhatsAppStateTable(Connection conn) throws Exception {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                    "create table if not exists b_whatsapp_state ("
+                            + "state_key varchar primary key,"
+                            + "state_value varchar,"
+                            + "updated_at bigint)");
+        }
+    }
+
+    private static void ensureWhatsAppMessageTables(Connection conn) throws Exception {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                    "create table if not exists b_whatsapp_contacts ("
+                            + "profile_id varchar,"
+                            + "contact_key varchar,"
+                            + "phone varchar,"
+                            + "display_name varchar,"
+                            + "raw_json varchar,"
+                            + "created_at bigint,"
+                            + "updated_at bigint,"
+                            + "primary key(profile_id,contact_key))");
+            stmt.executeUpdate(
+                    "create table if not exists b_whatsapp_conversations ("
+                            + "profile_id varchar,"
+                            + "conversation_key varchar,"
+                            + "contact_key varchar,"
+                            + "title varchar,"
+                            + "last_message_text varchar,"
+                            + "last_message_time bigint,"
+                            + "unread_count bigint,"
+                            + "raw_json varchar,"
+                            + "created_at bigint,"
+                            + "updated_at bigint,"
+                            + "primary key(profile_id,conversation_key))");
+            stmt.executeUpdate(
+                    "create table if not exists b_whatsapp_messages ("
+                            + "profile_id varchar,"
+                            + "conversation_key varchar,"
+                            + "message_id varchar,"
+                            + "direction varchar,"
+                            + "sender varchar,"
+                            + "message_text varchar,"
+                            + "message_time bigint,"
+                            + "raw_json varchar,"
+                            + "created_at bigint,"
+                            + "primary key(profile_id,conversation_key,message_id))");
         }
     }
 

@@ -16,12 +16,28 @@ public final class M4RecoveryCatalog {
     private static final int WHATSAPP_CLAW_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 3;
     private static final int WHATSAPP_CLAW_ROUTE_CHILD_ID_BASE =
             WHATSAPP_CLAW_MENU_ID * 100;
+    private static final int WHATSAPP_SUPER_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 4;
+    private static final int WHATSAPP_SUPER_ROUTE_CHILD_ID =
+            WHATSAPP_SUPER_MENU_ID * 100 + 1;
+    private static final String WHATSAPP_SUPER_ENVIRONMENT_ROUTE =
+            "/pc/sender/senderGlobalControls/mysuperenvironment";
     private static final int WHATSAPP_AI_FILTER_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 7;
     private static final int WHATSAPP_AI_FILTER_ROUTE_CHILD_ID =
             WHATSAPP_AI_FILTER_MENU_ID * 100 + 1;
     private static final int WHATSAPP_AI_KEFU_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 11;
     private static final int WHATSAPP_AI_KEFU_ROUTE_CHILD_ID =
             WHATSAPP_AI_KEFU_MENU_ID * 100 + 1;
+    private static final String FACEBOOK_PAGE_COLLECT_ROUTE =
+            "/es/bigData/bigDataTask?code=fb_page_data";
+    private static final String INSTAGRAM_BLOGGER_COLLECT_ROUTE =
+            "/es/bigData/bigDataTask?code=ins_blogger_data";
+    private static final String TWITTER_PRECISE_SEARCH_ROUTE =
+            "/es/bigData/bigDataTask?code=big_data_twitter_new";
+    private static final String TIKTOK_BIG_DATA_ROUTE =
+            "/es/bigData/bigDataTask?code=big_data_tiktok_new";
+    private static final String TELEGRAM_GROUP_COLLECT_ROUTE = "/pc/tg/index";
+    private static final String GEO_GOOGLE_SEO_ROUTE = "/pc/dataCollect/googleseo";
+    private static final String WSKEFU_CONVERSATION_ROUTE = "/pc/kefu/conversation";
     private static final String EXPIRATION = "2099-12-31 23:59:59";
 
     private static final ProductSpec[] PRODUCTS = {
@@ -41,7 +57,8 @@ public final class M4RecoveryCatalog {
             oneLineRoute("REC_WHATSAPP_ONELINE", "一句话", "svg/whatsapp_menu_icon_1.svg"),
             agentModelRoute("REC_WHATSAPP_AGENT_MODEL", "智能体模型", "svg/whatsapp_menu_icon_2.svg"),
             clawRoute("REC_WHATSAPP_CLAW", "AI龙虾", "svg/whatsapp_menu_icon_3.svg"),
-            recovered("REC_WHATSAPP_SUPER", "超级号", "svg/whatsapp_menu_icon_4.svg"),
+            superEnvironmentRoute(
+                    "REC_WHATSAPP_SUPER", "超级号", "svg/whatsapp_menu_icon_4.svg"),
             spiderRoute("C4749_006", "AI采集", "svg/whatsapp_menu_icon_5.svg", "whatsapp_users_lists"),
             original("C4749_007", "AI数据", "svg/whatsapp_menu_icon_6.svg"),
             wsFilterRoute("C4749_009", "AI筛选", "svg/whatsapp_menu_icon_7.svg"),
@@ -51,7 +68,12 @@ public final class M4RecoveryCatalog {
             kefuRoute("C4749_011", "AI客服", "svg/whatsapp_menu_icon_9.svg")
         },
         {
-            original("C3461_002", "TK AI采集", "svg/menu_tk_1.svg"),
+            c5Route(
+                    "C3461_002",
+                    "TK AI采集",
+                    "svg/menu_tk_1.svg",
+                    TIKTOK_BIG_DATA_ROUTE,
+                    "tiktok-new-data"),
             original("C3461_003", "TK AI筛选", "svg/menu_tk_2.svg"),
             original("C3461_004", "TK 镜像系统", "svg/menu_tk_3.svg"),
             original("C3461_005", "TK IOS多号", "svg/menu_tk_4.svg"),
@@ -66,7 +88,7 @@ public final class M4RecoveryCatalog {
             original("C4747_000", "镜像系统设置", "svg/facebook_menu_icon_1.svg"),
             original("C4747_001", "FB 好友采集", "svg/facebook_menu_icon_2.svg"),
             original("C4747_002", "FB 小组采集", "svg/facebook_menu_icon_3.svg"),
-            original("C4747_003", "FB 主页采集", "svg/facebook_menu_icon_4.svg"),
+            facebookPageCollectRoute("C4747_003", "FB 主页采集", "svg/facebook_menu_icon_4.svg"),
             original("C4747_004", "FB 直播采集", "svg/facebook_menu_icon_5.svg"),
             original("C4747_005", "FB 广告采集", "svg/facebook_menu_icon_6.svg"),
             original("C4747_006", "FB 广告评论截流", "svg/facebook_menu_icon_7.svg"),
@@ -78,7 +100,7 @@ public final class M4RecoveryCatalog {
             original("C4131_002", "Ins 帐号登录", "svg/ins_menu_icon_1.svg"),
             original("C4131_003", "Ins 帐号搜索", "svg/ins_menu_icon_2.svg"),
             original("C4131_004", "Ins 帖子搜索", "svg/ins_menu_icon_3.svg"),
-            original("C4131_005", "Ins 主页挖掘", "svg/ins_menu_icon_4.svg"),
+            instagramBloggerCollectRoute("C4131_005", "Ins 主页挖掘", "svg/ins_menu_icon_4.svg"),
             original("C4131_006", "Ins 筛选活跃", "svg/ins_menu_icon_5.svg"),
             original("C4131_007", "Ins 接口群发", "svg/ins_menu_icon_6.svg"),
             original("C4131_008", "Ins 安卓智能体", "svg/ins_menu_icon_7.svg"),
@@ -87,7 +109,7 @@ public final class M4RecoveryCatalog {
         },
         {
             original("C4133_002", "X 账号登录", "svg/twitter_menu_icon_1.svg"),
-            original("C4133_003", "X 精准搜索", "svg/twitter_menu_icon_2.svg"),
+            twitterPreciseSearchRoute("C4133_003", "X 精准搜索", "svg/twitter_menu_icon_2.svg"),
             original("C4133_004", "X 同行的粉丝搜索", "svg/twitter_menu_icon_3.svg"),
             original("C4133_005", "X 筛选活跃", "svg/twitter_menu_icon_4.svg"),
             original("C4133_006", "X 主页大数据库", "svg/twitter_menu_icon_5.svg"),
@@ -101,7 +123,12 @@ public final class M4RecoveryCatalog {
             original("C4135_002", "TG 帐号", "svg/tg_menu_icon_2.svg"),
             original("C4135_003", "TG AI 采集", "svg/tg_menu_icon_3.svg"),
             original("C4135_004", "TG AI数据", "svg/tg_menu_icon_4.svg"),
-            original("C4135_005", "TG AI 群采集", "svg/tg_menu_icon_5.svg"),
+            c5Route(
+                    "C4135_005",
+                    "TG AI 群采集",
+                    "svg/tg_menu_icon_5.svg",
+                    TELEGRAM_GROUP_COLLECT_ROUTE,
+                    "tg-group-task"),
             original("C4135_006", "TG AI 群成员提取", "svg/tg_menu_icon_6.svg"),
             original("C4135_007", "TG AI筛选", "svg/tg_menu_icon_7.svg"),
             original("C4135_008", "TG AI裂变", "svg/tg_menu_icon_8.svg"),
@@ -110,7 +137,12 @@ public final class M4RecoveryCatalog {
             original("C4135_011", "TG AdsPower指纹", "svg/tg_menu_icon_11.svg")
         },
         {
-            original("C4134_002", "精准官网挖掘", "svg/geo_ai_menu_icon_1.svg"),
+            c5Route(
+                    "C4134_002",
+                    "精准官网挖掘",
+                    "svg/geo_ai_menu_icon_1.svg",
+                    GEO_GOOGLE_SEO_ROUTE,
+                    "geo-google-seo"),
             original("C4134_003", "精准号码挖掘", "svg/geo_ai_menu_icon_2.svg"),
             original("C4134_006", "Google GEO外媒体", "svg/geo_ai_menu_icon_3.svg"),
             original("C4137_001", "全球号码采集", "svg/geo_ai_menu_icon_4.svg"),
@@ -121,7 +153,12 @@ public final class M4RecoveryCatalog {
             original("C4137_006", "号码 AI筛选活跃", "svg/geo_ai_menu_icon_9.svg")
         },
         {
-            original("C4936_000", "信息总览", "svg/wskf_menu_icon_1.svg"),
+            c5Route(
+                    "C4936_000",
+                    "信息总览",
+                    "svg/wskf_menu_icon_1.svg",
+                    WSKEFU_CONVERSATION_ROUTE,
+                    "kefu-conversation"),
             original("C4936_001", "账号分组", "svg/wskf_menu_icon_2.svg"),
             original("C4936_002", "账号列表", "svg/wskf_menu_icon_3.svg"),
             original("C4936_004", "联系人数据池", "svg/wskf_menu_icon_4.svg"),
@@ -176,6 +213,10 @@ public final class M4RecoveryCatalog {
                     json.append(',');
                     appendWhatsappClawRouteChildren(json);
                 }
+                if (isWhatsappSuperMenu(productId, productMenus[menuIndex])) {
+                    json.append(',');
+                    appendWhatsappSuperEnvironmentRouteChild(json);
+                }
                 if (isWhatsappCollectMenu(productId, productMenus[menuIndex])) {
                     json.append(',');
                     appendWhatsappCollectRouteChildren(json);
@@ -191,6 +232,11 @@ public final class M4RecoveryCatalog {
                 if (isWhatsappAiKefuMenu(productId, productMenus[menuIndex])) {
                     json.append(',');
                     appendWhatsappAiKefuRouteChild(json);
+                }
+                if (isC5PlatformRouteMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendC5PlatformRouteChild(
+                            json, productId, menuIndex + 1, productMenus[menuIndex]);
                 }
                 first = false;
             }
@@ -272,6 +318,10 @@ public final class M4RecoveryCatalog {
                 json.append(',');
                 appendWhatsappClawRouteChildren(json);
             }
+            if (isWhatsappSuperMenu(id, productMenus[menuIndex])) {
+                json.append(',');
+                appendWhatsappSuperEnvironmentRouteChild(json);
+            }
             if (isWhatsappCollectMenu(id, productMenus[menuIndex])) {
                 json.append(',');
                 appendWhatsappCollectRouteChildren(json);
@@ -287,6 +337,10 @@ public final class M4RecoveryCatalog {
             if (isWhatsappAiKefuMenu(id, productMenus[menuIndex])) {
                 json.append(',');
                 appendWhatsappAiKefuRouteChild(json);
+            }
+            if (isC5PlatformRouteMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendC5PlatformRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
             }
         }
         json.append(']');
@@ -333,6 +387,10 @@ public final class M4RecoveryCatalog {
         return productId == WHATSAPP_PRODUCT_ID && "REC_WHATSAPP_CLAW".equals(menu.code);
     }
 
+    private static boolean isWhatsappSuperMenu(int productId, MenuSpec menu) {
+        return productId == WHATSAPP_PRODUCT_ID && "REC_WHATSAPP_SUPER".equals(menu.code);
+    }
+
     private static boolean isWhatsappAiDataMenu(int productId, MenuSpec menu) {
         return productId == WHATSAPP_PRODUCT_ID && "C4749_007".equals(menu.code);
     }
@@ -343,6 +401,56 @@ public final class M4RecoveryCatalog {
 
     private static boolean isWhatsappAiKefuMenu(int productId, MenuSpec menu) {
         return productId == WHATSAPP_PRODUCT_ID && "C4749_011".equals(menu.code);
+    }
+
+    private static boolean isC5PlatformRouteMenu(MenuSpec menu) {
+        return "C4747_003".equals(menu.code)
+                || "C4131_005".equals(menu.code)
+                || "C4133_003".equals(menu.code)
+                || "C3461_002".equals(menu.code)
+                || "C4135_005".equals(menu.code)
+                || "C4134_002".equals(menu.code)
+                || "C4936_000".equals(menu.code);
+    }
+
+    private static void appendC5PlatformRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        String childCode;
+        if ("C4747_003".equals(menu.code)) {
+            childCode = "REC_FACEBOOK_PAGE_COLLECT_ROUTE";
+        } else if ("C4131_005".equals(menu.code)) {
+            childCode = "REC_INSTAGRAM_BLOGGER_COLLECT_ROUTE";
+        } else if ("C4133_003".equals(menu.code)) {
+            childCode = "REC_TWITTER_PRECISE_SEARCH_ROUTE";
+        } else if ("C3461_002".equals(menu.code)) {
+            childCode = "REC_TIKTOK_BIG_DATA_ROUTE";
+        } else if ("C4135_005".equals(menu.code)) {
+            childCode = "REC_TELEGRAM_GROUP_COLLECT_ROUTE";
+        } else if ("C4134_002".equals(menu.code)) {
+            childCode = "REC_GEO_GOOGLE_SEO_ROUTE";
+        } else {
+            childCode = "REC_WSKEFU_CONVERSATION_ROUTE";
+        }
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", childCode);
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage");
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(json, "evidence", "c5-platform-route-child:" + menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
     }
 
     private static void appendWhatsappCollectRouteChildren(StringBuilder json) {
@@ -399,6 +507,31 @@ public final class M4RecoveryCatalog {
                 "ADS服务器",
                 "/wsClaw/server",
                 "server");
+    }
+
+    private static void appendWhatsappSuperEnvironmentRouteChild(StringBuilder json) {
+        json.append('{');
+        appendNumber(json, "id", WHATSAPP_SUPER_ROUTE_CHILD_ID);
+        appendNumber(json, "sid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "fid", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "productId", WHATSAPP_PRODUCT_ID);
+        appendNumber(json, "parentId", WHATSAPP_SUPER_MENU_ID);
+        appendString(json, "code", "REC_WHATSAPP_SUPER_ENV_ROUTE");
+        appendString(json, "name", "超级号云环境");
+        appendString(json, "displayName", "超级号云环境");
+        appendString(json, "icon", "whatsapp_menu_icon_4");
+        appendString(json, "localCode", WHATSAPP_SUPER_ENVIRONMENT_ROUTE);
+        appendString(json, "linkUrl", "JSinglepage");
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(
+                json,
+                "evidence",
+                "m8-8-b-menu-tab:senderGlobalControls:mysuperenvironment");
+        json.append("\"status\":1");
+        json.append('}');
     }
 
     private static void appendWhatsappClawRouteChild(
@@ -573,8 +706,8 @@ public final class M4RecoveryCatalog {
         appendString(json, "name", "AI客服");
         appendString(json, "displayName", "AI客服");
         appendString(json, "icon", "whatsapp_menu_icon_9");
-        appendString(json, "localCode", "/ingsale/aggregationKefu/index");
-        appendString(json, "linkUrl", "JSinglepage:/ingsale/aggregationKefu/index");
+        appendString(json, "localCode", "https://web.whatsapp.com");
+        appendString(json, "linkUrl", "https://web.whatsapp.com");
         appendNumber(json, "webFlg", 1);
         appendNumber(json, "treeEndFlg", 1);
         appendNumber(json, "displayIndex", 1);
@@ -582,7 +715,7 @@ public final class M4RecoveryCatalog {
         appendString(
                 json,
                 "evidence",
-                "recovery-route-child:j2026-h-field-map:aggregation-kefu");
+                "recovery-route-child:j2026-h-field-map:whatsapp-web");
         json.append("\"status\":1");
         json.append('}');
     }
@@ -645,6 +778,47 @@ public final class M4RecoveryCatalog {
         return new MenuSpec(code, name, icon, "JSinglepage", "/pc/aicloud/my", "original-i18n");
     }
 
+    private static MenuSpec facebookPageCollectRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                FACEBOOK_PAGE_COLLECT_ROUTE,
+                "c1a-facebook-walking-skeleton:fb-page-data");
+    }
+
+    private static MenuSpec instagramBloggerCollectRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                INSTAGRAM_BLOGGER_COLLECT_ROUTE,
+                "c2a-instagram-walking-skeleton:ins-blogger-data");
+    }
+
+    private static MenuSpec twitterPreciseSearchRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                TWITTER_PRECISE_SEARCH_ROUTE,
+                "c3a-twitter-walking-skeleton:twitter-new-data");
+    }
+
+    private static MenuSpec c5Route(
+            String code, String name, String icon, String route, String component) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                route,
+                "c5-platform-route:" + component);
+    }
+
     private static MenuSpec recovered(String code, String name, String icon) {
         return new MenuSpec(code, name, icon, "JSinglepage", "/pc/aicloud/my", "recovery-value");
     }
@@ -676,8 +850,8 @@ public final class M4RecoveryCatalog {
                 code,
                 name,
                 icon,
-                "JSinglepage",
-                "/ingsale/aggregationKefu/index",
+                "https://web.whatsapp.com",
+                "https://web.whatsapp.com",
                 "recovery-route:aggregation-kefu");
     }
 
@@ -709,6 +883,16 @@ public final class M4RecoveryCatalog {
                 "JSinglepage",
                 "/wsClaw/browser",
                 "recovery-route:ws-claw:browser-default");
+    }
+
+    private static MenuSpec superEnvironmentRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                WHATSAPP_SUPER_ENVIRONMENT_ROUTE,
+                "recovery-route:super-environment");
     }
 
     private static final class ProductSpec {

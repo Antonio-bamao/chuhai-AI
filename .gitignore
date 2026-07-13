@@ -1,4 +1,5 @@
 .artifacts/
+.worktrees/
 __pycache__/
 bscache/
 spider_data

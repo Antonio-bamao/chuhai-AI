@@ -27,15 +27,73 @@ public final class M4RecoveryCatalog {
     private static final int WHATSAPP_AI_KEFU_MENU_ID = WHATSAPP_PRODUCT_ID * 100 + 11;
     private static final int WHATSAPP_AI_KEFU_ROUTE_CHILD_ID =
             WHATSAPP_AI_KEFU_MENU_ID * 100 + 1;
-    private static final String FACEBOOK_PAGE_COLLECT_ROUTE =
-            "/es/bigData/bigDataTask?code=fb_page_data";
     private static final String INSTAGRAM_BLOGGER_COLLECT_ROUTE =
             "/es/bigData/bigDataTask?code=ins_blogger_data";
-    private static final String TWITTER_PRECISE_SEARCH_ROUTE =
-            "/es/bigData/bigDataTask?code=big_data_twitter_new";
-    private static final String TIKTOK_BIG_DATA_ROUTE =
-            "/es/bigData/bigDataTask?code=big_data_tiktok_new";
-    private static final String TELEGRAM_GROUP_COLLECT_ROUTE = "/pc/tg/index";
+    private static final String FB_MIRROR_SETTINGS_ROUTE = "/pc/local/fb/mirror-settings";
+    private static final String FB_FRIENDS_COLLECT_ROUTE = "/pc/local/fb/friends-collect";
+    private static final String FB_GROUPS_COLLECT_ROUTE = "/pc/local/fb/groups-collect";
+    private static final String FB_PAGES_COLLECT_ROUTE = "/pc/local/fb/pages-collect";
+    private static final String FB_LIVE_COLLECT_ROUTE = "/pc/local/fb/live-collect";
+    private static final String FB_ADS_COLLECT_ROUTE = "/pc/local/fb/ads-collect";
+    private static final String FB_AD_COMMENT_INTERCEPT_ROUTE = "/pc/local/fb/ad-comment-intercept";
+    private static final String FB_VIDEO_INTERCEPT_ROUTE = "/pc/local/fb/video-intercept";
+    private static final String FB_ACTIVE_USER_CHECK_ROUTE = "/pc/local/fb/active-user-check";
+    private static final String FB_INQUIRY_REPLY_ROUTE = "/pc/local/fb/inquiry-reply";
+    private static final String X_ACCOUNT_LOGIN_ROUTE = "/pc/local/x/account-login";
+    private static final String X_PRECISE_SEARCH_ROUTE = "/pc/local/x/precise-search";
+    private static final String X_PEER_FOLLOWERS_ROUTE = "/pc/local/x/peer-followers";
+    private static final String X_ACTIVE_FILTER_ROUTE = "/pc/local/x/active-filter";
+    private static final String X_PROFILE_DATABASE_ROUTE = "/pc/local/x/profile-database";
+    private static final String X_ANDROID_AGENT_ROUTE = "/pc/local/x/android-agent";
+    private static final String X_AICLOUD_FINGERPRINT_ROUTE = "/pc/local/x/aicloud-fingerprint";
+    private static final String X_ADSPOWER_FINGERPRINT_ROUTE = "/pc/local/x/adspower-fingerprint";
+    private static final String X_JUMP_PUSH_ROUTE = "/pc/local/x/jump-push";
+    private static final String INS_ACCOUNT_LOGIN_ROUTE = "/pc/local/ins/account-login";
+    private static final String INS_ACCOUNT_SEARCH_ROUTE = "/pc/local/ins/account-search";
+    private static final String INS_POST_SEARCH_ROUTE = "/pc/local/ins/post-search";
+    private static final String INS_PROFILE_MINING_ROUTE = "/pc/local/ins/profile-mining";
+    private static final String INS_ACTIVE_FILTER_ROUTE = "/pc/local/ins/active-filter";
+    private static final String INS_API_BROADCAST_ROUTE = "/pc/local/ins/api-broadcast";
+    private static final String INS_ANDROID_AGENT_ROUTE = "/pc/local/ins/android-agent";
+    private static final String INS_AICLOUD_FINGERPRINT_ROUTE = "/pc/local/ins/aicloud-fingerprint";
+    private static final String INS_ADSPOWER_FINGERPRINT_ROUTE = "/pc/local/ins/adspower-fingerprint";
+    private static final String TK_AI_COLLECT_ROUTE = "/pc/local/tiktok/ai-collect";
+    private static final String TK_AI_FILTER_ROUTE = "/pc/local/tiktok/ai-filter";
+    private static final String TK_MIRROR_ROUTE = "/pc/local/tiktok/mirror-system";
+    private static final String TK_IOS_MULTI_ROUTE = "/pc/local/tiktok/ios-multi-account";
+    private static final String TK_SUPER_ROUTE = "/pc/local/tiktok/ai-super-account";
+    private static final String TK_API_PUBLISH_ROUTE = "/pc/local/tiktok/api-publish";
+    private static final String TK_AI_LIVE_ROUTE = "/pc/local/tiktok/ai-live";
+    private static final String TK_CLOUD_COLLECT_ROUTE = "/pc/local/tiktok/cloud-collect";
+    private static final String TK_TREND_ROUTE = "/pc/local/tiktok/trending";
+    private static final String TK_CLOUD_FILTER_ROUTE = "/pc/local/tiktok/cloud-filter";
+    private static final String TG_JUMP_PUSH_ROUTE = "/pc/local/tg/jump-push";
+    private static final String TG_ACCOUNTS_ROUTE = "/pc/local/tg/accounts";
+    private static final String TG_AI_COLLECT_ROUTE = "/pc/local/tg/ai-collect";
+    private static final String TG_AI_DATA_ROUTE = "/pc/local/tg/ai-data";
+    private static final String TG_GROUP_COLLECT_ROUTE = "/pc/local/tg/group-collect";
+    private static final String TG_GROUP_MEMBER_EXTRACT_ROUTE = "/pc/local/tg/group-member-extract";
+    private static final String TG_AI_FILTER_ROUTE = "/pc/local/tg/ai-filter";
+    private static final String TG_AI_GROWTH_ROUTE = "/pc/local/tg/ai-growth";
+    private static final String TG_ANDROID_AGENT_ROUTE = "/pc/local/tg/android-agent";
+    private static final String TG_AICLOUD_FINGERPRINT_ROUTE = "/pc/local/tg/aicloud-fingerprint";
+    private static final String TG_ADSPOWER_FINGERPRINT_ROUTE = "/pc/local/tg/adspower-fingerprint";
+    private static final String GEO_GOOGLE_SEO_LOCAL_ROUTE = "/pc/local/geo/google-seo";
+    private static final String GEO_PRECISE_NUMBER_MINING_ROUTE = "/pc/local/geo/precise-number-mining";
+    private static final String GEO_GOOGLE_MEDIA_ROUTE = "/pc/local/geo/google-geo-media";
+    private static final String GEO_GLOBAL_NUMBER_COLLECT_ROUTE = "/pc/local/geo/global-number-collect";
+    private static final String GEO_GLOBAL_REGION_COLLECT_ROUTE = "/pc/local/geo/global-region-collect";
+    private static final String GEO_CUSTOMS_DATA_MINING_ROUTE = "/pc/local/geo/customs-data-mining";
+    private static final String GEO_GLOBAL_COMPANY_DATA_ROUTE = "/pc/local/geo/global-company-data";
+    private static final String GEO_GLOBAL_BIG_DATA_ROUTE = "/pc/local/geo/global-big-data";
+    private static final String GEO_NUMBER_AI_ACTIVE_FILTER_ROUTE = "/pc/local/geo/number-ai-active-filter";
+    private static final String WA_OVERVIEW_ROUTE = "/pc/local/wa/overview";
+    private static final String WA_ACCOUNT_GROUPS_ROUTE = "/pc/local/wa/account-groups";
+    private static final String WA_ACCOUNT_LIST_ROUTE = "/pc/local/wa/account-list";
+    private static final String WA_CONTACT_POOL_ROUTE = "/pc/local/wa/contact-pool";
+    private static final String WA_FAN_BROADCAST_ROUTE = "/pc/local/wa/fan-broadcast";
+    private static final String WA_GROUP_BROADCAST_ROUTE = "/pc/local/wa/group-broadcast";
+    private static final String WA_CUSTOMER_SERVICE_LIST_ROUTE = "/pc/local/wa/customer-service-list";
     private static final String GEO_GOOGLE_SEO_ROUTE = "/pc/dataCollect/googleseo";
     private static final String WSKEFU_CONVERSATION_ROUTE = "/pc/kefu/conversation";
     private static final String EXPIRATION = "2099-12-31 23:59:59";
@@ -64,107 +122,87 @@ public final class M4RecoveryCatalog {
             wsFilterRoute("C4749_009", "AI筛选", "svg/whatsapp_menu_icon_7.svg"),
             original("C4749_005", "AI群发", "svg/whatsapp_menu_icon_8.svg"),
             original("C4749_", "API", "svg/whatsapp_menu_icon_9.svg"),
-            original("C3460_001", "广告", "svg/whatsapp_menu_icon_8.svg"),
+            advertisingRoute("C3460_001", "广告", "svg/whatsapp_menu_icon_8.svg"),
             kefuRoute("C4749_011", "AI客服", "svg/whatsapp_menu_icon_9.svg")
         },
         {
-            c5Route(
-                    "C3461_002",
-                    "TK AI采集",
-                    "svg/menu_tk_1.svg",
-                    TIKTOK_BIG_DATA_ROUTE,
-                    "tiktok-new-data"),
-            original("C3461_003", "TK AI筛选", "svg/menu_tk_2.svg"),
-            original("C3461_004", "TK 镜像系统", "svg/menu_tk_3.svg"),
-            original("C3461_005", "TK IOS多号", "svg/menu_tk_4.svg"),
-            original("C3461_006", "TK AI超级号", "svg/menu_tk_5.svg"),
-            original("C3461_007", "TK API发布", "svg/menu_tk_6.svg"),
-            original("C3461_008", "TK AI直播", "svg/menu_tk_7.svg"),
-            original("C3461_010", "TK 云采集", "svg/menu_tk_8.svg"),
-            original("C3461_011", "TK AI上热门", "svg/menu_tk_9.svg"),
-            original("C3461_012", "TK 云筛选", "svg/menu_tk_10.svg")
+            tkLocalRoute("C3461_002", "TK AI采集", "svg/menu_tk_1.svg", TK_AI_COLLECT_ROUTE),
+            tkLocalRoute("C3461_003", "TK AI筛选", "svg/menu_tk_2.svg", TK_AI_FILTER_ROUTE),
+            tkLocalRoute("C3461_004", "TK 镜像系统", "svg/menu_tk_3.svg", TK_MIRROR_ROUTE),
+            tkLocalRoute("C3461_005", "TK IOS多号", "svg/menu_tk_4.svg", TK_IOS_MULTI_ROUTE),
+            tkLocalRoute("C3461_006", "TK AI超级号", "svg/menu_tk_5.svg", TK_SUPER_ROUTE),
+            tkLocalRoute("C3461_007", "TK API发布", "svg/menu_tk_6.svg", TK_API_PUBLISH_ROUTE),
+            tkLocalRoute("C3461_008", "TK AI直播", "svg/menu_tk_7.svg", TK_AI_LIVE_ROUTE),
+            tkLocalRoute("C3461_010", "TK 云采集", "svg/menu_tk_8.svg", TK_CLOUD_COLLECT_ROUTE),
+            tkLocalRoute("C3461_011", "TK AI上热门", "svg/menu_tk_9.svg", TK_TREND_ROUTE),
+            tkLocalRoute("C3461_012", "TK 云筛选", "svg/menu_tk_10.svg", TK_CLOUD_FILTER_ROUTE)
         },
         {
-            original("C4747_000", "镜像系统设置", "svg/facebook_menu_icon_1.svg"),
-            original("C4747_001", "FB 好友采集", "svg/facebook_menu_icon_2.svg"),
-            original("C4747_002", "FB 小组采集", "svg/facebook_menu_icon_3.svg"),
-            facebookPageCollectRoute("C4747_003", "FB 主页采集", "svg/facebook_menu_icon_4.svg"),
-            original("C4747_004", "FB 直播采集", "svg/facebook_menu_icon_5.svg"),
-            original("C4747_005", "FB 广告采集", "svg/facebook_menu_icon_6.svg"),
-            original("C4747_006", "FB 广告评论截流", "svg/facebook_menu_icon_7.svg"),
-            original("C4747_007", "FB 视频截流", "svg/facebook_menu_icon_8.svg"),
-            original("C4747_008", "FB 活跃用户检测", "svg/facebook_menu_icon_9.svg"),
-            original("C4747_009", "FB 询盘回复", "svg/facebook_menu_icon_10.svg")
+            fbLocalRoute("C4747_000", "镜像系统设置", "svg/facebook_menu_icon_1.svg", FB_MIRROR_SETTINGS_ROUTE),
+            fbLocalRoute("C4747_001", "FB 好友采集", "svg/facebook_menu_icon_2.svg", FB_FRIENDS_COLLECT_ROUTE),
+            fbLocalRoute("C4747_002", "FB 小组采集", "svg/facebook_menu_icon_3.svg", FB_GROUPS_COLLECT_ROUTE),
+            fbLocalRoute("C4747_003", "FB 主页采集", "svg/facebook_menu_icon_4.svg", FB_PAGES_COLLECT_ROUTE),
+            fbLocalRoute("C4747_004", "FB 直播采集", "svg/facebook_menu_icon_5.svg", FB_LIVE_COLLECT_ROUTE),
+            fbLocalRoute("C4747_005", "FB 广告采集", "svg/facebook_menu_icon_6.svg", FB_ADS_COLLECT_ROUTE),
+            fbLocalRoute("C4747_006", "FB 广告评论截流", "svg/facebook_menu_icon_7.svg", FB_AD_COMMENT_INTERCEPT_ROUTE),
+            fbLocalRoute("C4747_007", "FB 视频截流", "svg/facebook_menu_icon_8.svg", FB_VIDEO_INTERCEPT_ROUTE),
+            fbLocalRoute("C4747_008", "FB 活跃用户检测", "svg/facebook_menu_icon_9.svg", FB_ACTIVE_USER_CHECK_ROUTE),
+            fbLocalRoute("C4747_009", "FB 询盘回复", "svg/facebook_menu_icon_10.svg", FB_INQUIRY_REPLY_ROUTE)
         },
         {
-            original("C4131_002", "Ins 帐号登录", "svg/ins_menu_icon_1.svg"),
-            original("C4131_003", "Ins 帐号搜索", "svg/ins_menu_icon_2.svg"),
-            original("C4131_004", "Ins 帖子搜索", "svg/ins_menu_icon_3.svg"),
-            instagramBloggerCollectRoute("C4131_005", "Ins 主页挖掘", "svg/ins_menu_icon_4.svg"),
-            original("C4131_006", "Ins 筛选活跃", "svg/ins_menu_icon_5.svg"),
-            original("C4131_007", "Ins 接口群发", "svg/ins_menu_icon_6.svg"),
-            original("C4131_008", "Ins 安卓智能体", "svg/ins_menu_icon_7.svg"),
-            original("C4131_009", "Ins AiCloud指纹", "svg/ins_menu_icon_8.svg"),
-            original("C4131_010", "Ins AdsPower指纹", "svg/ins_menu_icon_9.svg")
+            insLocalRoute("C4131_002", "Ins 帐号登录", "svg/ins_menu_icon_1.svg", INS_ACCOUNT_LOGIN_ROUTE),
+            insLocalRoute("C4131_003", "Ins 帐号搜索", "svg/ins_menu_icon_2.svg", INS_ACCOUNT_SEARCH_ROUTE),
+            insLocalRoute("C4131_004", "Ins 帖子搜索", "svg/ins_menu_icon_3.svg", INS_POST_SEARCH_ROUTE),
+            insLocalRoute("C4131_005", "Ins 主页挖掘", "svg/ins_menu_icon_4.svg", INS_PROFILE_MINING_ROUTE),
+            insLocalRoute("C4131_006", "Ins 筛选活跃", "svg/ins_menu_icon_5.svg", INS_ACTIVE_FILTER_ROUTE),
+            insLocalRoute("C4131_007", "Ins 接口群发", "svg/ins_menu_icon_6.svg", INS_API_BROADCAST_ROUTE),
+            insLocalRoute("C4131_008", "Ins 安卓智能体", "svg/ins_menu_icon_7.svg", INS_ANDROID_AGENT_ROUTE),
+            insLocalRoute("C4131_009", "Ins AiCloud指纹", "svg/ins_menu_icon_8.svg", INS_AICLOUD_FINGERPRINT_ROUTE),
+            insLocalRoute("C4131_010", "Ins AdsPower指纹", "svg/ins_menu_icon_9.svg", INS_ADSPOWER_FINGERPRINT_ROUTE)
         },
         {
-            original("C4133_002", "X 账号登录", "svg/twitter_menu_icon_1.svg"),
-            twitterPreciseSearchRoute("C4133_003", "X 精准搜索", "svg/twitter_menu_icon_2.svg"),
-            original("C4133_004", "X 同行的粉丝搜索", "svg/twitter_menu_icon_3.svg"),
-            original("C4133_005", "X 筛选活跃", "svg/twitter_menu_icon_4.svg"),
-            original("C4133_006", "X 主页大数据库", "svg/twitter_menu_icon_5.svg"),
-            original("C4133_007", "X 安卓智能体", "svg/twitter_menu_icon_6.svg"),
-            original("C4133_008", "X AiCloud指纹", "svg/twitter_menu_icon_7.svg"),
-            original("C4133_009", "X AdsPower指纹", "svg/twitter_menu_icon_8.svg"),
-            original("C4133_017", "X 跳推系统", "svg/twitter_menu_icon_9.svg")
+            xLocalRoute("C4133_002", "X 账号登录", "svg/twitter_menu_icon_1.svg", X_ACCOUNT_LOGIN_ROUTE),
+            xLocalRoute("C4133_003", "X 精准搜索", "svg/twitter_menu_icon_2.svg", X_PRECISE_SEARCH_ROUTE),
+            xLocalRoute("C4133_004", "X 同行的粉丝搜索", "svg/twitter_menu_icon_3.svg", X_PEER_FOLLOWERS_ROUTE),
+            xLocalRoute("C4133_005", "X 筛选活跃", "svg/twitter_menu_icon_4.svg", X_ACTIVE_FILTER_ROUTE),
+            xLocalRoute("C4133_006", "X 主页大数据库", "svg/twitter_menu_icon_5.svg", X_PROFILE_DATABASE_ROUTE),
+            xLocalRoute("C4133_007", "X 安卓智能体", "svg/twitter_menu_icon_6.svg", X_ANDROID_AGENT_ROUTE),
+            xLocalRoute("C4133_008", "X AiCloud指纹", "svg/twitter_menu_icon_7.svg", X_AICLOUD_FINGERPRINT_ROUTE),
+            xLocalRoute("C4133_009", "X AdsPower指纹", "svg/twitter_menu_icon_8.svg", X_ADSPOWER_FINGERPRINT_ROUTE),
+            xLocalRoute("C4133_017", "X 跳推系统", "svg/twitter_menu_icon_9.svg", X_JUMP_PUSH_ROUTE)
         },
         {
-            original("C4135_001", "TG 跳推系统", "svg/tg_menu_icon_1.svg"),
-            original("C4135_002", "TG 帐号", "svg/tg_menu_icon_2.svg"),
-            original("C4135_003", "TG AI 采集", "svg/tg_menu_icon_3.svg"),
-            original("C4135_004", "TG AI数据", "svg/tg_menu_icon_4.svg"),
-            c5Route(
-                    "C4135_005",
-                    "TG AI 群采集",
-                    "svg/tg_menu_icon_5.svg",
-                    TELEGRAM_GROUP_COLLECT_ROUTE,
-                    "tg-group-task"),
-            original("C4135_006", "TG AI 群成员提取", "svg/tg_menu_icon_6.svg"),
-            original("C4135_007", "TG AI筛选", "svg/tg_menu_icon_7.svg"),
-            original("C4135_008", "TG AI裂变", "svg/tg_menu_icon_8.svg"),
-            original("C4135_009", "TG 安卓智能体", "svg/tg_menu_icon_9.svg"),
-            original("C4135_010", "TG AiCloud指纹", "svg/tg_menu_icon_10.svg"),
-            original("C4135_011", "TG AdsPower指纹", "svg/tg_menu_icon_11.svg")
+            tgLocalRoute("C4135_001", "TG 跳推系统", "svg/tg_menu_icon_1.svg", TG_JUMP_PUSH_ROUTE),
+            tgLocalRoute("C4135_002", "TG 帐号", "svg/tg_menu_icon_2.svg", TG_ACCOUNTS_ROUTE),
+            tgLocalRoute("C4135_003", "TG AI 采集", "svg/tg_menu_icon_3.svg", TG_AI_COLLECT_ROUTE),
+            tgLocalRoute("C4135_004", "TG AI数据", "svg/tg_menu_icon_4.svg", TG_AI_DATA_ROUTE),
+            tgLocalRoute("C4135_005", "TG AI 群采集", "svg/tg_menu_icon_5.svg", TG_GROUP_COLLECT_ROUTE),
+            tgLocalRoute("C4135_006", "TG AI 群成员提取", "svg/tg_menu_icon_6.svg", TG_GROUP_MEMBER_EXTRACT_ROUTE),
+            tgLocalRoute("C4135_007", "TG AI筛选", "svg/tg_menu_icon_7.svg", TG_AI_FILTER_ROUTE),
+            tgLocalRoute("C4135_008", "TG AI裂变", "svg/tg_menu_icon_8.svg", TG_AI_GROWTH_ROUTE),
+            tgLocalRoute("C4135_009", "TG 安卓智能体", "svg/tg_menu_icon_9.svg", TG_ANDROID_AGENT_ROUTE),
+            tgLocalRoute("C4135_010", "TG AiCloud指纹", "svg/tg_menu_icon_10.svg", TG_AICLOUD_FINGERPRINT_ROUTE),
+            tgLocalRoute("C4135_011", "TG AdsPower指纹", "svg/tg_menu_icon_11.svg", TG_ADSPOWER_FINGERPRINT_ROUTE)
         },
         {
-            c5Route(
-                    "C4134_002",
-                    "精准官网挖掘",
-                    "svg/geo_ai_menu_icon_1.svg",
-                    GEO_GOOGLE_SEO_ROUTE,
-                    "geo-google-seo"),
-            original("C4134_003", "精准号码挖掘", "svg/geo_ai_menu_icon_2.svg"),
-            original("C4134_006", "Google GEO外媒体", "svg/geo_ai_menu_icon_3.svg"),
-            original("C4137_001", "全球号码采集", "svg/geo_ai_menu_icon_4.svg"),
-            original("C4137_002", "全球地区采集", "svg/geo_ai_menu_icon_5.svg"),
-            original("C4137_003", "海关数据挖掘", "svg/geo_ai_menu_icon_6.svg"),
-            original("C4137_004", "全球企业大数据", "svg/geo_ai_menu_icon_7.svg"),
-            original("C4137_005", "全球大数据", "svg/geo_ai_menu_icon_8.svg"),
-            original("C4137_006", "号码 AI筛选活跃", "svg/geo_ai_menu_icon_9.svg")
+            geoLocalRoute("C4134_002", "精准官网挖掘", "svg/geo_ai_menu_icon_1.svg", GEO_GOOGLE_SEO_LOCAL_ROUTE),
+            geoLocalRoute("C4134_003", "精准号码挖掘", "svg/geo_ai_menu_icon_2.svg", GEO_PRECISE_NUMBER_MINING_ROUTE),
+            geoLocalRoute("C4134_006", "Google GEO外媒体", "svg/geo_ai_menu_icon_3.svg", GEO_GOOGLE_MEDIA_ROUTE),
+            geoLocalRoute("C4137_001", "全球号码采集", "svg/geo_ai_menu_icon_4.svg", GEO_GLOBAL_NUMBER_COLLECT_ROUTE),
+            geoLocalRoute("C4137_002", "全球地区采集", "svg/geo_ai_menu_icon_5.svg", GEO_GLOBAL_REGION_COLLECT_ROUTE),
+            geoLocalRoute("C4137_003", "海关数据挖掘", "svg/geo_ai_menu_icon_6.svg", GEO_CUSTOMS_DATA_MINING_ROUTE),
+            geoLocalRoute("C4137_004", "全球企业大数据", "svg/geo_ai_menu_icon_7.svg", GEO_GLOBAL_COMPANY_DATA_ROUTE),
+            geoLocalRoute("C4137_005", "全球大数据", "svg/geo_ai_menu_icon_8.svg", GEO_GLOBAL_BIG_DATA_ROUTE),
+            geoLocalRoute("C4137_006", "号码 AI筛选活跃", "svg/geo_ai_menu_icon_9.svg", GEO_NUMBER_AI_ACTIVE_FILTER_ROUTE)
         },
         {
-            c5Route(
-                    "C4936_000",
-                    "信息总览",
-                    "svg/wskf_menu_icon_1.svg",
-                    WSKEFU_CONVERSATION_ROUTE,
-                    "kefu-conversation"),
-            original("C4936_001", "账号分组", "svg/wskf_menu_icon_2.svg"),
-            original("C4936_002", "账号列表", "svg/wskf_menu_icon_3.svg"),
-            original("C4936_004", "联系人数据池", "svg/wskf_menu_icon_4.svg"),
-            original("C4936_005", "爆粉群发", "svg/wskf_menu_icon_5.svg"),
-            original("C4936_006", "群聊群发", "svg/wskf_menu_icon_6.svg"),
-            original("C4936_007", "客服列表", "svg/wskf_menu_icon_7.svg")
+            waLocalRoute("C4936_000", "信息总览", "svg/wskf_menu_icon_1.svg", WA_OVERVIEW_ROUTE),
+            waLocalRoute("C4936_001", "账号分组", "svg/wskf_menu_icon_2.svg", WA_ACCOUNT_GROUPS_ROUTE),
+            waLocalRoute("C4936_002", "账号列表", "svg/wskf_menu_icon_3.svg", WA_ACCOUNT_LIST_ROUTE),
+            waLocalRoute("C4936_004", "联系人数据池", "svg/wskf_menu_icon_4.svg", WA_CONTACT_POOL_ROUTE),
+            waLocalRoute("C4936_005", "爆粉群发", "svg/wskf_menu_icon_5.svg", WA_FAN_BROADCAST_ROUTE),
+            waLocalRoute("C4936_006", "群聊群发", "svg/wskf_menu_icon_6.svg", WA_GROUP_BROADCAST_ROUTE),
+            waLocalRoute("C4936_007", "客服列表", "svg/wskf_menu_icon_7.svg", WA_CUSTOMER_SERVICE_LIST_ROUTE)
         },
         {}
     };
@@ -237,6 +275,37 @@ public final class M4RecoveryCatalog {
                     json.append(',');
                     appendC5PlatformRouteChild(
                             json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD1XLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD1XLocalRouteChild(
+                            json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD2InsLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD2InsLocalRouteChild(
+                            json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD3FbLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD3FbLocalRouteChild(
+                            json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD4TkLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD4TkLocalRouteChild(json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD5TgLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD5TgLocalRouteChild(json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD5GeoLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD5GeoLocalRouteChild(json, productId, menuIndex + 1, productMenus[menuIndex]);
+                }
+                if (isD5WaLocalMenu(productMenus[menuIndex])) {
+                    json.append(',');
+                    appendD5WaLocalRouteChild(json, productId, menuIndex + 1, productMenus[menuIndex]);
                 }
                 first = false;
             }
@@ -342,6 +411,34 @@ public final class M4RecoveryCatalog {
                 json.append(',');
                 appendC5PlatformRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
             }
+            if (isD1XLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD1XLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
+            if (isD2InsLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD2InsLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
+            if (isD3FbLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD3FbLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
+            if (isD4TkLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD4TkLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
+            if (isD5TgLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD5TgLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
+            if (isD5GeoLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD5GeoLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
+            if (isD5WaLocalMenu(productMenus[menuIndex])) {
+                json.append(',');
+                appendD5WaLocalRouteChild(json, id, menuIndex + 1, productMenus[menuIndex]);
+            }
         }
         json.append(']');
         json.append('}');
@@ -404,13 +501,180 @@ public final class M4RecoveryCatalog {
     }
 
     private static boolean isC5PlatformRouteMenu(MenuSpec menu) {
-        return "C4747_003".equals(menu.code)
-                || "C4131_005".equals(menu.code)
-                || "C4133_003".equals(menu.code)
-                || "C3461_002".equals(menu.code)
-                || "C4135_005".equals(menu.code)
-                || "C4134_002".equals(menu.code)
-                || "C4936_000".equals(menu.code);
+        return "C3460_001".equals(menu.code);
+    }
+
+    private static boolean isD1XLocalMenu(MenuSpec menu) {
+        return menu.evidence.startsWith("d1-x-local:");
+    }
+
+    private static boolean isD2InsLocalMenu(MenuSpec menu) {
+        return menu.evidence.startsWith("d2-ins-local:");
+    }
+
+    private static boolean isD3FbLocalMenu(MenuSpec menu) {
+        return menu.evidence.startsWith("d3-fb-local:");
+    }
+    private static boolean isD4TkLocalMenu(MenuSpec menu) { return menu.evidence.startsWith("d4-tk-local:"); }
+
+    private static boolean isD5TgLocalMenu(MenuSpec menu) {
+        return menu.evidence.startsWith("d5-tg-local:");
+    }
+
+    private static boolean isD5GeoLocalMenu(MenuSpec menu) {
+        return menu.evidence.startsWith("d5-geo-local:");
+    }
+
+    private static boolean isD5WaLocalMenu(MenuSpec menu) {
+        return menu.evidence.startsWith("d5-wa-local:");
+    }
+
+    private static void appendD1XLocalRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D1_X_LOCAL_" + menu.code.substring("C4133_".length()));
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl);
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(json, "evidence", "d1-x-local-child:" + menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
+    private static void appendD2InsLocalRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D2_INS_LOCAL_" + menu.code.substring("C4131_".length()));
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl);
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(json, "evidence", "d2-ins-local-child:" + menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
+    private static void appendD3FbLocalRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D3_FB_LOCAL_" + menu.code.substring("C4747_".length()));
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl);
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(json, "evidence", "d3-fb-local-child:" + menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
+    }
+    private static void appendD4TkLocalRouteChild(StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{'); appendNumber(json, "id", parentId * 100 + 1); appendNumber(json, "sid", productId); appendNumber(json, "fid", productId); appendNumber(json, "productId", productId); appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D4_TK_LOCAL_" + menu.code.substring("C3461_".length())); appendString(json, "name", menu.name); appendString(json, "displayName", menu.name); appendString(json, "icon", iconResourceName(menu.icon)); appendString(json, "localCode", menu.linkUrl); appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl); appendNumber(json, "webFlg", 1); appendNumber(json, "treeEndFlg", 1); appendNumber(json, "displayIndex", 1); appendNumber(json, "sort", 1); appendString(json, "evidence", "d4-tk-local-child:" + menu.evidence); json.append("\"status\":1"); json.append('}');
+    }
+
+    private static void appendD5TgLocalRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D5_TG_LOCAL_" + menu.code.substring("C4135_".length()));
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl);
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(json, "evidence", "d5-tg-local-child:" + menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
+    private static void appendD5GeoLocalRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D5_GEO_LOCAL_" + menu.code.replace("C", "").replace("_", "_"));
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl);
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendNumber(json, "sort", 1);
+        appendString(json, "evidence", "d5-geo-local-child:" + menu.evidence);
+        json.append("\"status\":1");
+        json.append('}');
+    }
+
+    private static void appendD5WaLocalRouteChild(
+            StringBuilder json, int productId, int menuIndex, MenuSpec menu) {
+        int parentId = productId * 100 + menuIndex;
+        json.append('{');
+        appendNumber(json, "id", parentId * 100 + 1);
+        appendNumber(json, "sid", productId);
+        appendNumber(json, "fid", productId);
+        appendNumber(json, "productId", productId);
+        appendNumber(json, "parentId", parentId);
+        appendString(json, "code", "REC_D5_WA_LOCAL_" + menu.code.replace("C", "").replace("_", "_"));
+        appendString(json, "name", menu.name);
+        appendString(json, "displayName", menu.name);
+        appendString(json, "icon", iconResourceName(menu.icon));
+        appendString(json, "localCode", menu.linkUrl);
+        appendString(json, "linkUrl", "JSinglepage:" + menu.linkUrl);
+        appendNumber(json, "webFlg", 1);
+        appendNumber(json, "treeEndFlg", 1);
+        appendNumber(json, "displayIndex", 1);
+        appendString(json, "evidence", "d5-wa-local-child:" + menu.evidence.substring("d5-wa-local:".length()));
+        appendNumber(json, "status", 1);
+        json.append('}');
     }
 
     private static void appendC5PlatformRouteChild(
@@ -421,14 +685,14 @@ public final class M4RecoveryCatalog {
             childCode = "REC_FACEBOOK_PAGE_COLLECT_ROUTE";
         } else if ("C4131_005".equals(menu.code)) {
             childCode = "REC_INSTAGRAM_BLOGGER_COLLECT_ROUTE";
-        } else if ("C4133_003".equals(menu.code)) {
-            childCode = "REC_TWITTER_PRECISE_SEARCH_ROUTE";
         } else if ("C3461_002".equals(menu.code)) {
             childCode = "REC_TIKTOK_BIG_DATA_ROUTE";
         } else if ("C4135_005".equals(menu.code)) {
             childCode = "REC_TELEGRAM_GROUP_COLLECT_ROUTE";
         } else if ("C4134_002".equals(menu.code)) {
             childCode = "REC_GEO_GOOGLE_SEO_ROUTE";
+        } else if ("C3460_001".equals(menu.code)) {
+            childCode = "REC_WHATSAPP_ADVERTISING_ROUTE";
         } else {
             childCode = "REC_WSKEFU_CONVERSATION_ROUTE";
         }
@@ -778,14 +1042,32 @@ public final class M4RecoveryCatalog {
         return new MenuSpec(code, name, icon, "JSinglepage", "/pc/aicloud/my", "original-i18n");
     }
 
-    private static MenuSpec facebookPageCollectRoute(String code, String name, String icon) {
+    private static MenuSpec fbLocalRoute(String code, String name, String icon, String route) {
         return new MenuSpec(
                 code,
                 name,
                 icon,
                 "JSinglepage",
-                FACEBOOK_PAGE_COLLECT_ROUTE,
-                "c1a-facebook-walking-skeleton:fb-page-data");
+                route,
+                "d3-fb-local:" + route.substring("/pc/local/fb/".length()));
+    }
+    private static MenuSpec tkLocalRoute(String code, String name, String icon, String route) {
+        return new MenuSpec(code, name, icon, "JSinglepage", route, "d4-tk-local:" + route.substring("/pc/local/tiktok/".length()));
+    }
+
+    private static MenuSpec tgLocalRoute(String code, String name, String icon, String route) {
+        return new MenuSpec(code, name, icon, "JSinglepage", route,
+                "d5-tg-local:" + route.substring("/pc/local/tg/".length()));
+    }
+
+    private static MenuSpec geoLocalRoute(String code, String name, String icon, String route) {
+        return new MenuSpec(code, name, icon, "JSinglepage", route,
+                "d5-geo-local:" + route.substring("/pc/local/geo/".length()));
+    }
+
+    private static MenuSpec waLocalRoute(String code, String name, String icon, String route) {
+        return new MenuSpec(code, name, icon, "JSinglepage", route,
+                "d5-wa-local:" + route.substring("/pc/local/wa/".length()));
     }
 
     private static MenuSpec instagramBloggerCollectRoute(String code, String name, String icon) {
@@ -798,14 +1080,24 @@ public final class M4RecoveryCatalog {
                 "c2a-instagram-walking-skeleton:ins-blogger-data");
     }
 
-    private static MenuSpec twitterPreciseSearchRoute(String code, String name, String icon) {
+    private static MenuSpec xLocalRoute(String code, String name, String icon, String route) {
         return new MenuSpec(
                 code,
                 name,
                 icon,
                 "JSinglepage",
-                TWITTER_PRECISE_SEARCH_ROUTE,
-                "c3a-twitter-walking-skeleton:twitter-new-data");
+                route,
+                "d1-x-local:" + route.substring("/pc/local/x/".length()));
+    }
+
+    private static MenuSpec insLocalRoute(String code, String name, String icon, String route) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                route,
+                "d2-ins-local:" + route.substring("/pc/local/ins/".length()));
     }
 
     private static MenuSpec c5Route(
@@ -817,6 +1109,16 @@ public final class M4RecoveryCatalog {
                 "JSinglepage",
                 route,
                 "c5-platform-route:" + component);
+    }
+
+    private static MenuSpec advertisingRoute(String code, String name, String icon) {
+        return new MenuSpec(
+                code,
+                name,
+                icon,
+                "JSinglepage",
+                "/views/overseasAds/dataBoard",
+                "c67-advertising:theme-ad-data-board");
     }
 
     private static MenuSpec recovered(String code, String name, String icon) {

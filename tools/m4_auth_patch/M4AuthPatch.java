@@ -99,6 +99,9 @@ public final class M4AuthPatch {
     private static final String M8D7_DEFAULT_MENU_DISPATCH_CLASS =
             "com/sbf/main/M8D7DefaultMenuDispatch.class";
     private static final String M8D14_EXE_DIAG_CLASS = "com/sbf/main/M8D14ExeDiag.class";
+    private static final String DTHELPER_CLASS = "com/sbf/util/http/DTHelper.class";
+    private static final String GLOBAL_RECHARGE_LISTENER_CLASS = "com/sbf/main/JSBFMain$6.class";
+    private static final String C64_NATIVE_NETWORK_DIAG_CLASS = "com/sbf/main/C64NativeNetworkDiag.class";
     private static final String WEB_BRIDGE_TOKEN = "offline-local-token-1234567890";
 
     private static final String LOGIN_JSON_PREFIX =
@@ -221,6 +224,16 @@ public final class M4AuthPatch {
     public static void main(String[] args) throws Exception {
         boolean realProductMenuLogging = false;
         boolean c6CommerceOverlay = false;
+        boolean c66CommerceOverlay = false;
+        boolean c67AdvertisingOverlay = false;
+        boolean d1XLocalPagesOverlay = false;
+        boolean d2InsLocalPagesOverlay = false;
+        boolean d3FbLocalPagesOverlay = false;
+        boolean d4TkLocalPagesOverlay = false;
+        boolean d5TgLocalPagesOverlay = false;
+        boolean d5GeoLocalPagesOverlay = false;
+        boolean d5WaLocalPagesOverlay = false;
+        boolean d8OnlineOverlay = false;
         int argOffset = 0;
         if (args.length == 3 && "--real-product-menu-logging".equals(args[0])) {
             realProductMenuLogging = true;
@@ -228,10 +241,40 @@ public final class M4AuthPatch {
         } else if (args.length == 3 && "--c6-overlay".equals(args[0])) {
             c6CommerceOverlay = true;
             argOffset = 1;
+        } else if (args.length == 3 && "--c66-overlay".equals(args[0])) {
+            c66CommerceOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--c67-overlay".equals(args[0])) {
+            c67AdvertisingOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d1-x-overlay".equals(args[0])) {
+            d1XLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d2-ins-overlay".equals(args[0])) {
+            d2InsLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d3-fb-overlay".equals(args[0])) {
+            d3FbLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d4-tk-overlay".equals(args[0])) {
+            d4TkLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d5-tg-overlay".equals(args[0])) {
+            d5TgLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d5-geo-overlay".equals(args[0])) {
+            d5GeoLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d5-wa-overlay".equals(args[0])) {
+            d5WaLocalPagesOverlay = true;
+            argOffset = 1;
+        } else if (args.length == 3 && "--d8-online-overlay".equals(args[0])) {
+            d8OnlineOverlay = true;
+            argOffset = 1;
         }
         if (args.length - argOffset != 2) {
             throw new IllegalArgumentException(
-                    "usage: M4AuthPatch [--real-product-menu-logging|--c6-overlay] <input-jar> <output-jar>");
+                    "usage: M4AuthPatch [--real-product-menu-logging|--c6-overlay|--c66-overlay|--c67-overlay|--d1-x-overlay|--d2-ins-overlay|--d3-fb-overlay|--d4-tk-overlay|--d5-tg-overlay|--d5-geo-overlay|--d5-wa-overlay|--d8-online-overlay] <input-jar> <output-jar>");
         }
         Path input = Paths.get(args[argOffset]).toAbsolutePath().normalize();
         Path output = Paths.get(args[argOffset + 1]).toAbsolutePath().normalize();
@@ -244,6 +287,46 @@ public final class M4AuthPatch {
         }
         if (c6CommerceOverlay) {
             writeC6CommerceOverlay(input, output);
+            return;
+        }
+        if (c66CommerceOverlay) {
+            writeC66CommerceOverlay(input, output);
+            return;
+        }
+        if (c67AdvertisingOverlay) {
+            writeC67AdvertisingOverlay(input, output);
+            return;
+        }
+        if (d1XLocalPagesOverlay) {
+            writeD1XLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d2InsLocalPagesOverlay) {
+            writeD2InsLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d3FbLocalPagesOverlay) {
+            writeD3FbLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d4TkLocalPagesOverlay) {
+            writeD4TkLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d5TgLocalPagesOverlay) {
+            writeD5TgLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d5GeoLocalPagesOverlay) {
+            writeD5GeoLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d5WaLocalPagesOverlay) {
+            writeD5WaLocalPagesOverlay(input, output);
+            return;
+        }
+        if (d8OnlineOverlay) {
+            writeD8OnlineOverlay(input, output);
             return;
         }
 
@@ -306,7 +389,13 @@ public final class M4AuthPatch {
         Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
         Files.deleteIfExists(temp);
         byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        byte[] nativeNetworkDiagBytes = readGeneratedSupportClass(C64_NATIVE_NETWORK_DIAG_CLASS);
         boolean replacedBridge = false;
+        boolean patchedEngine = false;
+        boolean patchedNativeUpdate = false;
+        boolean patchedNativeStartup = false;
+        boolean patchedNativeNetworkDiagnostics = false;
+        boolean patchedGlobalRechargeListener = false;
         Set<String> names = new HashSet<String>();
         try (JarFile jar = new JarFile(input.toFile());
                 OutputStream fileOut = Files.newOutputStream(temp);
@@ -323,6 +412,116 @@ public final class M4AuthPatch {
                     if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
                         bytes = bridgeBytes;
                         replacedBridge = true;
+                    } else if (JXBROWSER_ENGINE_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchJxBrowserOfflineNetworkSwitches(readAll(in));
+                        }
+                        patchedEngine = true;
+                    } else if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchC64NativeUpdateCheck(readAll(in));
+                        }
+                        patchedNativeUpdate = true;
+                    } else if (START_APP_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchC64NativeStartupAuthorization(readAll(in));
+                        }
+                        patchedNativeStartup = true;
+                    } else if (DTHELPER_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchC65NativeStartupGateway(
+                                    patchC64NativeUrlDiagnostics(readAll(in)));
+                        }
+                        patchedNativeNetworkDiagnostics = true;
+                    } else if (GLOBAL_RECHARGE_LISTENER_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchC66GlobalRechargeListener(readAll(in));
+                        }
+                        patchedGlobalRechargeListener = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+            if (names.add(C64_NATIVE_NETWORK_DIAG_CLASS)) {
+                writeGeneratedClass(jarOut, C64_NATIVE_NETWORK_DIAG_CLASS, nativeNetworkDiagBytes);
+            }
+        }
+        if (!replacedBridge
+                || !patchedEngine
+                || !patchedNativeUpdate
+                || !patchedNativeStartup
+                || !patchedNativeNetworkDiagnostics
+                || !patchedGlobalRechargeListener) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException(
+                    "C6 overlay requires "
+                            + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                            + " and "
+                            + JXBROWSER_ENGINE_CLASS
+                            + ", "
+                            + TARGET_CLASS
+                            + " and "
+                            + START_APP_CLASS
+                            + " and "
+                            + DTHELPER_CLASS
+                            + " and "
+                            + GLOBAL_RECHARGE_LISTENER_CLASS
+                            + " in input jar");
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println(
+                "C6_COMMERCE_OVERLAY localBridge="
+                        + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                        + " offlineEngine="
+                        + JXBROWSER_ENGINE_CLASS
+                        + " nativeUpdate="
+                        + TARGET_CLASS
+                        + " nativeStartup="
+                        + START_APP_CLASS
+                        + " nativeNetworkDiagnostics="
+                        + DTHELPER_CLASS
+                        + " nativeHostGateway="
+                        + DTHELPER_CLASS
+                        + " globalRecharge="
+                        + GLOBAL_RECHARGE_LISTENER_CLASS
+                        + " input="
+                        + input
+                        + " output="
+                        + output);
+    }
+
+    private static void writeC66CommerceOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean replacedBridge = false;
+        boolean patchedGlobalRechargeListener = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        replacedBridge = true;
+                    } else if (GLOBAL_RECHARGE_LISTENER_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchC66GlobalRechargeListener(readAll(in));
+                        }
+                        patchedGlobalRechargeListener = true;
                     } else {
                         try (InputStream in = jar.getInputStream(entry)) {
                             bytes = readAll(in);
@@ -333,20 +532,540 @@ public final class M4AuthPatch {
                 jarOut.closeEntry();
             }
         }
-        if (!replacedBridge) {
+        if (!replacedBridge || !patchedGlobalRechargeListener) {
             Files.deleteIfExists(temp);
             throw new IllegalStateException(
-                    "C6 overlay requires " + M5_LOCAL_SPIDER_BRIDGE_CLASS + " in input jar");
+                    "C66 overlay requires "
+                            + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                            + " and "
+                            + GLOBAL_RECHARGE_LISTENER_CLASS
+                            + " in input jar");
         }
         Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         System.out.println(
-                "C6_COMMERCE_OVERLAY localBridge="
+                "C66_COMMERCE_OVERLAY localBridge="
+                        + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                        + " globalRecharge="
+                        + GLOBAL_RECHARGE_LISTENER_CLASS
+                        + " input="
+                        + input
+                        + " output="
+                        + output);
+    }
+
+    private static void writeC67AdvertisingOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean replacedPcMenus = false;
+        boolean patchedModernDispatch = false;
+        boolean replacedBridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchC67PcMenus(readAll(in));
+                        }
+                        replacedPcMenus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        replacedBridge = true;
+                    } else if (MODERN_MENU_DISPATCH_CLASS_V2.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchModernMenuDispatchDiagnostics(readAll(in), new PatchResult());
+                        }
+                        patchedModernDispatch = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!replacedPcMenus || !patchedModernDispatch || !replacedBridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException(
+                    "C67 overlay requires "
+                            + TARGET_CLASS
+                            + " and "
+                            + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                            + " and "
+                            + MODERN_MENU_DISPATCH_CLASS_V2
+                            + " in input jar");
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println(
+                "C67_ADVERTISING_OVERLAY pcMenus="
+                        + TARGET_CLASS
+                        + " localBridge="
+                        + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                        + " modernDispatch="
+                        + MODERN_MENU_DISPATCH_CLASS_V2
+                        + " input="
+                        + input
+                        + " output="
+                        + output);
+    }
+
+    private static byte[] patchC67PcMenus(byte[] original) {
+        return patchPcMenusOverlay(
+                original, "C67_ADVERTISING_MENU_DISPATCH route=/views/overseasAds/dataBoard", "C67");
+    }
+
+    private static byte[] patchPcMenusOverlay(byte[] original, String marker, String overlayName) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, 0);
+        final boolean[] patched = {false};
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                if (!"k".equals(name) || !"()Lorg/json/JSONObject;".equals(descriptor)) {
+                    return super.visitMethod(access, name, descriptor, signature, exceptions);
+                }
+                patched[0] = true;
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                mv.visitCode();
+                emitPrint(mv, marker);
+                mv.visitTypeInsn(Opcodes.NEW, "org/json/JSONObject");
+                mv.visitInsn(Opcodes.DUP);
+                mv.visitLdcInsn(PC_MENUS_JSON);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESPECIAL,
+                        "org/json/JSONObject",
+                        "<init>",
+                        "(Ljava/lang/String;)V",
+                        false);
+                mv.visitInsn(Opcodes.ARETURN);
+                mv.visitMaxs(3, 0);
+                mv.visitEnd();
+                return null;
+            }
+        };
+        reader.accept(visitor, 0);
+        if (!patched[0]) {
+            throw new IllegalStateException(overlayName + " PC menu method k() was not found");
+        }
+        return writer.toByteArray();
+    }
+
+    private static void writeD8OnlineOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = patchD8OnlineEnabledFlag(
+                readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS));
+        byte[] nativeNetworkDiagBytes = patchD8OnlineEnabledFlag(
+                readGeneratedSupportClass(C64_NATIVE_NETWORK_DIAG_CLASS));
+        boolean replacedBridge = false;
+        boolean replacedNativeNetworkDiag = false;
+        boolean patchedNativeStartup = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        replacedBridge = true;
+                    } else if (C64_NATIVE_NETWORK_DIAG_CLASS.equals(entry.getName())) {
+                        bytes = nativeNetworkDiagBytes;
+                        replacedNativeNetworkDiag = true;
+                    } else if (START_APP_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchD8OnlineStartupAuthorization(readAll(in));
+                        }
+                        patchedNativeStartup = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!replacedBridge || !replacedNativeNetworkDiag || !patchedNativeStartup) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException(
+                    "D8 online overlay requires "
+                            + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                            + ", "
+                            + C64_NATIVE_NETWORK_DIAG_CLASS
+                            + " and "
+                            + START_APP_CLASS
+                            + " in input jar");
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println(
+                "D8_ONLINE_OVERLAY originalHosts=xdxsoft,huochai,mierp localBridge="
+                        + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                        + " nativeGateway="
+                        + C64_NATIVE_NETWORK_DIAG_CLASS
+                        + " nativeStartup="
+                        + START_APP_CLASS
+                        + " input="
+                        + input
+                        + " output="
+                        + output);
+    }
+
+    private static void writeD1XLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean replacedPcMenus = false;
+        boolean replacedBridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchPcMenusOverlay(
+                                    readAll(in),
+                                    "D1_X_MENU_DISPATCH localLeaves=/pc/local/x/*",
+                                    "D1 X local pages");
+                        }
+                        replacedPcMenus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        replacedBridge = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!replacedPcMenus || !replacedBridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException(
+                    "D1 X overlay requires " + TARGET_CLASS + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println(
+                "D1_X_LOCAL_PAGES_OVERLAY pcMenus="
+                        + TARGET_CLASS
+                        + " localBridge="
                         + M5_LOCAL_SPIDER_BRIDGE_CLASS
                         + " input="
                         + input
                         + " output="
                         + output);
     }
+
+    private static void writeD2InsLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean replacedPcMenus = false;
+        boolean replacedBridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchPcMenusOverlay(
+                                    readAll(in),
+                                    "D2_INS_MENU_DISPATCH localLeaves=/pc/local/ins/*",
+                                    "D2 Instagram local pages");
+                        }
+                        replacedPcMenus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        replacedBridge = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!replacedPcMenus || !replacedBridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException(
+                    "D2 Instagram overlay requires " + TARGET_CLASS + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println(
+                "D2_INS_LOCAL_PAGES_OVERLAY pcMenus="
+                        + TARGET_CLASS
+                        + " localBridge="
+                        + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                        + " input="
+                        + input
+                        + " output="
+                        + output);
+    }
+
+    private static void writeD3FbLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean replacedPcMenus = false;
+        boolean replacedBridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchPcMenusOverlay(
+                                    readAll(in),
+                                    "D3_FB_MENU_DISPATCH localLeaves=/pc/local/fb/*",
+                                    "D3 Facebook local pages");
+                        }
+                        replacedPcMenus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        replacedBridge = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!replacedPcMenus || !replacedBridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException(
+                    "D3 Facebook overlay requires " + TARGET_CLASS + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println(
+                "D3_FB_LOCAL_PAGES_OVERLAY pcMenus="
+                        + TARGET_CLASS
+                        + " localBridge="
+                        + M5_LOCAL_SPIDER_BRIDGE_CLASS
+                        + " input="
+                        + input
+                        + " output="
+                        + output);
+    }
+
+    private static void writeD4TkLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp"); Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS); boolean menus = false, bridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile()); OutputStream fileOut = Files.newOutputStream(temp); JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries(); while (entries.hasMoreElements()) { JarEntry entry = entries.nextElement(); if (!names.add(entry.getName())) continue; jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) { byte[] bytes; if (TARGET_CLASS.equals(entry.getName())) { try (InputStream in = jar.getInputStream(entry)) { bytes = patchPcMenusOverlay(readAll(in), "D4_TK_MENU_DISPATCH localLeaves=/pc/local/tiktok/*", "D4 TikTok local pages"); } menus = true; }
+                    else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) { bytes = bridgeBytes; bridge = true; } else { try (InputStream in = jar.getInputStream(entry)) { bytes = readAll(in); } } jarOut.write(bytes); } jarOut.closeEntry(); }
+        }
+        if (!menus || !bridge) { Files.deleteIfExists(temp); throw new IllegalStateException("D4 TikTok overlay requires " + TARGET_CLASS + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS); }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println("D4_TK_LOCAL_PAGES_OVERLAY pcMenus=" + TARGET_CLASS + " localBridge=" + M5_LOCAL_SPIDER_BRIDGE_CLASS + " input=" + input + " output=" + output);
+    }
+
+    private static void writeD5TgLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean menus = false;
+        boolean bridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchPcMenusOverlay(readAll(in),
+                                    "D5_TG_MENU_DISPATCH localLeaves=/pc/local/tg/*",
+                                    "D5 Telegram local pages");
+                        }
+                        menus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        bridge = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!menus || !bridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException("D5 Telegram overlay requires " + TARGET_CLASS
+                    + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println("D5_TG_LOCAL_PAGES_OVERLAY pcMenus=" + TARGET_CLASS
+                + " localBridge=" + M5_LOCAL_SPIDER_BRIDGE_CLASS + " input=" + input
+                + " output=" + output);
+    }
+
+    private static void writeD5GeoLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean menus = false;
+        boolean bridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) {
+                    continue;
+                }
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchPcMenusOverlay(readAll(in),
+                                    "D5_GEO_MENU_DISPATCH localLeaves=/pc/local/geo/*",
+                                    "D5 GEO local pages");
+                        }
+                        menus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        bridge = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = readAll(in);
+                        }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!menus || !bridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException("D5 GEO overlay requires " + TARGET_CLASS
+                    + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println("D5_GEO_LOCAL_PAGES_OVERLAY pcMenus=" + TARGET_CLASS
+                + " localBridge=" + M5_LOCAL_SPIDER_BRIDGE_CLASS + " input=" + input
+                + " output=" + output);
+    }
+
+    private static void writeD5WaLocalPagesOverlay(Path input, Path output) throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        Files.deleteIfExists(temp);
+        byte[] bridgeBytes = readGeneratedSupportClass(M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        boolean menus = false;
+        boolean bridge = false;
+        Set<String> names = new HashSet<String>();
+        try (JarFile jar = new JarFile(input.toFile());
+                OutputStream fileOut = Files.newOutputStream(temp);
+                JarOutputStream jarOut = new JarOutputStream(fileOut)) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (!names.add(entry.getName())) continue;
+                jarOut.putNextEntry(copyEntryMetadata(entry));
+                if (!entry.isDirectory()) {
+                    byte[] bytes;
+                    if (TARGET_CLASS.equals(entry.getName())) {
+                        try (InputStream in = jar.getInputStream(entry)) {
+                            bytes = patchPcMenusOverlay(readAll(in),
+                                    "D5_WA_MENU_DISPATCH localLeaves=/pc/local/wa/*",
+                                    "D5 WhatsApp customer service local pages");
+                        }
+                        menus = true;
+                    } else if (M5_LOCAL_SPIDER_BRIDGE_CLASS.equals(entry.getName())) {
+                        bytes = bridgeBytes;
+                        bridge = true;
+                    } else {
+                        try (InputStream in = jar.getInputStream(entry)) { bytes = readAll(in); }
+                    }
+                    jarOut.write(bytes);
+                }
+                jarOut.closeEntry();
+            }
+        }
+        if (!menus || !bridge) {
+            Files.deleteIfExists(temp);
+            throw new IllegalStateException("D5 WA overlay requires " + TARGET_CLASS + " and " + M5_LOCAL_SPIDER_BRIDGE_CLASS);
+        }
+        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        System.out.println("D5_WA_LOCAL_PAGES_OVERLAY pcMenus=" + TARGET_CLASS
+                + " localBridge=" + M5_LOCAL_SPIDER_BRIDGE_CLASS + " input=" + input
+                + " output=" + output);
+    }
+
 
     private static PatchResult patchJar(
             Path input,
@@ -3286,7 +4005,7 @@ public final class M4AuthPatch {
                 }
                 mv.visitTypeInsn(Opcodes.NEW, jsonClass);
                 mv.visitInsn(Opcodes.DUP);
-                mv.visitLdcInsn(json);
+                emitJsonString(mv, json);
                 mv.visitMethodInsn(
                         Opcodes.INVOKESPECIAL,
                         jsonClass,
@@ -3294,9 +4013,41 @@ public final class M4AuthPatch {
                         "(Ljava/lang/String;)V",
                         false);
                 mv.visitInsn(Opcodes.ARETURN);
-                mv.visitMaxs(3, maxLocals);
+                mv.visitMaxs(5, maxLocals);
                 mv.visitEnd();
                 return null;
+            }
+
+            private void emitJsonString(MethodVisitor mv, String json) {
+                final int maxChunkChars = 16000;
+                if (json.length() <= maxChunkChars) {
+                    mv.visitLdcInsn(json);
+                    return;
+                }
+                mv.visitTypeInsn(Opcodes.NEW, "java/lang/StringBuilder");
+                mv.visitInsn(Opcodes.DUP);
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESPECIAL,
+                        "java/lang/StringBuilder",
+                        "<init>",
+                        "()V",
+                        false);
+                for (int offset = 0; offset < json.length(); offset += maxChunkChars) {
+                    int end = Math.min(json.length(), offset + maxChunkChars);
+                    mv.visitLdcInsn(json.substring(offset, end));
+                    mv.visitMethodInsn(
+                            Opcodes.INVOKEVIRTUAL,
+                            "java/lang/StringBuilder",
+                            "append",
+                            "(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                            false);
+                }
+                mv.visitMethodInsn(
+                        Opcodes.INVOKEVIRTUAL,
+                        "java/lang/StringBuilder",
+                        "toString",
+                        "()Ljava/lang/String;",
+                        false);
             }
 
             private MethodVisitor writeRuntimeLoginJsonReturn(
@@ -4562,6 +5313,406 @@ public final class M4AuthPatch {
             "--disable-d3d11",
             "--use-gl=swiftshader",
             "--use-angle=swiftshader"
+        };
+        for (String chromiumSwitch : switches) {
+            mv.visitLdcInsn(chromiumSwitch);
+            mv.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    "com/teamdev/jxbrowser/engine/EngineOptions$Builder",
+                    "addSwitch",
+                    "(Ljava/lang/String;)"
+                            + "Lcom/teamdev/jxbrowser/engine/EngineOptions$Builder;",
+                    false);
+        }
+    }
+
+    private static byte[] patchJxBrowserOfflineNetworkSwitches(byte[] original) {
+        if (new String(original, StandardCharsets.ISO_8859_1)
+                .contains("--disable-background-networking")) {
+            return original;
+        }
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitMethodInsn(
+                            int opcode,
+                            String owner,
+                            String methodName,
+                            String methodDescriptor,
+                            boolean isInterface) {
+                        super.visitMethodInsn(
+                                opcode, owner, methodName, methodDescriptor, isInterface);
+                        if (opcode == Opcodes.INVOKESTATIC
+                                && "com/teamdev/jxbrowser/engine/EngineOptions".equals(owner)
+                                && "newBuilder".equals(methodName)) {
+                            emitOfflineChromiumNetworkSwitches(this);
+                        }
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchC64NativeUpdateCheck(byte[] original) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, 0);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                if ("g".equals(name)
+                        && "(Ljava/lang/String;I)Lorg/json/JSONObject;".equals(descriptor)) {
+                    MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                    mv.visitCode();
+                    emitPrint(mv, "C64_MIERP_UPDATE_STUB");
+                    mv.visitTypeInsn(Opcodes.NEW, "org/json/JSONObject");
+                    mv.visitInsn(Opcodes.DUP);
+                    mv.visitLdcInsn(
+                            "{\"code\":200,\"msg\":\"no update\",\"hasUpdate\":false,"
+                                    + "\"data\":{\"hasUpdate\":false,\"needUpdate\":false,"
+                                    + "\"version\":\"\",\"url\":\"\"}}");
+                    mv.visitMethodInsn(
+                            Opcodes.INVOKESPECIAL,
+                            "org/json/JSONObject",
+                            "<init>",
+                            "(Ljava/lang/String;)V",
+                            false);
+                    mv.visitInsn(Opcodes.ARETURN);
+                    mv.visitMaxs(3, 2);
+                    mv.visitEnd();
+                    return null;
+                }
+                if ("n".equals(name)
+                        && ("()V".equals(descriptor)
+                                || "(Ljava/lang/String;)V".equals(descriptor))) {
+                    MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                    mv.visitCode();
+                    emitPrint(
+                            mv,
+                            "()V".equals(descriptor)
+                                    ? "C64_APPFILE_DOWNLOAD_STUB"
+                                    : "C65_APPFILE_FLOW_STUB");
+                    mv.visitInsn(Opcodes.RETURN);
+                    mv.visitMaxs(2, "()V".equals(descriptor) ? 0 : 1);
+                    mv.visitEnd();
+                    return null;
+                }
+                if ("ax".equals(name) && "(Ljava/lang/String;)Lorg/json/JSONObject;".equals(descriptor)) {
+                    MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                    mv.visitCode();
+                    emitPrint(mv, "C65_APPFILE_RESPONSE_ADAPTER");
+                    mv.visitTypeInsn(Opcodes.NEW, "org/json/JSONObject");
+                    mv.visitInsn(Opcodes.DUP);
+                    mv.visitLdcInsn("{}");
+                    mv.visitMethodInsn(
+                            Opcodes.INVOKESPECIAL,
+                            "org/json/JSONObject",
+                            "<init>",
+                            "(Ljava/lang/String;)V",
+                            false);
+                    mv.visitInsn(Opcodes.ARETURN);
+                    mv.visitMaxs(3, 1);
+                    mv.visitEnd();
+                    return null;
+                }
+                return super.visitMethod(access, name, descriptor, signature, exceptions);
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchD8OnlineEnabledFlag(byte[] original) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, 0);
+        final boolean[] patched = new boolean[] {false};
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                if (!"d8OnlineEnabled".equals(name) || !"()Z".equals(descriptor)) {
+                    return super.visitMethod(access, name, descriptor, signature, exceptions);
+                }
+                patched[0] = true;
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                mv.visitCode();
+                mv.visitInsn(Opcodes.ICONST_1);
+                mv.visitInsn(Opcodes.IRETURN);
+                mv.visitMaxs(1, 0);
+                mv.visitEnd();
+                return null;
+            }
+        };
+        reader.accept(visitor, 0);
+        if (!patched[0]) {
+            throw new IllegalStateException("D8 online support flag was not found");
+        }
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchD8OnlineStartupAuthorization(byte[] original) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = computeFramesWriter(reader);
+        final boolean[] replaced = new boolean[] {false};
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"f".equals(name) || !"(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                    return mv;
+                }
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitLdcInsn(Object value) {
+                        if ("https://app.xdxsoft.com/".equals(value)) {
+                            replaced[0] = true;
+                            super.visitLdcInsn("https://offline.invalid/");
+                            return;
+                        }
+                        if ("http://app.xdxsoft.com/".equals(value)) {
+                            replaced[0] = true;
+                            super.visitLdcInsn("http://offline.invalid/");
+                            return;
+                        }
+                        super.visitLdcInsn(value);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, ClassReader.EXPAND_FRAMES);
+        if (!replaced[0]) {
+            throw new IllegalStateException("D8 online startup authorization short-circuit was not found");
+        }
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchC64NativeStartupAuthorization(byte[] original) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = computeFramesWriter(reader);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"f".equals(name) || !"(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                    return mv;
+                }
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitCode() {
+                        super.visitCode();
+                        Label fallThrough = new Label();
+                        Label returnLocalToken = new Label();
+                        mv.visitVarInsn(Opcodes.ALOAD, 0);
+                        mv.visitJumpInsn(Opcodes.IFNULL, fallThrough);
+                        mv.visitVarInsn(Opcodes.ALOAD, 0);
+                        mv.visitLdcInsn("https://app.xdxsoft.com/");
+                        mv.visitMethodInsn(
+                                Opcodes.INVOKEVIRTUAL,
+                                "java/lang/String",
+                                "startsWith",
+                                "(Ljava/lang/String;)Z",
+                                false);
+                        mv.visitJumpInsn(Opcodes.IFNE, returnLocalToken);
+                        mv.visitVarInsn(Opcodes.ALOAD, 0);
+                        mv.visitLdcInsn("http://app.xdxsoft.com/");
+                        mv.visitMethodInsn(
+                                Opcodes.INVOKEVIRTUAL,
+                                "java/lang/String",
+                                "startsWith",
+                                "(Ljava/lang/String;)Z",
+                                false);
+                        mv.visitJumpInsn(Opcodes.IFEQ, fallThrough);
+                        mv.visitLabel(returnLocalToken);
+                        emitStringBuilderPrint(
+                                mv,
+                                "C64_NATIVE_STARTUP_AUTH_STUB url=",
+                                Opcodes.ALOAD,
+                                0,
+                                "java/lang/StringBuilder",
+                                "append",
+                                "(Ljava/lang/String;)Ljava/lang/StringBuilder;");
+                        mv.visitLdcInsn(WEB_BRIDGE_TOKEN);
+                        mv.visitInsn(Opcodes.ARETURN);
+                        mv.visitLabel(fallThrough);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, ClassReader.EXPAND_FRAMES);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchC64NativeUrlDiagnostics(byte[] original) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitMethodInsn(
+                            int opcode,
+                            String owner,
+                            String methodName,
+                            String methodDescriptor,
+                            boolean isInterface) {
+                        if (opcode == Opcodes.INVOKEVIRTUAL
+                                && "okhttp3/Request$Builder".equals(owner)
+                                && "url".equals(methodName)
+                                && "(Ljava/lang/String;)Lokhttp3/Request$Builder;"
+                                        .equals(methodDescriptor)) {
+                            super.visitMethodInsn(
+                                    Opcodes.INVOKESTATIC,
+                                    "com/sbf/main/C64NativeNetworkDiag",
+                                    "observe",
+                                    "(Ljava/lang/String;)Ljava/lang/String;",
+                                    false);
+                        }
+                        super.visitMethodInsn(opcode, owner, methodName, methodDescriptor, isInterface);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchC65NativeStartupGateway(byte[] original) {
+        final String gatewayDescriptor =
+                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/util/HashMap;"
+                        + "Ljava/util/HashMap;ZZ)Lorg/json/JSONObject;";
+        final boolean[] patched = new boolean[] {false};
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = computeFramesWriter(reader);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                if (!"a".equals(name) || !gatewayDescriptor.equals(descriptor)) {
+                    return mv;
+                }
+                patched[0] = true;
+                return new MethodVisitor(Opcodes.ASM9, mv) {
+                    @Override
+                    public void visitCode() {
+                        super.visitCode();
+                        Label continueOriginal = new Label();
+                        mv.visitVarInsn(Opcodes.ALOAD, 0);
+                        mv.visitMethodInsn(
+                                Opcodes.INVOKESTATIC,
+                                "com/sbf/main/C64NativeNetworkDiag",
+                                "localResponse",
+                                "(Ljava/lang/String;)Ljava/lang/String;",
+                                false);
+                        mv.visitVarInsn(Opcodes.ASTORE, 8);
+                        mv.visitVarInsn(Opcodes.ALOAD, 8);
+                        mv.visitJumpInsn(Opcodes.IFNULL, continueOriginal);
+                        mv.visitTypeInsn(Opcodes.NEW, "org/json/JSONObject");
+                        mv.visitInsn(Opcodes.DUP);
+                        mv.visitVarInsn(Opcodes.ALOAD, 8);
+                        mv.visitMethodInsn(
+                                Opcodes.INVOKESPECIAL,
+                                "org/json/JSONObject",
+                                "<init>",
+                                "(Ljava/lang/String;)V",
+                                false);
+                        mv.visitInsn(Opcodes.ARETURN);
+                        mv.visitLabel(continueOriginal);
+                    }
+                };
+            }
+        };
+        reader.accept(visitor, ClassReader.EXPAND_FRAMES);
+        if (!patched[0]) {
+            throw new IllegalStateException("C65 native gateway DTHelper JSON exit was not found");
+        }
+        return writer.toByteArray();
+    }
+
+    private static byte[] patchC66GlobalRechargeListener(byte[] original) {
+        ClassReader reader = new ClassReader(original);
+        ClassWriter writer = new ClassWriter(reader, 0);
+        ClassVisitor visitor = new ClassVisitor(Opcodes.ASM9, writer) {
+            @Override
+            public MethodVisitor visitMethod(
+                    int access,
+                    String name,
+                    String descriptor,
+                    String signature,
+                    String[] exceptions) {
+                if (!"a".equals(name) || !"(I)V".equals(descriptor)) {
+                    return super.visitMethod(access, name, descriptor, signature, exceptions);
+                }
+                MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                mv.visitCode();
+                emitPrint(mv, "C66_RECHARGE_ENTRY route=/pc/c6/recharge module=C6_RECHARGE_UI");
+                mv.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        "com/sbf/main/jxbrowser/M5LocalSpiderBridge",
+                        "openC66RechargeDialog",
+                        "()V",
+                        false);
+                mv.visitInsn(Opcodes.RETURN);
+                mv.visitMaxs(2, 2);
+                mv.visitEnd();
+                return null;
+            }
+        };
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
+    }
+
+    private static void emitOfflineChromiumNetworkSwitches(MethodVisitor mv) {
+        String[] switches = {
+            "--disable-background-networking",
+            "--disable-component-update",
+            "--disable-domain-reliability",
+            "--disable-client-side-phishing-detection",
+            "--no-pings",
+            "--safebrowsing-disable-auto-update",
+            "--disable-sync",
+            "--no-first-run"
         };
         for (String chromiumSwitch : switches) {
             mv.visitLdcInsn(chromiumSwitch);
@@ -5985,6 +7136,7 @@ public final class M4AuthPatch {
         org.objectweb.asm.Label notBigDataTab = new org.objectweb.asm.Label();
         org.objectweb.asm.Label notTelegramTab = new org.objectweb.asm.Label();
         org.objectweb.asm.Label notGeoTab = new org.objectweb.asm.Label();
+        org.objectweb.asm.Label notAdvertisingTab = new org.objectweb.asm.Label();
         mv.visitVarInsn(Opcodes.ALOAD, 5);
         mv.visitLdcInsn("JSinglepage");
         mv.visitMethodInsn(
@@ -6080,6 +7232,20 @@ public final class M4AuthPatch {
         emitPrint(mv, "C5_PLATFORM_TAB_JXBROWSER_URL_FROM_LINKURL");
         mv.visitJumpInsn(Opcodes.GOTO, done);
         mv.visitLabel(notGeoTab);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitLdcInsn("/views/overseasAds/");
+        mv.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                "java/lang/String",
+                "startsWith",
+                "(Ljava/lang/String;)Z",
+                false);
+        mv.visitJumpInsn(Opcodes.IFEQ, notAdvertisingTab);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitVarInsn(Opcodes.ASTORE, 5);
+        emitPrint(mv, "C67_ADVERTISING_TAB_JXBROWSER_URL_FROM_LINKURL");
+        mv.visitJumpInsn(Opcodes.GOTO, done);
+        mv.visitLabel(notAdvertisingTab);
         mv.visitVarInsn(Opcodes.ALOAD, 4);
         mv.visitLdcInsn("/pc/kefu/conversation");
         mv.visitMethodInsn(

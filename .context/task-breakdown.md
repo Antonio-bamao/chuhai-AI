@@ -31,6 +31,41 @@
 
 ## 后续里程碑任务卡
 
+### D-1：X 平台独立本地页面骨架试点
+
+- 状态：完成（D-1.1 已补隔离 GUI、网络和数据库取证；不覆盖 live）。
+- 目标：为 `C4133_002/003/004/005/006/007/008/009/017` 建立各自独立的本地空态页，带离线提示和禁用操作守门。
+- 输入：C-67 候选、`M4RecoveryCatalog`、`M5LocalSpiderBridge`、现有 JSinglepage 显式路由规范。
+- 输出：候选 DLL、各页路由/组件证据、守门与请求观察记录。
+- DoD：九页路由彼此不同；页面没有伪造任务、账号或指纹数据；操作按钮不可执行；不改采集链、不覆盖 `data/app/App.dll`。
+- 明确不做：不运行 `.cnf`、不改 `cloud.spider.b`/`libmytrpc`/时钟、不中断 host 接管、不恢复真实登录、搜索、采集、群发或指纹绑定。
+- 规模（S·M·L）：M
+
+### D-5：TG 平台独立本地页面骨架
+
+- 状态：已完成并锁进 live；D-5.2 已以 asInvoker 启动器解除 UAC 卡点，用户已完成 TG 11 页肉眼验收。GEO 已完成，下一独立轮为 WhatsApp AI龙虾客服。
+- 目标：为 `C4135_001..011` 建立各自独立的 `/pc/local/tg/<leaf>` 空态页，带 `D5_TG_LOCAL_PAGE`、离线提示和禁用操作守门。
+- 输入：D-4 live `App.dll`（`E32995…72C34F`）、`M4RecoveryCatalog`、`M5LocalSpiderBridge`、D-1 至 D-4 显式叶路由规范。
+- 输出：仅替换菜单目录与本地资源桥的 TG 候选 DLL、全量回归与隔离网络证据。
+- DoD：11 条 TG 路由彼此不同；按钮均为 `data-d1-action="guarded" disabled`；候选仅变两类；全量测试不少于 81 项、冷启无外网回源；经过无 UAC 阻塞的 live 冷启和用户肉眼验收后才可锁定。
+- 明确不做：不运行 `.cnf`，不改 `cloud.spider.b`/`libmytrpc`/时钟，不恢复 TG 真实登录、采集、群操作、裂变、指纹绑定或发送。
+- 规模（S·M·L）：M
+
+### D-5.1：海外 GEO 平台独立本地页面骨架
+
+- 状态：已完成并锁进 live；用户已完成 GEO 9 页肉眼验收。
+- 目标：为 `C4134_002/C4134_003/C4134_006/C4137_001..006` 建立各自独立的 `/pc/local/geo/<leaf>` 空态页，带 `D5_GEO_LOCAL_PAGE`、离线提示和禁用操作守门。
+- 验收：候选仅变 `SBFApi.class`、`M5LocalSpiderBridge.class`；全量 `87/87`、隔离与 live 各 180 次非 loopback TCP 样本为 0、DB `848/858/858`；切入 live 后用户手工验收 9 页通过。
+- 明确不做：不恢复真实 GEO SEO、号码采集、媒体投放、海关或企业数据服务；不修改 `.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集链。
+- 下一步：WhatsApp AI龙虾客服仅做 `/pc/local/wa/<leaf>` UI 空态骨架、离线提示与禁用守门。
+
+### D-5.2：WhatsApp AI龙虾客服独立本地页面骨架
+
+- 状态：已完成并锁进 live；用户已完成 WA 7 页肉眼验收。
+- 目标：为 `C4936_000/C4936_001/C4936_002/C4936_004/C4936_005/C4936_006/C4936_007` 建立各自独立的 `/pc/local/wa/<leaf>` 空态页，带 `D5_WA_LOCAL_PAGE`、离线提示和禁用操作守门。
+- 验收：候选仅变 `SBFApi.class`、`M5LocalSpiderBridge.class`；全量 `90/90`、180 次非 loopback TCP 样本为 0、DB `848/858/858`；live 冷启后用户已完成 7 页肉眼确认。
+- 明确不做：不做 WhatsApp 扫码、登录、账号接入、会话读取、联系人读取、群发或收发消息；不修改 `.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集链。
+
 ### M2：字符串解密
 
 - 目标：批量产出 `string_map.json`，让授权相关关键词可检索。

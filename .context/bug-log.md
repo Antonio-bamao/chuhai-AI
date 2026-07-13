@@ -433,3 +433,48 @@
 - 解决方案：子路由改为 `JSinglepage:/ws/wsfilter/home`，在通用兜底前显式归一化为 `/ws/wsfilter/home`；增加目录和产物字节码回归断言，并以宿主截图验证原版筛选表头与空态。
 - 预防措施：后续每个独立 Web 菜单都要同时验证菜单高亮、最终组件内容和最终归一化 URL；不得以“右侧有页面”替代真实路由验收。
 - 状态：resolved-by-m5c-ai-filter
+
+## D-1 隔离候选未公开独立可操作 GUI 窗口
+- 现象：isolated launcher 日志显示候选 SHA、独立 Java PID 与 Start Success，但桌面控制只发现既有 live 火柴AI窗口。
+- 触发条件：在 live Java 实例仍运行时启动 d1-x-local-pages/run/data/app/HuoChaiAI.exe。
+- 影响：无法逐页截图、点击守门或取得点击窗口内的目标 IP 抓包，D-1 不能宣称全通。
+- 根因：已证实存在既有 live 实例和源目录锁；尚未获得候选窗口/进程消失的完整终止原因，不能推断为补丁错误。
+- 解决方案：保留候选和自动化证据；未停止或改写 live。
+- 预防措施：后续在独立 VM 或无 live 实例的会话中运行 candidate，并在启动前确认窗口与 PID 归属。
+- 状态：open
+
+## D5 TG live launcher requests UAC before cold-start smoke
+- 现象：Launching data/app/HuoChaiAI.exe after the candidate isolation run opens a consent.exe window titled HuoChaiAI.exe 正在请求你的许可; no Java child is created within 10 seconds.
+- 触发条件：D5 candidate cold-start restoration step, with data/app/App.dll still at E32995C73414EBE3A96E460DD70A87AEA7D14D52185E78CB2CDCE1315572C34F.
+- 影响：The mandated live cold-start no-.NET-dialog smoke cannot be completed without a user-controlled OS consent action, so D5 must not swap the candidate into live.
+- 根因：The current project launcher is the 1,092,608-byte SHA-256 58EBCEFC...51BF4 executable and triggers Windows elevation; the existing 6,144-byte isolated launcher is explicitly asInvoker and does not. D5 changed neither launcher.
+- 解决方案：Stopped the blocked launcher without accepting UAC, restored the isolated D4 runner App.dll to E32995...72C34F, and left the project live App.dll unchanged.
+- 预防措施：Before every future live swap, preflight the exact project launcher for targetable window/elevation state. Do not accept or automate OS consent; require user direction before replacing or approving a launcher.
+- 状态：open: requires user authorization or an approved non-elevating live-launcher scope
+
+## D5 live candidate smoke did not expose a Java window after swap
+- 现象：After swapping the D5 candidate into data/app/App.dll, the launcher automation did not observe a live Java window within 12 seconds.
+- 触发条件：D5 swap smoke on 2026-07-13 after a prior baseline launch had reached 功能入口.
+- 影响：The required live cold-start and user visual acceptance gates could not run; the D5 swap was immediately rolled back.
+- 根因：Undetermined: the Windows security desktop is not inspectable or actionable by the agent. The same launcher had previously required user-controlled UAC consent; no application-level error or Java window was observable during this attempt.
+- 解决方案：Stopped the attempted launcher, restored data/app/App.dll from App.live-20260713-024543-E32995C7.dll, and rechecked the live hash and SQLite baseline.
+- 预防措施：Require an observed user confirmation that the UAC prompt was accepted before measuring the 12-second live window gate; collect launcher logs only after the security desktop is cleared.
+- 状态：open: needs user confirmation of UAC state before another swap attempt
+
+## D5 TG live candidate still fails 60-second Java-window gate
+- 现象：After the D5 candidate swap, no project Java application window was observed during a full 60-second cold-start window.
+- 触发条件：Second D5 live smoke attempt using the current project launcher with the user present.
+- 影响：The TG candidate cannot be locked into live or handed to user visual acceptance; GEO and WhatsApp customer-service rounds remain unopened.
+- 根因：Unresolved launcher/runtime issue outside the two-class D5 candidate delta: the D5 candidate succeeds in the isolated asInvoker runner, whereas the project live launcher does not expose a Java window after candidate swap. The agent cannot inspect or act on the Windows security desktop.
+- 解决方案：Immediately stopped attempted processes and restored data/app/App.dll from App.live-20260713-025313-E32995C7.dll.
+- 预防措施：Keep candidate-only delivery until the project launcher issue is separately diagnosed with a user-observed UAC/launcher log. Do not weaken the live smoke or rollback gate.
+- 状态：open: repeated twice; requires separate launcher diagnosis before another D5 swap
+
+## D-5 GEO 候选隔离冷启提前退出
+- 现象：D5 GEO candidate launcher recorded java_pid=23608 and Start Success, but the process exited before a second Java window appeared or network sampling could begin.
+- 触发条件：Launch the D5 GEO candidate through the isolated asInvoker runner while the project live TG Java instance is already running.
+- 影响：Candidate 87/87 regression and exact-two-class overlay gates pass, but the cold-start and zero-external-source gates cannot yet be concluded; no live swap was performed.
+- 根因：并发 project live TG Java 运行时可稳定触发隔离候选早退；停止该实例后，同一 asInvoker、同一候选 DLL 正常启动到“功能入口”。具体内部单例/共享资源机制未继续侵入诊断，但并发条件已被排除并复验。
+- 解决方案：先恢复隔离 runner 基线；在用户授权下短暂停止 live TG 后重启候选，完成 180 次 0 外网采样，再恢复 runner 和 TG live。
+- 预防措施：候选冷启验收前先由用户授权停掉同项目 live Java 实例，按单实例运行；验收结束后立即恢复 live 基线。
+- 状态：resolved: concurrent-instance condition isolated and rerun passed

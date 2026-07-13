@@ -35,6 +35,7 @@ M8D7_DEFAULT_MENU_DISPATCH_SOURCE = (
     ROOT / "tools" / "m4_auth_patch" / "M8D7DefaultMenuDispatch.java"
 )
 M8D14_EXE_DIAG_SOURCE = ROOT / "tools" / "m4_auth_patch" / "M8D14ExeDiag.java"
+C64_NATIVE_NETWORK_DIAG_SOURCE = ROOT / "tools" / "m4_auth_patch" / "C64NativeNetworkDiag.java"
 TMP_ROOT = ROOT / ".artifacts" / "tmp-tests"
 
 
@@ -72,6 +73,7 @@ class M4AuthPatchTests(unittest.TestCase):
                 str(YES_CAPTCHA_BRIDGE_SOURCE),
                 str(M8D7_DEFAULT_MENU_DISPATCH_SOURCE),
                 str(M8D14_EXE_DIAG_SOURCE),
+                str(C64_NATIVE_NETWORK_DIAG_SOURCE),
                 str(SOURCE),
             ],
             cwd=ROOT,
@@ -624,12 +626,30 @@ class M4AuthPatchTests(unittest.TestCase):
                                 "C4749_011".equals(item.getString("code"));
                         boolean whatsappKefuChild =
                                 "REC_WHATSAPP_AI_KEFU_ROUTE".equals(item.getString("code"));
-                        boolean facebookPageCollect =
-                                "C4747_003".equals(item.getString("code"));
-                        boolean instagramBloggerCollect =
-                                "C4131_005".equals(item.getString("code"));
-                        boolean twitterSearchCollect =
-                                "C4133_003".equals(item.getString("code"));
+                        boolean d3FbLocalParent =
+                                item.optString("evidence").startsWith("d3-fb-local:");
+                        boolean d3FbLocalChild =
+                                item.optString("evidence").startsWith("d3-fb-local-child:");
+                        boolean d4TkLocalParent = item.optString("evidence").startsWith("d4-tk-local:");
+                        boolean d4TkLocalChild = item.optString("evidence").startsWith("d4-tk-local-child:");
+                        boolean d5TgLocalParent = item.optString("evidence").startsWith("d5-tg-local:");
+                        boolean d5TgLocalChild = item.optString("evidence").startsWith("d5-tg-local-child:");
+                        boolean d5GeoLocalParent = item.optString("evidence").startsWith("d5-geo-local:");
+                        boolean d5GeoLocalChild = item.optString("evidence").startsWith("d5-geo-local-child:");
+                        boolean d5WaLocalParent = item.optString("evidence").startsWith("d5-wa-local:");
+                        boolean d5WaLocalChild = item.optString("evidence").startsWith("d5-wa-local-child:");
+                        boolean d2InsLocalParent =
+                                item.optString("evidence").startsWith("d2-ins-local:");
+                        boolean d2InsLocalChild =
+                                item.optString("evidence").startsWith("d2-ins-local-child:");
+                        boolean d1XLocalParent =
+                                item.optString("evidence").startsWith("d1-x-local:");
+                        boolean d1XLocalChild =
+                                item.optString("evidence").startsWith("d1-x-local-child:");
+                        boolean whatsappAdvertisingParent =
+                                "C3460_001".equals(item.getString("code"));
+                        boolean whatsappAdvertisingChild =
+                                "REC_WHATSAPP_ADVERTISING_ROUTE".equals(item.getString("code"));
                         boolean c5PlatformParent =
                                 item.optString("evidence").startsWith("c5-platform-route:");
                         boolean c5PlatformChild =
@@ -748,29 +768,78 @@ class M4AuthPatchTests(unittest.TestCase):
                                     || item.getInt("webFlg") != 1) {
                                 throw new AssertionError("WhatsApp AI kefu child recovery route: " + item);
                             }
-                        } else if (facebookPageCollect) {
+                        } else if (d4TkLocalParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode")) || !item.getString("linkUrl").startsWith("/pc/local/tiktok/") || item.getString("linkUrl").contains("http")) throw new AssertionError("D-4 TK parent route: " + item);
+                        } else if (d4TkLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/tiktok/") || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl")) || item.getInt("treeEndFlg") != 1) throw new AssertionError("D-4 TK child route: " + item);
+                        } else if (d5TgLocalParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode")) || !item.getString("linkUrl").startsWith("/pc/local/tg/") || item.getString("linkUrl").contains("http")) throw new AssertionError("D-5 TG parent route: " + item);
+                        } else if (d5TgLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/tg/") || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl")) || item.getInt("treeEndFlg") != 1) throw new AssertionError("D-5 TG child route: " + item);
+                        } else if (d5GeoLocalParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode")) || !item.getString("linkUrl").startsWith("/pc/local/geo/") || item.getString("linkUrl").contains("http")) throw new AssertionError("D-5 GEO parent route: " + item);
+                        } else if (d5GeoLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/geo/") || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl")) || item.getInt("treeEndFlg") != 1) throw new AssertionError("D-5 GEO child route: " + item);
+                        } else if (d5WaLocalParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode")) || !item.getString("linkUrl").startsWith("/pc/local/wa/") || item.getString("linkUrl").contains("http")) throw new AssertionError("D-5 WA parent route: " + item);
+                        } else if (d5WaLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/wa/") || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl")) || item.getInt("treeEndFlg") != 1) throw new AssertionError("D-5 WA child route: " + item);
+                        } else if (d3FbLocalParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
-                                    || !"/es/bigData/bigDataTask?code=fb_page_data".equals(item.getString("linkUrl"))
+                                    || !item.getString("linkUrl").startsWith("/pc/local/fb/")
                                     || item.getString("linkUrl").contains("http")
-                                    || !item.optString("evidence").contains("c1a-facebook-walking-skeleton:fb-page-data")
+                                    || !item.optString("evidence").startsWith("d3-fb-local:")
                                     || item.getInt("webFlg") != 1) {
-                                throw new AssertionError("Facebook page collect recovery route: " + item);
+                                throw new AssertionError("D-3 FB local parent route: " + item);
                             }
-                        } else if (instagramBloggerCollect) {
-                            if (!"JSinglepage".equals(item.getString("localCode"))
-                                    || !"/es/bigData/bigDataTask?code=ins_blogger_data".equals(item.getString("linkUrl"))
-                                    || item.getString("linkUrl").contains("http")
-                                    || !item.optString("evidence").contains("c2a-instagram-walking-skeleton:ins-blogger-data")
+                        } else if (d3FbLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/fb/")
+                                    || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl"))
+                                    || item.getInt("treeEndFlg") != 1
                                     || item.getInt("webFlg") != 1) {
-                                throw new AssertionError("Instagram blogger collect recovery route: " + item);
+                                throw new AssertionError("D-3 FB local child route: " + item);
                             }
-                        } else if (twitterSearchCollect) {
+                        } else if (d2InsLocalParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
-                                    || !"/es/bigData/bigDataTask?code=big_data_twitter_new".equals(item.getString("linkUrl"))
+                                    || !item.getString("linkUrl").startsWith("/pc/local/ins/")
                                     || item.getString("linkUrl").contains("http")
-                                    || !item.optString("evidence").contains("c3a-twitter-walking-skeleton:twitter-new-data")
+                                    || !item.optString("evidence").startsWith("d2-ins-local:")
                                     || item.getInt("webFlg") != 1) {
-                                throw new AssertionError("X precise search collect recovery route: " + item);
+                                throw new AssertionError("D-2 Ins local parent route: " + item);
+                            }
+                        } else if (d2InsLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/ins/")
+                                    || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl"))
+                                    || item.getInt("treeEndFlg") != 1
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("D-2 Ins local child route: " + item);
+                            }
+                        } else if (d1XLocalParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !item.getString("linkUrl").startsWith("/pc/local/x/")
+                                    || item.getString("linkUrl").contains("http")
+                                    || !item.optString("evidence").startsWith("d1-x-local:")
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("D-1 X local parent route: " + item);
+                            }
+                        } else if (d1XLocalChild) {
+                            if (!item.getString("localCode").startsWith("/pc/local/x/")
+                                    || !("JSinglepage:" + item.getString("localCode")).equals(item.getString("linkUrl"))
+                                    || item.getInt("treeEndFlg") != 1
+                                    || item.getInt("webFlg") != 1) {
+                                throw new AssertionError("D-1 X local child route: " + item);
+                            }
+                        } else if (whatsappAdvertisingParent) {
+                            if (!"JSinglepage".equals(item.getString("localCode"))
+                                    || !"/views/overseasAds/dataBoard".equals(item.getString("linkUrl"))
+                                    || !item.optString("evidence").contains("c67-advertising")) {
+                                throw new AssertionError("WhatsApp advertising parent recovery route: " + item);
+                            }
+                        } else if (whatsappAdvertisingChild) {
+                            if (!"/views/overseasAds/dataBoard".equals(item.getString("localCode"))
+                                    || !"JSinglepage".equals(item.getString("linkUrl"))
+                                    || item.getInt("treeEndFlg") != 1) {
+                                throw new AssertionError("WhatsApp advertising child recovery route: " + item);
                             }
                         } else if (c5PlatformParent) {
                             if (!"JSinglepage".equals(item.getString("localCode"))
@@ -797,7 +866,7 @@ class M4AuthPatchTests(unittest.TestCase):
                             whatsappNames.add(item.getString("name"));
                         }
                     }
-                    int[] expectedCounts = {24, 11, 11, 10, 10, 12, 10, 8};
+                    int[] expectedCounts = {25, 20, 20, 18, 18, 22, 18, 14};
                     for (int i = 0; i < expectedCounts.length; i++) {
                         int productId = 9101 + i;
                         if (!Integer.valueOf(expectedCounts[i]).equals(counts.get(productId))) {
@@ -936,104 +1005,86 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("M4_WHATSAPP_COLLECT_ROUTE_OK", probe.stdout)
 
-    def test_recovery_catalog_routes_one_facebook_collect_module_to_big_data_task(self):
+    def test_recovery_catalog_routes_facebook_modules_to_explicit_local_pages(self):
         probe = self.compile_and_run_catalog_probe(
-            "C1AFacebookCollectRouteProbe",
+            "D3FacebookLocalRoutesProbe",
             """
             import org.json.JSONArray;
             import org.json.JSONObject;
 
-            public class C1AFacebookCollectRouteProbe {
+            public class D3FacebookLocalRoutesProbe {
                 public static void main(String[] args) {
                     JSONArray entries =
                             new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
-                    JSONObject pageCollect = null;
+                    int parentCount = 0;
+                    int childCount = 0;
                     for (int i = 0; i < entries.length(); i++) {
                         JSONObject item = entries.getJSONObject(i);
-                        if ("C4747_003".equals(item.optString("code"))) {
-                            pageCollect = item;
-                        }
-                        if ("C4747_005".equals(item.optString("code"))
-                                || "C4747_006".equals(item.optString("code"))
-                                || "C4747_007".equals(item.optString("code"))
-                                || "C4747_008".equals(item.optString("code"))
-                                || "C4747_009".equals(item.optString("code"))) {
-                            if (!"/pc/aicloud/my".equals(item.optString("linkUrl"))
-                                    || !"original-i18n".equals(item.optString("evidence"))) {
-                                throw new AssertionError("Facebook hard dependency module must stay PARK: " + item);
+                        if (item.optString("evidence").startsWith("d3-fb-local:")) {
+                            parentCount++;
+                            if (item.optInt("productId") != 9103
+                                    || !"JSinglepage".equals(item.optString("localCode"))
+                                    || !item.optString("linkUrl").startsWith("/pc/local/fb/")
+                                    || item.optString("linkUrl").contains("http")) {
+                                throw new AssertionError("wrong Facebook D-3 parent route: " + item);
+                            }
+                        } else if (item.optString("evidence").startsWith("d3-fb-local-child:")) {
+                            childCount++;
+                            if (item.optInt("productId") != 9103
+                                    || !item.optString("localCode").startsWith("/pc/local/fb/")
+                                    || !("JSinglepage:" + item.optString("localCode")).equals(item.optString("linkUrl"))
+                                    || item.optInt("treeEndFlg") != 1) {
+                                throw new AssertionError("wrong Facebook D-3 child route: " + item);
                             }
                         }
                     }
-                    if (pageCollect == null) {
-                        throw new AssertionError("missing Facebook page collect menu");
+                    if (parentCount != 10 || childCount != 10) {
+                        throw new AssertionError("missing Facebook D-3 local routes: " + parentCount + "/" + childCount);
                     }
-                    String expectedLink = "/es/bigData/bigDataTask?code=fb_page_data";
-                    if (pageCollect.optInt("productId") != 9103
-                            || !"FB 主页采集".equals(pageCollect.optString("name"))
-                            || !"JSinglepage".equals(pageCollect.optString("localCode"))
-                            || !expectedLink.equals(pageCollect.optString("linkUrl"))
-                            || pageCollect.optString("linkUrl").contains("http")
-                            || !pageCollect.optString("evidence").contains("c1a-facebook-walking-skeleton:fb-page-data")) {
-                        throw new AssertionError("wrong Facebook page collect recovery route: " + pageCollect);
-                    }
-                    System.out.println("C1A_FACEBOOK_COLLECT_ROUTE_OK");
+                    System.out.println("D3_FACEBOOK_LOCAL_ROUTES_OK");
                 }
             }
             """,
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
-        self.assertIn("C1A_FACEBOOK_COLLECT_ROUTE_OK", probe.stdout)
+        self.assertIn("D3_FACEBOOK_LOCAL_ROUTES_OK", probe.stdout)
 
-    def test_recovery_catalog_routes_one_instagram_collect_module_to_big_data_task(self):
+    def test_recovery_catalog_routes_instagram_modules_to_explicit_local_pages(self):
         probe = self.compile_and_run_catalog_probe(
-            "C2AInstagramCollectRouteProbe",
+            "D2InstagramLocalRoutesProbe",
             """
             import org.json.JSONArray;
             import org.json.JSONObject;
 
-            public class C2AInstagramCollectRouteProbe {
+            public class D2InstagramLocalRoutesProbe {
                 public static void main(String[] args) {
                     JSONArray entries =
                             new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
-                    JSONObject bloggerCollect = null;
+                    int insLocalCount = 0;
                     for (int i = 0; i < entries.length(); i++) {
                         JSONObject item = entries.getJSONObject(i);
-                        if ("C4131_005".equals(item.optString("code"))) {
-                            bloggerCollect = item;
-                        }
-                        if ("C4131_002".equals(item.optString("code"))
-                                || "C4131_003".equals(item.optString("code"))
-                                || "C4131_007".equals(item.optString("code"))
-                                || "C4131_008".equals(item.optString("code"))
-                                || "C4131_009".equals(item.optString("code"))
-                                || "C4131_010".equals(item.optString("code"))) {
-                            if (!"/pc/aicloud/my".equals(item.optString("linkUrl"))
-                                    || !"original-i18n".equals(item.optString("evidence"))) {
-                                throw new AssertionError("Instagram hard dependency module must stay PARK: " + item);
+                        if (item.optString("code").startsWith("C4131_")) {
+                            insLocalCount++;
+                            if (item.optInt("productId") != 9104
+                                    || !"JSinglepage".equals(item.optString("localCode"))
+                                    || !item.optString("linkUrl").startsWith("/pc/local/ins/")
+                                    || !item.optString("evidence").startsWith("d2-ins-local:")) {
+                                throw new AssertionError("Instagram module must use a D-2 local leaf: " + item);
                             }
                         }
                     }
-                    if (bloggerCollect == null) {
-                        throw new AssertionError("missing Instagram blogger collect menu");
+                    if (insLocalCount != 9) {
+                        throw new AssertionError("expected nine Instagram local leaves: " + insLocalCount);
                     }
-                    String expectedLink = "/es/bigData/bigDataTask?code=ins_blogger_data";
-                    if (bloggerCollect.optInt("productId") != 9104
-                            || !"Ins 主页挖掘".equals(bloggerCollect.optString("name"))
-                            || !"JSinglepage".equals(bloggerCollect.optString("localCode"))
-                            || !expectedLink.equals(bloggerCollect.optString("linkUrl"))
-                            || bloggerCollect.optString("linkUrl").contains("http")
-                            || !bloggerCollect.optString("evidence").contains("c2a-instagram-walking-skeleton:ins-blogger-data")) {
-                        throw new AssertionError("wrong Instagram blogger collect recovery route: " + bloggerCollect);
-                    }
-                    System.out.println("C2A_INSTAGRAM_COLLECT_ROUTE_OK");
+                    System.out.println("C2A_INSTAGRAM_LOCAL_ROUTES_OK");
                 }
             }
             """,
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
-        self.assertIn("C2A_INSTAGRAM_COLLECT_ROUTE_OK", probe.stdout)
+        self.assertIn("C2A_INSTAGRAM_LOCAL_ROUTES_OK", probe.stdout)
 
-    def test_recovery_catalog_routes_one_twitter_collect_module_to_big_data_task(self):
+    def test_recovery_catalog_routes_x_modules_to_explicit_local_pages(self):
         probe = self.compile_and_run_catalog_probe(
             "C3ATwitterCollectRouteProbe",
             """
@@ -1050,31 +1101,25 @@ class M4AuthPatchTests(unittest.TestCase):
                         if ("C4133_003".equals(item.optString("code"))) {
                             preciseSearch = item;
                         }
-                        if ("C4133_002".equals(item.optString("code"))
-                                || "C4133_004".equals(item.optString("code"))
-                                || "C4133_005".equals(item.optString("code"))
-                                || "C4133_006".equals(item.optString("code"))
-                                || "C4133_007".equals(item.optString("code"))
-                                || "C4133_008".equals(item.optString("code"))
-                                || "C4133_009".equals(item.optString("code"))
-                                || "C4133_017".equals(item.optString("code"))) {
-                            if (!"/pc/aicloud/my".equals(item.optString("linkUrl"))
-                                    || !"original-i18n".equals(item.optString("evidence"))) {
-                                throw new AssertionError("X hard dependency module must stay PARK: " + item);
+                        if (item.optString("code").startsWith("C4133_")) {
+                            if (!"JSinglepage".equals(item.optString("localCode"))
+                                    || !item.optString("linkUrl").startsWith("/pc/local/x/")
+                                    || !item.optString("evidence").startsWith("d1-x-local:")) {
+                                throw new AssertionError("X module must use a D-1 local leaf: " + item);
                             }
                         }
                     }
                     if (preciseSearch == null) {
                         throw new AssertionError("missing X precise search menu");
                     }
-                    String expectedLink = "/es/bigData/bigDataTask?code=big_data_twitter_new";
+                    String expectedLink = "/pc/local/x/precise-search";
                     if (preciseSearch.optInt("productId") != 9105
                             || !"X 精准搜索".equals(preciseSearch.optString("name"))
                             || !"JSinglepage".equals(preciseSearch.optString("localCode"))
                             || !expectedLink.equals(preciseSearch.optString("linkUrl"))
                             || preciseSearch.optString("linkUrl").contains("http")
-                            || !preciseSearch.optString("evidence").contains("c3a-twitter-walking-skeleton:twitter-new-data")) {
-                        throw new AssertionError("wrong X precise search recovery route: " + preciseSearch);
+                            || !preciseSearch.optString("evidence").contains("d1-x-local:precise-search")) {
+                        throw new AssertionError("wrong D-1 X precise search route: " + preciseSearch);
                     }
                     System.out.println("C3A_TWITTER_COLLECT_ROUTE_OK");
                 }
@@ -1297,13 +1342,7 @@ class M4AuthPatchTests(unittest.TestCase):
                         byCode.put(item.optString("code"), item);
                     }
                     String[][] expected = {
-                        {"C4747_003", "REC_FACEBOOK_PAGE_COLLECT_ROUTE", "/es/bigData/bigDataTask?code=fb_page_data"},
-                        {"C4131_005", "REC_INSTAGRAM_BLOGGER_COLLECT_ROUTE", "/es/bigData/bigDataTask?code=ins_blogger_data"},
-                        {"C4133_003", "REC_TWITTER_PRECISE_SEARCH_ROUTE", "/es/bigData/bigDataTask?code=big_data_twitter_new"},
-                        {"C3461_002", "REC_TIKTOK_BIG_DATA_ROUTE", "/es/bigData/bigDataTask?code=big_data_tiktok_new"},
-                        {"C4135_005", "REC_TELEGRAM_GROUP_COLLECT_ROUTE", "/pc/tg/index"},
-                        {"C4134_002", "REC_GEO_GOOGLE_SEO_ROUTE", "/pc/dataCollect/googleseo"},
-                        {"C4936_000", "REC_WSKEFU_CONVERSATION_ROUTE", "/pc/kefu/conversation"}
+                        {"C3460_001", "REC_WHATSAPP_ADVERTISING_ROUTE", "/views/overseasAds/dataBoard"}
                     };
                     for (int i = 0; i < expected.length; i++) {
                         JSONObject parent = byCode.get(expected[i][0]);
@@ -2584,6 +2623,159 @@ class M4AuthPatchTests(unittest.TestCase):
             stderr=subprocess.PIPE,
         )
 
+    def run_c66_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--c66-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_c67_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--c67-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d1_x_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d1-x-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d2_ins_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d2-ins-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d3_fb_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d3-fb-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d5_tg_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d5-tg-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d5_geo_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d5-geo-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d5_wa_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d5-wa-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_d8_online_overlay(self, input_jar):
+        return subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.classes, ASM_JAR),
+                "M4AuthPatch",
+                "--d8-online-overlay",
+                str(input_jar),
+                str(self.output_jar),
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
     def run_patcher_evidence_mode(self):
         return subprocess.run(
             [
@@ -3599,8 +3791,8 @@ class M4AuthPatchTests(unittest.TestCase):
                         if (!menus.has("tas") || !menus.has("ucf")) {
                             throw new AssertionError("missing top-level menu metadata: " + menus);
                         }
-                        if (menuEntries.length() != 96) {
-                            throw new AssertionError("expected 96 recovered menus: " + menuEntries.length());
+                        if (menuEntries.length() != 155) {
+                            throw new AssertionError("expected 155 recovered menus: " + menuEntries.length());
                         }
                         for (int menuIndex = 0; menuIndex < menuEntries.length(); menuIndex++) {
                             JSONObject recoveredMenu = menuEntries.getJSONObject(menuIndex);
@@ -3638,12 +3830,30 @@ class M4AuthPatchTests(unittest.TestCase):
                                     "C4749_011".equals(recoveredMenu.optString("code"));
                             boolean whatsappKefuChild =
                                     "REC_WHATSAPP_AI_KEFU_ROUTE".equals(recoveredMenu.optString("code"));
-                            boolean facebookPageCollect =
-                                    "C4747_003".equals(recoveredMenu.optString("code"));
-                            boolean instagramBloggerCollect =
-                                    "C4131_005".equals(recoveredMenu.optString("code"));
-                            boolean twitterSearchCollect =
-                                    "C4133_003".equals(recoveredMenu.optString("code"));
+                            boolean d3FbLocalParent =
+                                    recoveredMenu.optString("evidence").startsWith("d3-fb-local:");
+                            boolean d3FbLocalChild =
+                                    recoveredMenu.optString("evidence").startsWith("d3-fb-local-child:");
+                            boolean d4TkLocalParent = recoveredMenu.optString("evidence").startsWith("d4-tk-local:");
+                            boolean d4TkLocalChild = recoveredMenu.optString("evidence").startsWith("d4-tk-local-child:");
+                            boolean d5TgLocalParent = recoveredMenu.optString("evidence").startsWith("d5-tg-local:");
+                            boolean d5TgLocalChild = recoveredMenu.optString("evidence").startsWith("d5-tg-local-child:");
+                            boolean d5GeoLocalParent = recoveredMenu.optString("evidence").startsWith("d5-geo-local:");
+                            boolean d5GeoLocalChild = recoveredMenu.optString("evidence").startsWith("d5-geo-local-child:");
+                            boolean d5WaLocalParent = recoveredMenu.optString("evidence").startsWith("d5-wa-local:");
+                            boolean d5WaLocalChild = recoveredMenu.optString("evidence").startsWith("d5-wa-local-child:");
+                            boolean d2InsLocalParent =
+                                    recoveredMenu.optString("evidence").startsWith("d2-ins-local:");
+                            boolean d2InsLocalChild =
+                                    recoveredMenu.optString("evidence").startsWith("d2-ins-local-child:");
+                            boolean d1XLocalParent =
+                                    recoveredMenu.optString("evidence").startsWith("d1-x-local:");
+                            boolean d1XLocalChild =
+                                    recoveredMenu.optString("evidence").startsWith("d1-x-local-child:");
+                            boolean whatsappAdvertisingParent =
+                                    "C3460_001".equals(recoveredMenu.optString("code"));
+                            boolean whatsappAdvertisingChild =
+                                    "REC_WHATSAPP_ADVERTISING_ROUTE".equals(recoveredMenu.optString("code"));
                             boolean c5PlatformParent =
                                     recoveredMenu.optString("evidence").startsWith("c5-platform-route:");
                             boolean c5PlatformChild =
@@ -3756,26 +3966,72 @@ class M4AuthPatchTests(unittest.TestCase):
                                         || !recoveredMenu.optString("evidence").contains("recovery-route-child:j2026-h-field-map:whatsapp-web")) {
                                     throw new AssertionError("bad WhatsApp AI kefu child route: " + recoveredMenu);
                                 }
-                            } else if (facebookPageCollect) {
+                            } else if (d4TkLocalParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode")) || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/tiktok/") || recoveredMenu.optString("linkUrl").contains("http")) throw new AssertionError("bad D-4 TikTok local parent route: " + recoveredMenu);
+                            } else if (d4TkLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/tiktok/") || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl")) || recoveredMenu.optInt("treeEndFlg") != 1) throw new AssertionError("bad D-4 TikTok local child route: " + recoveredMenu);
+                            } else if (d5TgLocalParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode")) || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/tg/") || recoveredMenu.optString("linkUrl").contains("http")) throw new AssertionError("bad D-5 Telegram local parent route: " + recoveredMenu);
+                            } else if (d5TgLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/tg/") || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl")) || recoveredMenu.optInt("treeEndFlg") != 1) throw new AssertionError("bad D-5 Telegram local child route: " + recoveredMenu);
+                            } else if (d5GeoLocalParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode")) || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/geo/") || recoveredMenu.optString("linkUrl").contains("http")) throw new AssertionError("bad D-5 GEO local parent route: " + recoveredMenu);
+                            } else if (d5GeoLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/geo/") || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl")) || recoveredMenu.optInt("treeEndFlg") != 1) throw new AssertionError("bad D-5 GEO local child route: " + recoveredMenu);
+                            } else if (d5WaLocalParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode")) || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/wa/") || recoveredMenu.optString("linkUrl").contains("http")) throw new AssertionError("bad D-5 WA local parent route: " + recoveredMenu);
+                            } else if (d5WaLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/wa/") || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl")) || recoveredMenu.optInt("treeEndFlg") != 1) throw new AssertionError("bad D-5 WA local child route: " + recoveredMenu);
+                            } else if (d3FbLocalParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
-                                        || !"/es/bigData/bigDataTask?code=fb_page_data".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/fb/")
                                         || recoveredMenu.optString("linkUrl").contains("http")
-                                        || !recoveredMenu.optString("evidence").contains("c1a-facebook-walking-skeleton:fb-page-data")) {
-                                    throw new AssertionError("bad Facebook page collect recovery route: " + recoveredMenu);
+                                        || !recoveredMenu.optString("evidence").startsWith("d3-fb-local:")) {
+                                    throw new AssertionError("bad D-3 Facebook local parent route: " + recoveredMenu);
                                 }
-                            } else if (instagramBloggerCollect) {
-                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
-                                        || !"/es/bigData/bigDataTask?code=ins_blogger_data".equals(recoveredMenu.optString("linkUrl"))
-                                        || recoveredMenu.optString("linkUrl").contains("http")
-                                        || !recoveredMenu.optString("evidence").contains("c2a-instagram-walking-skeleton:ins-blogger-data")) {
-                                    throw new AssertionError("bad Instagram blogger collect recovery route: " + recoveredMenu);
+                            } else if (d3FbLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/fb/")
+                                        || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl"))
+                                        || recoveredMenu.optInt("treeEndFlg") != 1) {
+                                    throw new AssertionError("bad D-3 Facebook local child route: " + recoveredMenu);
                                 }
-                            } else if (twitterSearchCollect) {
+                            } else if (d2InsLocalParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
-                                        || !"/es/bigData/bigDataTask?code=big_data_twitter_new".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/ins/")
                                         || recoveredMenu.optString("linkUrl").contains("http")
-                                        || !recoveredMenu.optString("evidence").contains("c3a-twitter-walking-skeleton:twitter-new-data")) {
-                                    throw new AssertionError("bad X precise search recovery route: " + recoveredMenu);
+                                        || !recoveredMenu.optString("evidence").startsWith("d2-ins-local:")) {
+                                    throw new AssertionError("bad D-2 Ins local parent route: " + recoveredMenu);
+                                }
+                            } else if (d2InsLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/ins/")
+                                        || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl"))
+                                        || recoveredMenu.optInt("treeEndFlg") != 1) {
+                                    throw new AssertionError("bad D-2 Ins local child route: " + recoveredMenu);
+                                }
+                            } else if (d1XLocalParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !recoveredMenu.optString("linkUrl").startsWith("/pc/local/x/")
+                                        || recoveredMenu.optString("linkUrl").contains("http")
+                                        || !recoveredMenu.optString("evidence").startsWith("d1-x-local:")) {
+                                    throw new AssertionError("bad D-1 X local parent route: " + recoveredMenu);
+                                }
+                            } else if (d1XLocalChild) {
+                                if (!recoveredMenu.optString("localCode").startsWith("/pc/local/x/")
+                                        || !("JSinglepage:" + recoveredMenu.optString("localCode")).equals(recoveredMenu.optString("linkUrl"))
+                                        || recoveredMenu.optInt("treeEndFlg") != 1) {
+                                    throw new AssertionError("bad D-1 X local child route: " + recoveredMenu);
+                                }
+                            } else if (whatsappAdvertisingParent) {
+                                if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
+                                        || !"/views/overseasAds/dataBoard".equals(recoveredMenu.optString("linkUrl"))
+                                        || !recoveredMenu.optString("evidence").contains("c67-advertising")) {
+                                    throw new AssertionError("bad WhatsApp advertising parent route: " + recoveredMenu);
+                                }
+                            } else if (whatsappAdvertisingChild) {
+                                if (!"/views/overseasAds/dataBoard".equals(recoveredMenu.optString("localCode"))
+                                        || !"JSinglepage".equals(recoveredMenu.optString("linkUrl"))
+                                        || recoveredMenu.optInt("treeEndFlg") != 1) {
+                                    throw new AssertionError("bad WhatsApp advertising child route: " + recoveredMenu);
                                 }
                             } else if (c5PlatformParent) {
                                 if (!"JSinglepage".equals(recoveredMenu.optString("localCode"))
@@ -4396,6 +4652,75 @@ class M4AuthPatchTests(unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("C6_COMMERCE_ROUTE_MAPPING_OK", probe.stdout)
 
+    def test_c62_blocks_unknown_external_http_requests_without_breaking_local_assets(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "C62ExternalRequestBlockProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class C62ExternalRequestBlockProbe {
+                    private static void requireBlocked(String url) throws Exception {
+                        String body = M5LocalSpiderBridge.localWebAssetBody(url);
+                        if (body == null || !body.contains("C62_EXTERNAL_REQUEST_BLOCKED")) {
+                            throw new AssertionError("external request escaped local bridge: " + url);
+                        }
+                    }
+
+                    public static void main(String[] args) throws Exception {
+                        requireBlocked("https://app.xdxsoft.com/static/js/c62-not-mirrored.js");
+                        requireBlocked("https://39.101.114.44/unknown");
+                        requireBlocked("http://163.181.39.181/unknown");
+
+                        String known = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/pc/alipay/enterpriseAuth");
+                        if (known == null || !known.contains("C6_RECHARGE_UI")) {
+                            throw new AssertionError("known C6 route was not preserved");
+                        }
+                        if (M5LocalSpiderBridge.localWebAssetBody(
+                                        "http://127.0.0.1:50325/local-probe")
+                                != null) {
+                            throw new AssertionError("loopback must remain outside the external blocker");
+                        }
+                        System.out.println("C62_EXTERNAL_REQUEST_BLOCK_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.classes, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS),
+                "C62ExternalRequestBlockProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("C62_EXTERNAL_REQUEST_BLOCK_OK", probe.stdout)
+
     def test_c6_candidate_normalizes_commerce_routes_before_browser_load(self):
         self.compile_patcher()
         result = self.run_patcher()
@@ -4440,34 +4765,677 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertIn("C6_RUNTIME_ROUTE_NORMALIZED", bridge_javap.stdout)
 
-    def test_c6_overlay_updates_only_the_local_bridge_on_c5_candidate(self):
+    def test_c67_existing_advertising_menu_dispatches_to_the_overseas_ads_route(self):
+        probe = self.compile_and_run_catalog_probe(
+            "C67AdvertisingMenuProbe",
+            """
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class C67AdvertisingMenuProbe {
+                public static void main(String[] args) throws Exception {
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    JSONObject advertising = null;
+                    for (int index = 0; index < menus.length(); index++) {
+                        JSONObject menu = menus.getJSONObject(index);
+                        if ("C3460_001".equals(menu.optString("code"))) {
+                            advertising = menu;
+                            break;
+                        }
+                    }
+                    if (advertising == null) {
+                        throw new AssertionError("missing existing advertising menu");
+                    }
+                    if (!"JSinglepage".equals(advertising.optString("localCode"))
+                            || !"/views/overseasAds/dataBoard".equals(advertising.optString("linkUrl"))
+                            || !advertising.optString("evidence").contains("c67-advertising")) {
+                        throw new AssertionError("advertising parent did not dispatch to original ads route: " + advertising);
+                    }
+                    JSONObject advertisingChild = null;
+                    for (int index = 0; index < menus.length(); index++) {
+                        JSONObject menu = menus.getJSONObject(index);
+                        if (advertising.optInt("id") == menu.optInt("parentId")
+                                && "REC_WHATSAPP_ADVERTISING_ROUTE".equals(menu.optString("code"))) {
+                            advertisingChild = menu;
+                            break;
+                        }
+                    }
+                    if (advertisingChild == null
+                            || !"/views/overseasAds/dataBoard".equals(advertisingChild.optString("localCode"))
+                            || !"JSinglepage".equals(advertisingChild.optString("linkUrl"))) {
+                        throw new AssertionError("advertising route child is missing: " + advertisingChild);
+                    }
+                    System.out.println("C67_ADVERTISING_MENU_DISPATCH_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("C67_ADVERTISING_MENU_DISPATCH_OK", probe.stdout)
+
+    def test_c67_advertising_route_is_served_as_html(self):
         self.compile_patcher()
-        c5_candidate = (
+        probe_source = self.tmp_path / "C67AdvertisingContentTypeProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class C67AdvertisingContentTypeProbe {
+                    public static void main(String[] args) {
+                        String contentType = M5LocalSpiderBridge.localWebAssetContentType(
+                                "https://app.xdxsoft.com/views/overseasAds/dataBoard");
+                        if (!contentType.startsWith("text/html")) {
+                            throw new AssertionError("advertising route must be HTML: " + contentType);
+                        }
+                        System.out.println("C67_ADVERTISING_CONTENT_TYPE_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.classes, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            check=True,
+            cwd=ROOT,
+        )
+        result = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS),
+                "C67AdvertisingContentTypeProbe",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=ROOT,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("C67_ADVERTISING_CONTENT_TYPE_OK", result.stdout)
+
+    def test_d1_x_catalog_uses_nine_distinct_explicit_local_leaves(self):
+        probe = self.compile_and_run_catalog_probe(
+            "D1XCatalogProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class D1XCatalogProbe {
+                public static void main(String[] args) throws Exception {
+                    String[] codes = {"C4133_002", "C4133_003", "C4133_004", "C4133_005", "C4133_006", "C4133_007", "C4133_008", "C4133_009", "C4133_017"};
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    Map<String, JSONObject> parents = new HashMap<String, JSONObject>();
+                    for (int i = 0; i < menus.length(); i++) {
+                        JSONObject item = menus.getJSONObject(i);
+                        for (String code : codes) {
+                            if (code.equals(item.optString("code"))) {
+                                parents.put(code, item);
+                            }
+                        }
+                    }
+                    if (parents.size() != codes.length) {
+                        throw new AssertionError("missing X parents: " + parents.keySet());
+                    }
+                    Set<String> routes = new HashSet<String>();
+                    for (String code : codes) {
+                        JSONObject parent = parents.get(code);
+                        String route = parent.optString("linkUrl");
+                        if (!"JSinglepage".equals(parent.optString("localCode"))
+                                || !route.startsWith("/pc/local/x/")
+                                || !parent.optString("evidence").contains("d1-x-local")) {
+                            throw new AssertionError("D-1 X parent route missing: " + parent);
+                        }
+                        routes.add(route);
+                        boolean childFound = false;
+                        for (int i = 0; i < menus.length(); i++) {
+                            JSONObject child = menus.getJSONObject(i);
+                            if (child.optInt("parentId") == parent.optInt("id")
+                                    && child.optString("localCode").equals(route)
+                                    && child.optString("linkUrl").equals("JSinglepage:" + route)) {
+                                childFound = true;
+                            }
+                        }
+                        if (!childFound) {
+                            throw new AssertionError("D-1 X explicit leaf missing for " + code);
+                        }
+                    }
+                    if (routes.size() != codes.length) {
+                        throw new AssertionError("D-1 X routes are not distinct: " + routes);
+                    }
+                    System.out.println("D1_X_CATALOG_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D1_X_CATALOG_OK", probe.stdout)
+
+    def test_d1_x_bridge_serves_distinct_local_pages_with_guarded_operations(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "D1XLocalPagesProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D1XLocalPagesProbe {
+                    public static void main(String[] args) {
+                        String[][] pages = {
+                            {"account-login", "X 账号登录", "登录 X 账号"},
+                            {"precise-search", "X 精准搜索", "提交精准搜索"},
+                            {"peer-followers", "X 同行的粉丝搜索", "提交粉丝搜索"},
+                            {"active-filter", "X 筛选活跃", "开始活跃筛选"},
+                            {"profile-database", "X 主页大数据库", "采集主页数据"},
+                            {"android-agent", "X 安卓智能体", "启动安卓智能体"},
+                            {"aicloud-fingerprint", "X AiCloud指纹", "绑定 AiCloud 指纹"},
+                            {"adspower-fingerprint", "X AdsPower指纹", "绑定 AdsPower 指纹"},
+                            {"jump-push", "X 跳推系统", "开始跳推"}
+                        };
+                        for (String[] page : pages) {
+                            String route = "/pc/local/x/" + page[0];
+                            String body = M5LocalSpiderBridge.localWebAssetBody("https://app.xdxsoft.com" + route);
+                            if (body == null || !body.contains("data-d1-x-route=\\\"" + page[0] + "\\\"")
+                                    || !body.contains("D1_X_LOCAL_PAGE") || !body.contains(page[1])
+                                    || !body.contains(page[2]) || !body.contains("离线提示")
+                                    || !body.contains("data-d1-action=\\\"guarded\\\" disabled")) {
+                                throw new AssertionError("missing guarded D-1 local surface for " + route + ": " + body);
+                            }
+                            if (body.contains("任务批次号") || body.contains("+10000000000")
+                                    || body.contains("fingerprintId") || body.contains("mock")) {
+                                throw new AssertionError("fake data leaked into " + route);
+                            }
+                        }
+                        System.out.println("D1_X_LOCAL_PAGES_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [str(JAVAC), "-encoding", "UTF-8", "-cp", classpath(self.classes, JSON_JAR, DATA_LIBS), "-d", str(self.probe_classes), str(probe_source)],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [str(JAVA), "-cp", classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS), "D1XLocalPagesProbe"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D1_X_LOCAL_PAGES_OK", probe.stdout)
+
+    def test_d2_ins_catalog_uses_nine_distinct_explicit_local_leaves(self):
+        probe = self.compile_and_run_catalog_probe(
+            "D2InsCatalogProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class D2InsCatalogProbe {
+                public static void main(String[] args) throws Exception {
+                    String[][] expected = {
+                        {"C4131_002", "account-login"},
+                        {"C4131_003", "account-search"},
+                        {"C4131_004", "post-search"},
+                        {"C4131_005", "profile-mining"},
+                        {"C4131_006", "active-filter"},
+                        {"C4131_007", "api-broadcast"},
+                        {"C4131_008", "android-agent"},
+                        {"C4131_009", "aicloud-fingerprint"},
+                        {"C4131_010", "adspower-fingerprint"}
+                    };
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    Map<String, JSONObject> parents = new HashMap<String, JSONObject>();
+                    for (int i = 0; i < menus.length(); i++) {
+                        JSONObject item = menus.getJSONObject(i);
+                        for (String[] entry : expected) {
+                            if (entry[0].equals(item.optString("code"))) {
+                                parents.put(entry[0], item);
+                            }
+                        }
+                    }
+                    if (parents.size() != expected.length) {
+                        throw new AssertionError("missing Ins parents: " + parents.keySet());
+                    }
+                    Set<String> routes = new HashSet<String>();
+                    for (String[] entry : expected) {
+                        JSONObject parent = parents.get(entry[0]);
+                        String route = "/pc/local/ins/" + entry[1];
+                        if (!"JSinglepage".equals(parent.optString("localCode"))
+                                || !route.equals(parent.optString("linkUrl"))
+                                || !parent.optString("evidence").startsWith("d2-ins-local:")
+                                || parent.optString("linkUrl").contains("http")
+                                || parent.optString("linkUrl").contains("/pc/aicloud/my")
+                                || parent.optString("linkUrl").contains("/es/bigData/bigDataTask")) {
+                            throw new AssertionError("D-2 Ins parent route missing: " + parent);
+                        }
+                        routes.add(route);
+                        boolean childFound = false;
+                        for (int i = 0; i < menus.length(); i++) {
+                            JSONObject child = menus.getJSONObject(i);
+                            if (child.optInt("parentId") == parent.optInt("id")
+                                    && route.equals(child.optString("localCode"))
+                                    && ("JSinglepage:" + route).equals(child.optString("linkUrl"))
+                                    && child.optInt("treeEndFlg") == 1
+                                    && child.optString("evidence").startsWith("d2-ins-local-child:")) {
+                                childFound = true;
+                            }
+                        }
+                        if (!childFound) {
+                            throw new AssertionError("D-2 Ins explicit leaf missing: " + entry[0]);
+                        }
+                    }
+                    if (routes.size() != expected.length) {
+                        throw new AssertionError("D-2 Ins routes are not distinct: " + routes);
+                    }
+                    System.out.println("D2_INS_CATALOG_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D2_INS_CATALOG_OK", probe.stdout)
+
+    def test_d2_ins_bridge_serves_distinct_local_pages_with_guarded_operations(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "D2InsLocalPagesProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D2InsLocalPagesProbe {
+                    public static void main(String[] args) {
+                        String[][] pages = {
+                            {"account-login", "Ins 帐号登录", "登录 Ins 帐号"},
+                            {"account-search", "Ins 帐号搜索", "提交帐号搜索"},
+                            {"post-search", "Ins 帖子搜索", "提交帖子搜索"},
+                            {"profile-mining", "Ins 主页挖掘", "采集主页数据"},
+                            {"active-filter", "Ins 筛选活跃", "开始活跃筛选"},
+                            {"api-broadcast", "Ins 接口群发", "开始接口群发"},
+                            {"android-agent", "Ins 安卓智能体", "启动安卓智能体"},
+                            {"aicloud-fingerprint", "Ins AiCloud指纹", "绑定 AiCloud 指纹"},
+                            {"adspower-fingerprint", "Ins AdsPower指纹", "绑定 AdsPower 指纹"}
+                        };
+                        for (String[] page : pages) {
+                            String route = "/pc/local/ins/" + page[0];
+                            String body = M5LocalSpiderBridge.localWebAssetBody("https://app.xdxsoft.com" + route);
+                            if (body == null || !body.contains("data-d2-ins-route=\\\"" + page[0] + "\\\"")
+                                    || !body.contains("D2_INS_LOCAL_PAGE") || !body.contains(page[1])
+                                    || !body.contains(page[2]) || !body.contains("离线提示")
+                                    || !body.contains("data-d1-action=\\\"guarded\\\" disabled")) {
+                                throw new AssertionError("missing guarded D-2 Ins surface for " + route + ": " + body);
+                            }
+                            if (body.contains("任务批次号") || body.contains("+10000000000")
+                                    || body.contains("fingerprintId") || body.contains("mock")) {
+                                throw new AssertionError("fake data leaked into " + route);
+                            }
+                        }
+                        System.out.println("D2_INS_LOCAL_PAGES_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [str(JAVAC), "-encoding", "UTF-8", "-cp", classpath(self.classes, JSON_JAR, DATA_LIBS), "-d", str(self.probe_classes), str(probe_source)],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [str(JAVA), "-cp", classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS), "D2InsLocalPagesProbe"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D2_INS_LOCAL_PAGES_OK", probe.stdout)
+
+    def test_d3_fb_catalog_uses_ten_distinct_explicit_local_leaves(self):
+        probe = self.compile_and_run_catalog_probe(
+            "D3FbCatalogProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class D3FbCatalogProbe {
+                public static void main(String[] args) throws Exception {
+                    String[][] expected = {
+                        {"C4747_000", "mirror-settings"}, {"C4747_001", "friends-collect"},
+                        {"C4747_002", "groups-collect"}, {"C4747_003", "pages-collect"},
+                        {"C4747_004", "live-collect"}, {"C4747_005", "ads-collect"},
+                        {"C4747_006", "ad-comment-intercept"}, {"C4747_007", "video-intercept"},
+                        {"C4747_008", "active-user-check"}, {"C4747_009", "inquiry-reply"}
+                    };
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    Map<String, JSONObject> parents = new HashMap<String, JSONObject>();
+                    for (int i = 0; i < menus.length(); i++) {
+                        JSONObject item = menus.getJSONObject(i);
+                        for (String[] entry : expected) {
+                            if (entry[0].equals(item.optString("code"))) {
+                                parents.put(entry[0], item);
+                            }
+                        }
+                    }
+                    if (parents.size() != expected.length) {
+                        throw new AssertionError("missing FB parents: " + parents.keySet());
+                    }
+                    Set<String> routes = new HashSet<String>();
+                    for (String[] entry : expected) {
+                        JSONObject parent = parents.get(entry[0]);
+                        String route = "/pc/local/fb/" + entry[1];
+                        if (!"JSinglepage".equals(parent.optString("localCode"))
+                                || !route.equals(parent.optString("linkUrl"))
+                                || !parent.optString("evidence").startsWith("d3-fb-local:")
+                                || parent.optString("linkUrl").contains("http")
+                                || parent.optString("linkUrl").contains("/pc/aicloud/my")
+                                || parent.optString("linkUrl").contains("/es/bigData/bigDataTask")) {
+                            throw new AssertionError("D-3 FB parent route missing: " + parent);
+                        }
+                        routes.add(route);
+                        boolean childFound = false;
+                        for (int i = 0; i < menus.length(); i++) {
+                            JSONObject child = menus.getJSONObject(i);
+                            if (child.optInt("parentId") == parent.optInt("id")
+                                    && route.equals(child.optString("localCode"))
+                                    && ("JSinglepage:" + route).equals(child.optString("linkUrl"))
+                                    && child.optInt("treeEndFlg") == 1
+                                    && child.optString("evidence").startsWith("d3-fb-local-child:")) {
+                                childFound = true;
+                            }
+                        }
+                        if (!childFound) {
+                            throw new AssertionError("D-3 FB explicit leaf missing: " + entry[0]);
+                        }
+                    }
+                    if (routes.size() != expected.length) {
+                        throw new AssertionError("D-3 FB routes are not distinct: " + routes);
+                    }
+                    System.out.println("D3_FB_CATALOG_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D3_FB_CATALOG_OK", probe.stdout)
+
+    def test_d3_fb_bridge_serves_distinct_local_pages_with_guarded_operations(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "D3FbLocalPagesProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D3FbLocalPagesProbe {
+                    public static void main(String[] args) {
+                        String[][] pages = {
+                            {"mirror-settings", "镜像系统设置", "保存镜像系统设置"},
+                            {"friends-collect", "FB 好友采集", "提交好友采集"},
+                            {"groups-collect", "FB 小组采集", "提交小组采集"},
+                            {"pages-collect", "FB 主页采集", "提交主页采集"},
+                            {"live-collect", "FB 直播采集", "提交直播采集"},
+                            {"ads-collect", "FB 广告采集", "提交广告采集"},
+                            {"ad-comment-intercept", "FB 广告评论截流", "开始广告评论截流"},
+                            {"video-intercept", "FB 视频截流", "开始视频截流"},
+                            {"active-user-check", "FB 活跃用户检测", "开始活跃用户检测"},
+                            {"inquiry-reply", "FB 询盘回复", "开始询盘回复"}
+                        };
+                        for (String[] page : pages) {
+                            String route = "/pc/local/fb/" + page[0];
+                            String body = M5LocalSpiderBridge.localWebAssetBody("https://app.xdxsoft.com" + route);
+                            if (body == null || !body.contains("data-d3-fb-route=\\\"" + page[0] + "\\\"")
+                                    || !body.contains("D3_FB_LOCAL_PAGE") || !body.contains(page[1])
+                                    || !body.contains(page[2]) || !body.contains("离线提示")
+                                    || !body.contains("data-d1-action=\\\"guarded\\\" disabled")) {
+                                throw new AssertionError("missing guarded D-3 local surface for " + route + ": " + body);
+                            }
+                            if (body.contains("任务批次号") || body.contains("+10000000000")
+                                    || body.contains("fingerprintId") || body.contains("mock")) {
+                                throw new AssertionError("fake data leaked into " + route);
+                            }
+                        }
+                        System.out.println("D3_FB_LOCAL_PAGES_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [str(JAVAC), "-encoding", "UTF-8", "-cp", classpath(self.classes, JSON_JAR, DATA_LIBS), "-d", str(self.probe_classes), str(probe_source)],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [str(JAVA), "-cp", classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS), "D3FbLocalPagesProbe"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D3_FB_LOCAL_PAGES_OK", probe.stdout)
+
+    def test_d1_x_overlay_changes_only_catalog_and_local_bridge_on_c67_candidate(self):
+        self.compile_patcher()
+        c67_candidate = ROOT / ".artifacts" / "working" / "c67-advertising-candidate" / "App.c67.candidate.dll"
+        self.assertTrue(c67_candidate.exists(), c67_candidate)
+        result = self.run_d1_x_overlay(c67_candidate)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D1_X_LOCAL_PAGES_OVERLAY", result.stdout)
+        changed = {
+            "com/sbf/util/http/SBFApi.class",
+            "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+        }
+        with zipfile.ZipFile(c67_candidate) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+        bridge_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.jxbrowser.M5LocalSpiderBridge"],
+            cwd=ROOT, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        )
+        self.assertIn("D1_X_LOCAL_PAGE", bridge_javap.stdout)
+
+    def test_d2_ins_overlay_changes_only_catalog_and_local_bridge_on_d1_candidate(self):
+        self.compile_patcher()
+        d1_live_baseline = ROOT / "data" / "app" / "App.dll"
+        self.assertTrue(d1_live_baseline.exists(), d1_live_baseline)
+        result = self.run_d2_ins_overlay(d1_live_baseline)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D2_INS_LOCAL_PAGES_OVERLAY", result.stdout)
+        changed = {
+            "com/sbf/util/http/SBFApi.class",
+            "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+        }
+        with zipfile.ZipFile(d1_live_baseline) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+        bridge_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.jxbrowser.M5LocalSpiderBridge"],
+            cwd=ROOT, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        )
+        self.assertIn("D2_INS_LOCAL_PAGE", bridge_javap.stdout)
+
+    def test_d3_fb_overlay_changes_only_catalog_and_local_bridge_on_d2_candidate(self):
+        self.compile_patcher()
+        d2_live_baseline = ROOT / "data" / "app" / "App.dll"
+        self.assertTrue(d2_live_baseline.exists(), d2_live_baseline)
+        result = self.run_d3_fb_overlay(d2_live_baseline)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D3_FB_LOCAL_PAGES_OVERLAY", result.stdout)
+        changed = {
+            "com/sbf/util/http/SBFApi.class",
+            "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+        }
+        with zipfile.ZipFile(d2_live_baseline) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+        bridge_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.jxbrowser.M5LocalSpiderBridge"],
+            cwd=ROOT, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        )
+        self.assertIn("D3_FB_LOCAL_PAGE", bridge_javap.stdout)
+
+    def test_generic_patcher_accepts_the_current_recovery_menu_payload(self):
+        self.compile_patcher()
+        result = self.run_patcher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_c67_overlay_updates_the_advertising_contract_on_the_c66_candidate(self):
+        self.compile_patcher()
+        c66_candidate = (
             ROOT
             / ".artifacts"
             / "working"
-            / "c5-platform-ui"
-            / "App-c5-platform-ui-candidate.dll"
+            / "c66-commerce-candidate"
+            / "App.c66.candidate.dll"
         )
-        self.assertTrue(c5_candidate.exists())
-        result = self.run_c6_overlay(c5_candidate)
+        self.assertTrue(c66_candidate.exists())
+        result = self.run_c67_overlay(c66_candidate)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("C6_COMMERCE_OVERLAY", result.stdout)
+        self.assertIn("C67_ADVERTISING_OVERLAY", result.stdout)
+
+        sbf_api_entry = "com/sbf/util/http/SBFApi.class"
+        dispatch_entry = "com/sbf/main/JSBFMain$5.class"
         bridge_entry = "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class"
-        with zipfile.ZipFile(c5_candidate) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+        with zipfile.ZipFile(c66_candidate) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
             self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            self.assertNotEqual(base_jar.read(sbf_api_entry), overlay_jar.read(sbf_api_entry))
+            self.assertNotEqual(base_jar.read(dispatch_entry), overlay_jar.read(dispatch_entry))
+            self.assertNotEqual(base_jar.read(bridge_entry), overlay_jar.read(bridge_entry))
+            for entry_name in base_jar.namelist():
+                if entry_name in (sbf_api_entry, dispatch_entry, bridge_entry) or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+
+        javap = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.util.http.SBFApi",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C67_ADVERTISING_MENU_DISPATCH", javap.stdout)
+        self.assertIn("/views/overseasAds/dataBoard", javap.stdout)
+
+        dispatch_javap = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.main.JSBFMain$5",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C67_ADVERTISING_TAB_JXBROWSER_URL_FROM_LINKURL", dispatch_javap.stdout)
+
+        bridge_javap = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.main.jxbrowser.M5LocalSpiderBridge",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("/views/overseasAds/", bridge_javap.stdout)
+
+    def test_c6_overlay_updates_only_the_declared_offline_boundary_classes(self):
+        self.compile_patcher()
+        c65_candidate = (
+            ROOT
+            / ".artifacts"
+            / "working"
+            / "c65-native-host-gateway"
+            / "App.c65.candidate.dll"
+        )
+        self.assertTrue(c65_candidate.exists())
+        result = self.run_c66_overlay(c65_candidate)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("C66_COMMERCE_OVERLAY", result.stdout)
+
+        bridge_entry = "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class"
+        recharge_listener_entry = "com/sbf/main/JSBFMain$6.class"
+        with zipfile.ZipFile(c65_candidate) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            self.assertNotEqual(base_jar.read(bridge_entry), overlay_jar.read(bridge_entry))
             self.assertNotEqual(
-                base_jar.read(bridge_entry),
-                overlay_jar.read(bridge_entry),
+                base_jar.read(recharge_listener_entry), overlay_jar.read(recharge_listener_entry)
             )
             for entry_name in base_jar.namelist():
-                if entry_name == bridge_entry or entry_name.endswith("/"):
+                if entry_name in (bridge_entry, recharge_listener_entry) or entry_name.endswith("/"):
                     continue
-                self.assertEqual(
-                    base_jar.read(entry_name),
-                    overlay_jar.read(entry_name),
-                    entry_name,
-                )
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
 
         probe_source = self.tmp_path / "C6OverlayProbe.java"
         probe_source.write_text(
@@ -4524,6 +5492,974 @@ class M4AuthPatchTests(unittest.TestCase):
         )
         self.assertEqual(probe.returncode, 0, probe.stderr)
         self.assertIn("C6_OVERLAY_BRIDGE_OK", probe.stdout)
+
+    def test_c62_overlay_adds_chromium_startup_network_killswitches(self):
+        self.compile_patcher()
+        c5_candidate = (
+            ROOT
+            / ".artifacts"
+            / "working"
+            / "c5-platform-ui"
+            / "App-c5-platform-ui-candidate.dll"
+        )
+        self.assertTrue(c5_candidate.exists())
+        result = self.run_c6_overlay(c5_candidate)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        engine_entry = "com/sbf/main/jxbrowser/g.class"
+        with zipfile.ZipFile(c5_candidate) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertNotEqual(
+                base_jar.read(engine_entry),
+                overlay_jar.read(engine_entry),
+            )
+        javap = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.main.jxbrowser.g",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        for chromium_switch in (
+            "--disable-background-networking",
+            "--disable-component-update",
+            "--disable-domain-reliability",
+            "--no-pings",
+            "--safebrowsing-disable-auto-update",
+        ):
+            self.assertIn(chromium_switch, javap.stdout)
+
+    def test_c64_overlay_stubs_native_startup_update_and_authorization(self):
+        self.compile_patcher()
+        c5_candidate = (
+            ROOT
+            / ".artifacts"
+            / "working"
+            / "c5-platform-ui"
+            / "App-c5-platform-ui-candidate.dll"
+        )
+        self.assertTrue(c5_candidate.exists())
+        result = self.run_c6_overlay(c5_candidate)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        sbf_api = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.util.http.SBFApi",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        start_app = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.main.StartApp",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C64_MIERP_UPDATE_STUB", sbf_api.stdout)
+        self.assertIn("C64_APPFILE_DOWNLOAD_STUB", sbf_api.stdout)
+        self.assertIn("hasUpdate", sbf_api.stdout)
+        self.assertIn("C64_NATIVE_STARTUP_AUTH_STUB", start_app.stdout)
+        self.assertIn("app.xdxsoft.com", start_app.stdout)
+        self.assertIn("offline-local-token-1234567890", start_app.stdout)
+
+        probe_source = self.tmp_path / "C64NativeStartupProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.StartApp;
+                import java.lang.reflect.Method;
+                import org.json.JSONObject;
+
+                public class C64NativeStartupProbe {
+                    public static void main(String[] args) throws Exception {
+                        String token = StartApp.f("https://app.xdxsoft.com/api/v1/native/startup/license");
+                        if (!"offline-local-token-1234567890".equals(token)) {
+                            throw new AssertionError("native startup token: " + token);
+                        }
+                        Method update = Class.forName("com.sbf.util.http.SBFApi")
+                                .getDeclaredMethod("g", String.class, int.class);
+                        update.setAccessible(true);
+                        JSONObject result = (JSONObject) update.invoke(null, "1.0.0", 0);
+                        if (result.optInt("code") != 200 || result.optBoolean("hasUpdate", true)) {
+                            throw new AssertionError("update contract: " + result);
+                        }
+                        Class.forName("com.sbf.util.http.SBFApi").getDeclaredMethod("n").invoke(null);
+                        System.out.println("C64_NATIVE_STARTUP_STUB_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.output_jar, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.output_jar, JSON_JAR, DATA_LIBS),
+                "C64NativeStartupProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("C64_NATIVE_STARTUP_STUB_OK", probe.stdout)
+
+    def test_c64_overlay_instruments_native_http_urls_for_diagnosis(self):
+        self.compile_patcher()
+        c5_candidate = (
+            ROOT
+            / ".artifacts"
+            / "working"
+            / "c5-platform-ui"
+            / "App-c5-platform-ui-candidate.dll"
+        )
+        self.assertTrue(c5_candidate.exists())
+        result = self.run_c6_overlay(c5_candidate)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        diagnostic_entry = "com/sbf/main/C64NativeNetworkDiag.class"
+        with zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertIn(diagnostic_entry, overlay_jar.namelist())
+        dth = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.util.http.DTHelper",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C64NativeNetworkDiag.observe", dth.stdout)
+
+    def test_c65_overlay_routes_all_xdxsoft_json_calls_through_local_contracts(self):
+        self.compile_patcher()
+        c5_candidate = (
+            ROOT
+            / ".artifacts"
+            / "working"
+            / "c5-platform-ui"
+            / "App-c5-platform-ui-candidate.dll"
+        )
+        self.assertTrue(c5_candidate.exists())
+        result = self.run_c6_overlay(c5_candidate)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        dth = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.util.http.DTHelper",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C64NativeNetworkDiag.localResponse", dth.stdout)
+        sbf_api = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.util.http.SBFApi",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C65_APPFILE_FLOW_STUB", sbf_api.stdout)
+        self.assertIn("C65_APPFILE_RESPONSE_ADAPTER", sbf_api.stdout)
+
+        probe_source = self.tmp_path / "C65NativeGatewayProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.util.http.DTHelper;
+                import org.json.JSONObject;
+
+                public class C65NativeGatewayProbe {
+                    public static void main(String[] args) {
+                        String base = "https://app.xdxsoft.com/prod-api/";
+                        JSONObject checkUser = DTHelper.c(base + "api/v1/client/pc/checkuser");
+                        JSONObject bannedWords = DTHelper.c(base + "api/v1/client/pc/lisBanWords");
+                        JSONObject appFile = DTHelper.c(base + "system/appfiles/code/hcai_app_ime");
+                        if (checkUser.optInt("code") != 200
+                                || !checkUser.optJSONObject("data").optBoolean("authorized")) {
+                            throw new AssertionError("checkuser contract: " + checkUser);
+                        }
+                        if (bannedWords.optInt("code") != 200
+                                || bannedWords.optJSONArray("data").length() != 0) {
+                            throw new AssertionError("lisBanWords contract: " + bannedWords);
+                        }
+                        if (appFile.optInt("code") != 200
+                                || appFile.optJSONObject("data").optInt("code") != 200
+                                || appFile.optJSONObject("data").optJSONObject("data") == null) {
+                            throw new AssertionError("appfile contract: " + appFile);
+                        }
+                        try {
+                            java.lang.reflect.Method ax = Class.forName("com.sbf.util.http.SBFApi")
+                                    .getDeclaredMethod("ax", String.class);
+                            ax.setAccessible(true);
+                            JSONObject asset = (JSONObject) ax.invoke(null, "hcai_app_ime");
+                            if (asset == null) {
+                                throw new AssertionError("appfile ax contract");
+                            }
+                        } catch (Exception exception) {
+                            throw new AssertionError("appfile ax contract", exception);
+                        }
+                        try {
+                            Class.forName("com.sbf.util.http.SBFApi")
+                                    .getDeclaredMethod("n", String.class)
+                                    .invoke(null, "hcai_app_ime");
+                        } catch (Exception exception) {
+                            throw new AssertionError("appfile flow contract", exception);
+                        }
+                        System.out.println("C65_NATIVE_GATEWAY_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.output_jar, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.output_jar, JSON_JAR, DATA_LIBS),
+                "C65NativeGatewayProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("C65_NATIVE_GATEWAY_OK", probe.stdout)
+
+    def test_c66_overlay_replaces_global_recharge_listener_with_local_dialog(self):
+        self.compile_patcher()
+        c5_candidate = (
+            ROOT
+            / ".artifacts"
+            / "working"
+            / "c5-platform-ui"
+            / "App-c5-platform-ui-candidate.dll"
+        )
+        self.assertTrue(c5_candidate.exists())
+        result = self.run_c6_overlay(c5_candidate)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        listener = subprocess.run(
+            [
+                str(JAVAP),
+                "-classpath",
+                str(self.output_jar),
+                "-c",
+                "-p",
+                "com.sbf.main.JSBFMain$6",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("C66_RECHARGE_ENTRY", listener.stdout)
+        self.assertIn("M5LocalSpiderBridge.openC66RechargeDialog", listener.stdout)
+
+        probe_source = self.tmp_path / "C66RechargeDialogProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class C66RechargeDialogProbe {
+                    public static void main(String[] args) {
+                        String html = M5LocalSpiderBridge.localC66RechargeDialogHtml();
+                        if (html == null
+                                || !html.contains("C6_RECHARGE_UI")
+                                || !html.contains("data-c6-action=\\\"disabled\\\"")
+                                || !html.contains("支付与订单功能不可用")) {
+                            throw new AssertionError("missing C66 recharge empty state: " + html);
+                        }
+                        System.out.println("C66_RECHARGE_DIALOG_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.output_jar, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.output_jar, JSON_JAR, DATA_LIBS),
+                "C66RechargeDialogProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertIn("C66_RECHARGE_DIALOG_OK", probe.stdout)
+    def test_d5_tg_catalog_uses_eleven_distinct_explicit_local_leaves(self):
+        probe = self.compile_and_run_catalog_probe(
+            "D5TgCatalogProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class D5TgCatalogProbe {
+                public static void main(String[] args) throws Exception {
+                    String[][] expected = {
+                        {"C4135_001", "jump-push"}, {"C4135_002", "accounts"},
+                        {"C4135_003", "ai-collect"}, {"C4135_004", "ai-data"},
+                        {"C4135_005", "group-collect"}, {"C4135_006", "group-member-extract"},
+                        {"C4135_007", "ai-filter"}, {"C4135_008", "ai-growth"},
+                        {"C4135_009", "android-agent"}, {"C4135_010", "aicloud-fingerprint"},
+                        {"C4135_011", "adspower-fingerprint"}
+                    };
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    Map<String, JSONObject> parents = new HashMap<String, JSONObject>();
+                    for (int i = 0; i < menus.length(); i++) {
+                        JSONObject item = menus.getJSONObject(i);
+                        for (String[] entry : expected) {
+                            if (entry[0].equals(item.optString("code"))) {
+                                parents.put(entry[0], item);
+                            }
+                        }
+                    }
+                    if (parents.size() != expected.length) {
+                        throw new AssertionError("missing TG parents: " + parents.keySet());
+                    }
+                    Set<String> routes = new HashSet<String>();
+                    for (String[] entry : expected) {
+                        JSONObject parent = parents.get(entry[0]);
+                        String route = "/pc/local/tg/" + entry[1];
+                        if (!"JSinglepage".equals(parent.optString("localCode"))
+                                || !route.equals(parent.optString("linkUrl"))
+                                || !parent.optString("evidence").startsWith("d5-tg-local:")
+                                || parent.optString("linkUrl").contains("http")
+                                || parent.optString("linkUrl").contains("/pc/aicloud/my")
+                                || parent.optString("linkUrl").contains("/pc/tg/index")) {
+                            throw new AssertionError("D-5 TG parent route missing: " + parent);
+                        }
+                        routes.add(route);
+                        boolean childFound = false;
+                        for (int i = 0; i < menus.length(); i++) {
+                            JSONObject child = menus.getJSONObject(i);
+                            if (child.optInt("parentId") == parent.optInt("id")
+                                    && route.equals(child.optString("localCode"))
+                                    && ("JSinglepage:" + route).equals(child.optString("linkUrl"))
+                                    && child.optInt("treeEndFlg") == 1
+                                    && child.optString("evidence").startsWith("d5-tg-local-child:")) {
+                                childFound = true;
+                            }
+                        }
+                        if (!childFound) {
+                            throw new AssertionError("D-5 TG explicit leaf missing: " + entry[0]);
+                        }
+                    }
+                    if (routes.size() != expected.length) {
+                        throw new AssertionError("D-5 TG routes are not distinct: " + routes);
+                    }
+                    System.out.println("D5_TG_CATALOG_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D5_TG_CATALOG_OK", probe.stdout)
+
+    def test_d5_tg_bridge_serves_distinct_local_pages_with_guarded_operations(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "D5TgLocalPagesProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D5TgLocalPagesProbe {
+                    public static void main(String[] args) {
+                        String[][] pages = {
+                            {"jump-push", "TG 跳推系统", "启动跳推系统"},
+                            {"accounts", "TG 帐号", "管理 TG 帐号"},
+                            {"ai-collect", "TG AI 采集", "提交 TG AI采集"},
+                            {"ai-data", "TG AI数据", "查看 TG AI数据"},
+                            {"group-collect", "TG AI 群采集", "提交 TG AI群采集"},
+                            {"group-member-extract", "TG AI 群成员提取", "提取 TG 群成员"},
+                            {"ai-filter", "TG AI筛选", "开始 TG AI筛选"},
+                            {"ai-growth", "TG AI裂变", "启动 TG AI裂变"},
+                            {"android-agent", "TG 安卓智能体", "启动 TG 安卓智能体"},
+                            {"aicloud-fingerprint", "TG AiCloud指纹", "绑定 TG AiCloud指纹"},
+                            {"adspower-fingerprint", "TG AdsPower指纹", "绑定 TG AdsPower指纹"}
+                        };
+                        for (String[] page : pages) {
+                            String route = "/pc/local/tg/" + page[0];
+                            String body = M5LocalSpiderBridge.localWebAssetBody("https://app.xdxsoft.com" + route);
+                            if (body == null || !body.contains("data-d5-tg-route=\\\"" + page[0] + "\\\"")
+                                    || !body.contains("D5_TG_LOCAL_PAGE") || !body.contains(page[1])
+                                    || !body.contains(page[2]) || !body.contains("离线提示")
+                                    || !body.contains("data-d1-action=\\\"guarded\\\" disabled")) {
+                                throw new AssertionError("missing guarded D-5 TG surface for " + route + ": " + body);
+                            }
+                            if (body.contains("任务批次号") || body.contains("+10000000000")
+                                    || body.contains("fingerprintId") || body.contains("mock")) {
+                                throw new AssertionError("fake data leaked into " + route);
+                            }
+                        }
+                        System.out.println("D5_TG_LOCAL_PAGES_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [str(JAVAC), "-encoding", "UTF-8", "-cp", classpath(self.classes, JSON_JAR, DATA_LIBS), "-d", str(self.probe_classes), str(probe_source)],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [str(JAVA), "-cp", classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS), "D5TgLocalPagesProbe"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D5_TG_LOCAL_PAGES_OK", probe.stdout)
+
+    def test_d5_tg_overlay_changes_only_catalog_and_local_bridge_on_live_baseline(self):
+        self.compile_patcher()
+        live_baseline = ROOT / "data" / "app" / "App.dll"
+        self.assertTrue(live_baseline.exists(), live_baseline)
+        result = self.run_d5_tg_overlay(live_baseline)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D5_TG_LOCAL_PAGES_OVERLAY", result.stdout)
+        changed = {
+            "com/sbf/util/http/SBFApi.class",
+            "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+        }
+        with zipfile.ZipFile(live_baseline) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+        bridge_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.jxbrowser.M5LocalSpiderBridge"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("D5_TG_LOCAL_PAGE", bridge_javap.stdout)
+
+    def test_d5_geo_catalog_uses_nine_distinct_explicit_local_leaves(self):
+        probe = self.compile_and_run_catalog_probe(
+            "D5GeoCatalogProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class D5GeoCatalogProbe {
+                public static void main(String[] args) throws Exception {
+                    String[][] expected = {
+                        {"C4134_002", "google-seo"}, {"C4134_003", "precise-number-mining"},
+                        {"C4134_006", "google-geo-media"}, {"C4137_001", "global-number-collect"},
+                        {"C4137_002", "global-region-collect"}, {"C4137_003", "customs-data-mining"},
+                        {"C4137_004", "global-company-data"}, {"C4137_005", "global-big-data"},
+                        {"C4137_006", "number-ai-active-filter"}
+                    };
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    Map<String, JSONObject> parents = new HashMap<String, JSONObject>();
+                    for (int i = 0; i < menus.length(); i++) {
+                        JSONObject item = menus.getJSONObject(i);
+                        for (String[] entry : expected) {
+                            if (entry[0].equals(item.optString("code"))) {
+                                parents.put(entry[0], item);
+                            }
+                        }
+                    }
+                    if (parents.size() != expected.length) {
+                        throw new AssertionError("missing GEO parents: " + parents.keySet());
+                    }
+                    Set<String> routes = new HashSet<String>();
+                    for (String[] entry : expected) {
+                        JSONObject parent = parents.get(entry[0]);
+                        String route = "/pc/local/geo/" + entry[1];
+                        if (!"JSinglepage".equals(parent.optString("localCode"))
+                                || !route.equals(parent.optString("linkUrl"))
+                                || !parent.optString("evidence").startsWith("d5-geo-local:")
+                                || parent.optString("linkUrl").contains("http")
+                                || parent.optString("linkUrl").contains("/pc/aicloud/my")
+                                || parent.optString("linkUrl").contains("/pc/dataCollect/googleseo")) {
+                            throw new AssertionError("D-5 GEO parent route missing: " + parent);
+                        }
+                        routes.add(route);
+                        boolean childFound = false;
+                        for (int i = 0; i < menus.length(); i++) {
+                            JSONObject child = menus.getJSONObject(i);
+                            if (child.optInt("parentId") == parent.optInt("id")
+                                    && route.equals(child.optString("localCode"))
+                                    && ("JSinglepage:" + route).equals(child.optString("linkUrl"))
+                                    && child.optInt("treeEndFlg") == 1
+                                    && child.optString("evidence").startsWith("d5-geo-local-child:")) {
+                                childFound = true;
+                            }
+                        }
+                        if (!childFound) {
+                            throw new AssertionError("D-5 GEO explicit leaf missing: " + entry[0]);
+                        }
+                    }
+                    if (routes.size() != expected.length) {
+                        throw new AssertionError("D-5 GEO routes are not distinct: " + routes);
+                    }
+                    System.out.println("D5_GEO_CATALOG_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D5_GEO_CATALOG_OK", probe.stdout)
+
+    def test_d5_geo_bridge_serves_distinct_local_pages_with_guarded_operations(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "D5GeoLocalPagesProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D5GeoLocalPagesProbe {
+                    public static void main(String[] args) {
+                        String[][] pages = {
+                            {"google-seo", "精准官网挖掘", "开始官网挖掘"},
+                            {"precise-number-mining", "精准号码挖掘", "开始号码挖掘"},
+                            {"google-geo-media", "Google GEO外媒体", "查看 GEO外媒体"},
+                            {"global-number-collect", "全球号码采集", "开始全球号码采集"},
+                            {"global-region-collect", "全球地区采集", "开始全球地区采集"},
+                            {"customs-data-mining", "海关数据挖掘", "开始海关数据挖掘"},
+                            {"global-company-data", "全球企业大数据", "查看全球企业数据"},
+                            {"global-big-data", "全球大数据", "查看全球大数据"},
+                            {"number-ai-active-filter", "号码 AI筛选活跃", "开始号码 AI筛选"}
+                        };
+                        for (String[] page : pages) {
+                            String route = "/pc/local/geo/" + page[0];
+                            String body = M5LocalSpiderBridge.localWebAssetBody("https://app.xdxsoft.com" + route);
+                            if (body == null || !body.contains("data-d5-geo-route=\\\"" + page[0] + "\\\"")
+                                    || !body.contains("D5_GEO_LOCAL_PAGE") || !body.contains(page[1])
+                                    || !body.contains(page[2]) || !body.contains("离线提示")
+                                    || !body.contains("data-d1-action=\\\"guarded\\\" disabled")) {
+                                throw new AssertionError("missing guarded D-5 GEO surface for " + route + ": " + body);
+                            }
+                            if (body.contains("任务批次号") || body.contains("+10000000000")
+                                    || body.contains("fingerprintId") || body.contains("mock")) {
+                                throw new AssertionError("fake data leaked into " + route);
+                            }
+                        }
+                        System.out.println("D5_GEO_LOCAL_PAGES_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [str(JAVAC), "-encoding", "UTF-8", "-cp", classpath(self.classes, JSON_JAR, DATA_LIBS), "-d", str(self.probe_classes), str(probe_source)],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [str(JAVA), "-cp", classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS), "D5GeoLocalPagesProbe"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D5_GEO_LOCAL_PAGES_OK", probe.stdout)
+
+    def test_d5_geo_overlay_changes_only_catalog_and_local_bridge_on_tg_live_baseline(self):
+        self.compile_patcher()
+        live_baseline = ROOT / "data" / "app" / "App.dll"
+        self.assertTrue(live_baseline.exists(), live_baseline)
+        result = self.run_d5_geo_overlay(live_baseline)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D5_GEO_LOCAL_PAGES_OVERLAY", result.stdout)
+        changed = {
+            "com/sbf/util/http/SBFApi.class",
+            "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+        }
+        with zipfile.ZipFile(live_baseline) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+        bridge_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.jxbrowser.M5LocalSpiderBridge"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("D5_GEO_LOCAL_PAGE", bridge_javap.stdout)
+
+    def test_d5_wa_catalog_uses_seven_distinct_explicit_local_leaves(self):
+        probe = self.compile_and_run_catalog_probe(
+            "D5WaCatalogProbe",
+            """
+            import java.util.HashMap;
+            import java.util.HashSet;
+            import java.util.Map;
+            import java.util.Set;
+            import org.json.JSONArray;
+            import org.json.JSONObject;
+
+            public class D5WaCatalogProbe {
+                public static void main(String[] args) throws Exception {
+                    String[][] expected = {
+                        {"C4936_000", "overview"}, {"C4936_001", "account-groups"},
+                        {"C4936_002", "account-list"}, {"C4936_004", "contact-pool"},
+                        {"C4936_005", "fan-broadcast"}, {"C4936_006", "group-broadcast"},
+                        {"C4936_007", "customer-service-list"}
+                    };
+                    JSONArray menus = new JSONObject(M4RecoveryCatalog.pcMenusJson()).getJSONArray("scfs");
+                    Map<String, JSONObject> parents = new HashMap<String, JSONObject>();
+                    for (int i = 0; i < menus.length(); i++) {
+                        JSONObject item = menus.getJSONObject(i);
+                        for (String[] entry : expected) {
+                            if (entry[0].equals(item.optString("code"))) parents.put(entry[0], item);
+                        }
+                    }
+                    if (parents.size() != expected.length) throw new AssertionError("missing WA parents: " + parents.keySet());
+                    Set<String> routes = new HashSet<String>();
+                    for (String[] entry : expected) {
+                        JSONObject parent = parents.get(entry[0]);
+                        String route = "/pc/local/wa/" + entry[1];
+                        if (!"JSinglepage".equals(parent.optString("localCode"))
+                                || !route.equals(parent.optString("linkUrl"))
+                                || !parent.optString("evidence").startsWith("d5-wa-local:")
+                                || parent.optString("linkUrl").contains("http")
+                                || parent.optString("linkUrl").contains("/pc/aicloud/my")
+                                || parent.optString("linkUrl").contains("/pc/kefu/conversation")) {
+                            throw new AssertionError("D-5 WA parent route missing: " + parent);
+                        }
+                        routes.add(route);
+                        boolean childFound = false;
+                        for (int i = 0; i < menus.length(); i++) {
+                            JSONObject child = menus.getJSONObject(i);
+                            if (child.optInt("parentId") == parent.optInt("id")
+                                    && route.equals(child.optString("localCode"))
+                                    && ("JSinglepage:" + route).equals(child.optString("linkUrl"))
+                                    && child.optInt("treeEndFlg") == 1
+                                    && child.optString("evidence").startsWith("d5-wa-local-child:")) childFound = true;
+                        }
+                        if (!childFound) throw new AssertionError("D-5 WA explicit leaf missing: " + entry[0]);
+                    }
+                    if (routes.size() != expected.length) throw new AssertionError("D-5 WA routes are not distinct: " + routes);
+                    System.out.println("D5_WA_CATALOG_OK");
+                }
+            }
+            """,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D5_WA_CATALOG_OK", probe.stdout)
+
+    def test_d5_wa_bridge_serves_distinct_local_pages_with_guarded_operations(self):
+        self.compile_patcher()
+        probe_source = self.tmp_path / "D5WaLocalPagesProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D5WaLocalPagesProbe {
+                    public static void main(String[] args) {
+                        String[][] pages = {
+                            {"overview", "信息总览", "查看客服概览"},
+                            {"account-groups", "账号分组", "管理账号分组"},
+                            {"account-list", "账号列表", "查看账号列表"},
+                            {"contact-pool", "联系人数据池", "查看联系人数据池"},
+                            {"fan-broadcast", "爆粉群发", "开始爆粉群发"},
+                            {"group-broadcast", "群聊群发", "开始群聊群发"},
+                            {"customer-service-list", "客服列表", "查看客服列表"}
+                        };
+                        for (String[] page : pages) {
+                            String route = "/pc/local/wa/" + page[0];
+                            String body = M5LocalSpiderBridge.localWebAssetBody("https://app.xdxsoft.com" + route);
+                            if (body == null || !body.contains("data-d5-wa-route=\\\"" + page[0] + "\\\"")
+                                    || !body.contains("D5_WA_LOCAL_PAGE") || !body.contains(page[1])
+                                    || !body.contains(page[2]) || !body.contains("离线提示")
+                                    || !body.contains("data-d1-action=\\\"guarded\\\" disabled")) {
+                                throw new AssertionError("missing guarded D-5 WA surface for " + route + ": " + body);
+                            }
+                            if (body.contains("二维码") || body.contains("发送消息") || body.contains("mock")) {
+                                throw new AssertionError("forbidden customer-service capability leaked into " + route);
+                            }
+                        }
+                        System.out.println("D5_WA_LOCAL_PAGES_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [str(JAVAC), "-encoding", "UTF-8", "-cp", classpath(self.classes, JSON_JAR, DATA_LIBS), "-d", str(self.probe_classes), str(probe_source)],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [str(JAVA), "-cp", classpath(self.probe_classes, self.classes, JSON_JAR, DATA_LIBS), "D5WaLocalPagesProbe"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D5_WA_LOCAL_PAGES_OK", probe.stdout)
+
+    def test_d5_wa_overlay_changes_only_catalog_and_local_bridge_on_geo_live_baseline(self):
+        self.compile_patcher()
+        live_baseline = ROOT / "data" / "app" / "App.dll"
+        self.assertTrue(live_baseline.exists(), live_baseline)
+        result = self.run_d5_wa_overlay(live_baseline)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D5_WA_LOCAL_PAGES_OVERLAY", result.stdout)
+        changed = {"com/sbf/util/http/SBFApi.class", "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class"}
+        with zipfile.ZipFile(live_baseline) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+        bridge_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.jxbrowser.M5LocalSpiderBridge"],
+            cwd=ROOT, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        )
+        self.assertIn("D5_WA_LOCAL_PAGE", bridge_javap.stdout)
+
+    def test_d8_online_overlay_allows_only_original_backend_hosts(self):
+        self.compile_patcher()
+        live_baseline = ROOT / "data" / "app" / "App.dll"
+        self.assertTrue(live_baseline.exists(), live_baseline)
+        result = self.run_d8_online_overlay(live_baseline)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("D8_ONLINE_OVERLAY", result.stdout)
+
+        changed = {
+            "com/sbf/main/StartApp.class",
+            "com/sbf/main/C64NativeNetworkDiag.class",
+            "com/sbf/main/jxbrowser/M5LocalSpiderBridge.class",
+        }
+        with zipfile.ZipFile(live_baseline) as base_jar, zipfile.ZipFile(self.output_jar) as overlay_jar:
+            self.assertEqual(base_jar.namelist(), overlay_jar.namelist())
+            for entry_name in base_jar.namelist():
+                if entry_name in changed or entry_name.endswith("/"):
+                    continue
+                self.assertEqual(base_jar.read(entry_name), overlay_jar.read(entry_name), entry_name)
+
+        probe_source = self.tmp_path / "D8OnlineOverlayProbe.java"
+        probe_source.write_text(
+            textwrap.dedent(
+                """
+                import com.sbf.main.C64NativeNetworkDiag;
+                import com.sbf.main.jxbrowser.M5LocalSpiderBridge;
+
+                public class D8OnlineOverlayProbe {
+                    public static void main(String[] args) {
+                        String originalApi = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/prod-api/system/google_sites/lists");
+                        if (originalApi != null) {
+                            throw new AssertionError("original API stayed locally intercepted: " + originalApi);
+                        }
+                        String originalRoute = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://app.xdxsoft.com/views/overseasAds/dataBoard");
+                        if (originalRoute != null) {
+                            throw new AssertionError("original route stayed locally intercepted: " + originalRoute);
+                        }
+                        if (C64NativeNetworkDiag.localResponse(
+                                "https://app.xdxsoft.com/api/v1/client/pc/checkuser") != null) {
+                            throw new AssertionError("original native gateway stayed locally intercepted");
+                        }
+                        String thirdParty = M5LocalSpiderBridge.localWebAssetBody(
+                                "https://www.facebook.com/unsafe");
+                        if (thirdParty == null || !thirdParty.contains("C62_EXTERNAL_REQUEST_BLOCKED")) {
+                            throw new AssertionError("third-party browser request was not blocked: " + thirdParty);
+                        }
+                        System.out.println("D8_ONLINE_ALLOWLIST_OK");
+                    }
+                }
+                """
+            ).strip(),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                str(JAVAC),
+                "-encoding",
+                "UTF-8",
+                "-cp",
+                classpath(self.output_jar, JSON_JAR, DATA_LIBS),
+                "-d",
+                str(self.probe_classes),
+                str(probe_source),
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        probe = subprocess.run(
+            [
+                str(JAVA),
+                "-cp",
+                classpath(self.probe_classes, self.output_jar, JSON_JAR, DATA_LIBS),
+                "D8OnlineOverlayProbe",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+        self.assertIn("D8_ONLINE_ALLOWLIST_OK", probe.stdout)
+
+        startup_javap = subprocess.run(
+            [str(JAVAP), "-classpath", str(self.output_jar), "-c", "-p", "com.sbf.main.StartApp"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("offline.invalid", startup_javap.stdout)
 
 
 if __name__ == "__main__":

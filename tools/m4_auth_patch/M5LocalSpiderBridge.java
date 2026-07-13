@@ -535,6 +535,45 @@ public final class M5LocalSpiderBridge {
 
     public static byte[] localWebAssetBytes(String url) {
         try {
+            if (d8OriginalBackendPassThrough(url)) {
+                System.out.println("D8_ONLINE_WEB_PASSTHROUGH url=" + String.valueOf(url));
+                return null;
+            }
+            String d1XLocalPage = localD1XLocalPage(url);
+            if (d1XLocalPage != null) {
+                System.out.println("D1_X_LOCAL_PAGE url=" + String.valueOf(url));
+                return d1XLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
+            String d2InsLocalPage = localD2InsLocalPage(url);
+            if (d2InsLocalPage != null) {
+                System.out.println("D2_INS_LOCAL_PAGE url=" + String.valueOf(url));
+                return d2InsLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
+            String d3FbLocalPage = localD3FbLocalPage(url);
+            if (d3FbLocalPage != null) {
+                System.out.println("D3_FB_LOCAL_PAGE url=" + String.valueOf(url));
+                return d3FbLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
+            String d4TkLocalPage = localD4TkLocalPage(url);
+            if (d4TkLocalPage != null) {
+                System.out.println("D4_TK_LOCAL_PAGE url=" + String.valueOf(url));
+                return d4TkLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
+            String d5TgLocalPage = localD5TgLocalPage(url);
+            if (d5TgLocalPage != null) {
+                System.out.println("D5_TG_LOCAL_PAGE url=" + String.valueOf(url));
+                return d5TgLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
+            String d5GeoLocalPage = localD5GeoLocalPage(url);
+            if (d5GeoLocalPage != null) {
+                System.out.println("D5_GEO_LOCAL_PAGE url=" + String.valueOf(url));
+                return d5GeoLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
+            String d5WaLocalPage = localD5WaLocalPage(url);
+            if (d5WaLocalPage != null) {
+                System.out.println("D5_WA_LOCAL_PAGE url=" + String.valueOf(url));
+                return d5WaLocalPage.getBytes(StandardCharsets.UTF_8);
+            }
             String c6CommercePage = localC6CommercePage(url);
             if (c6CommercePage != null) {
                 System.out.println("C6_COMMERCE_LOCAL_PAGE url=" + String.valueOf(url));
@@ -557,8 +596,18 @@ public final class M5LocalSpiderBridge {
                 System.out.println("M8D17_LOCAL_WEB_JSON url=" + String.valueOf(url));
                 return terminalJson.getBytes(StandardCharsets.UTF_8);
             }
+            String untrustedHostBlock = localC62ExternalRequestBlock(url, false);
+            if (untrustedHostBlock != null) {
+                System.out.println("C62_EXTERNAL_REQUEST_BLOCKED url=" + String.valueOf(url));
+                return untrustedHostBlock.getBytes(StandardCharsets.UTF_8);
+            }
             Path asset = localWebAssetPath(url);
             if (asset == null || !Files.exists(asset)) {
+                String blocked = localC62ExternalRequestBlock(url, true);
+                if (blocked != null) {
+                    System.out.println("C62_EXTERNAL_REQUEST_BLOCKED url=" + String.valueOf(url));
+                    return blocked.getBytes(StandardCharsets.UTF_8);
+                }
                 return null;
             }
             System.out.println("M5D8_LOCAL_WEB_ASSET " + asset.toAbsolutePath());
@@ -589,6 +638,36 @@ public final class M5LocalSpiderBridge {
         }
     }
 
+    private static boolean d8OriginalBackendPassThrough(String url) {
+        if (!d8OnlineEnabled() || url == null) {
+            return false;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                    || host == null) {
+                return false;
+            }
+            String lower = host.toLowerCase();
+            return "xdxsoft.com".equals(lower)
+                    || lower.endsWith(".xdxsoft.com")
+                    || "huochai.ai".equals(lower)
+                    || lower.endsWith(".huochai.ai")
+                    || "mierp.net".equals(lower)
+                    || lower.endsWith(".mierp.net")
+                    || "47.97.27.111".equals(lower)
+                    || "163.181.39.184".equals(lower);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean d8OnlineEnabled() {
+        return Boolean.getBoolean("huochai.d8.online");
+    }
+
     public static String normalizeC6CommerceRoute(String url) {
         if (url == null) {
             return null;
@@ -607,6 +686,204 @@ public final class M5LocalSpiderBridge {
             return "/pc/c6/advertising";
         }
         return url;
+    }
+
+    private static String localD1XLocalPage(String url) {
+        String path = normalizedUrlPath(url);
+        String[] page = null;
+        if ("/pc/local/x/account-login".equals(path)) {
+            page = new String[] {"account-login", "X 账号登录", "账号信息未在本地保存，登录能力尚未接入。", "登录 X 账号"};
+        } else if ("/pc/local/x/precise-search".equals(path)) {
+            page = new String[] {"precise-search", "X 精准搜索", "未配置关键词或搜索任务，本页不创建任务。", "提交精准搜索"};
+        } else if ("/pc/local/x/peer-followers".equals(path)) {
+            page = new String[] {"peer-followers", "X 同行的粉丝搜索", "未配置同行主页或采集范围，本页不提交采集。", "提交粉丝搜索"};
+        } else if ("/pc/local/x/active-filter".equals(path)) {
+            page = new String[] {"active-filter", "X 筛选活跃", "没有本地账号或活跃判定结果，本页不执行筛选。", "开始活跃筛选"};
+        } else if ("/pc/local/x/profile-database".equals(path)) {
+            page = new String[] {"profile-database", "X 主页大数据库", "本地未保存主页数据，本页不启动采集。", "采集主页数据"};
+        } else if ("/pc/local/x/android-agent".equals(path)) {
+            page = new String[] {"android-agent", "X 安卓智能体", "安卓设备与智能体运行链未接入，本页不启动设备。", "启动安卓智能体"};
+        } else if ("/pc/local/x/aicloud-fingerprint".equals(path)) {
+            page = new String[] {"aicloud-fingerprint", "X AiCloud指纹", "本地没有可绑定的 AiCloud 指纹数据。", "绑定 AiCloud 指纹"};
+        } else if ("/pc/local/x/adspower-fingerprint".equals(path)) {
+            page = new String[] {"adspower-fingerprint", "X AdsPower指纹", "本地没有可绑定的 AdsPower 指纹数据。", "绑定 AdsPower 指纹"};
+        } else if ("/pc/local/x/jump-push".equals(path)) {
+            page = new String[] {"jump-push", "X 跳推系统", "未配置跳推账号或发送目标，本页不触发发送。", "开始跳推"};
+        }
+        if (page == null) {
+            return null;
+        }
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>"
+                + page[1]
+                + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d1-x-route=\""
+                + page[0]
+                + "\"><h1>"
+                + page[1]
+                + "</h1><p>D1_X_LOCAL_PAGE</p><p>离线提示："
+                + page[2]
+                + "</p><button data-d1-action=\"guarded\" disabled>"
+                + page[3]
+                + "</button></main></body></html>";
+    }
+
+    private static String localD2InsLocalPage(String url) {
+        String path = normalizedUrlPath(url);
+        String[] page = null;
+        if ("/pc/local/ins/account-login".equals(path)) {
+            page = new String[] {"account-login", "Ins 帐号登录", "本地未保存 Ins 帐号信息，登录能力尚未接入。", "登录 Ins 帐号"};
+        } else if ("/pc/local/ins/account-search".equals(path)) {
+            page = new String[] {"account-search", "Ins 帐号搜索", "未配置帐号搜索条件，本页不提交搜索任务。", "提交帐号搜索"};
+        } else if ("/pc/local/ins/post-search".equals(path)) {
+            page = new String[] {"post-search", "Ins 帖子搜索", "未配置帖子关键词或搜索范围，本页不提交搜索任务。", "提交帖子搜索"};
+        } else if ("/pc/local/ins/profile-mining".equals(path)) {
+            page = new String[] {"profile-mining", "Ins 主页挖掘", "本地未保存主页挖掘范围，本页不启动采集。", "采集主页数据"};
+        } else if ("/pc/local/ins/active-filter".equals(path)) {
+            page = new String[] {"active-filter", "Ins 筛选活跃", "没有本地帐号或活跃判定结果，本页不执行筛选。", "开始活跃筛选"};
+        } else if ("/pc/local/ins/api-broadcast".equals(path)) {
+            page = new String[] {"api-broadcast", "Ins 接口群发", "未配置发送帐号或目标，本页不触发群发。", "开始接口群发"};
+        } else if ("/pc/local/ins/android-agent".equals(path)) {
+            page = new String[] {"android-agent", "Ins 安卓智能体", "安卓设备与智能体运行链未接入，本页不启动设备。", "启动安卓智能体"};
+        } else if ("/pc/local/ins/aicloud-fingerprint".equals(path)) {
+            page = new String[] {"aicloud-fingerprint", "Ins AiCloud指纹", "本地没有可绑定的 AiCloud 指纹数据。", "绑定 AiCloud 指纹"};
+        } else if ("/pc/local/ins/adspower-fingerprint".equals(path)) {
+            page = new String[] {"adspower-fingerprint", "Ins AdsPower指纹", "本地没有可绑定的 AdsPower 指纹数据。", "绑定 AdsPower 指纹"};
+        }
+        if (page == null) {
+            return null;
+        }
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>"
+                + page[1]
+                + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d2-ins-route=\""
+                + page[0]
+                + "\"><h1>"
+                + page[1]
+                + "</h1><p>D2_INS_LOCAL_PAGE</p><p>离线提示："
+                + page[2]
+                + "</p><button data-d1-action=\"guarded\" disabled>"
+                + page[3]
+                + "</button></main></body></html>";
+    }
+
+    private static String localD3FbLocalPage(String url) {
+        String path = normalizedUrlPath(url);
+        String[] page = null;
+        if ("/pc/local/fb/mirror-settings".equals(path)) {
+            page = new String[] {"mirror-settings", "镜像系统设置", "本地没有可保存的镜像系统配置，本页不写入设置。", "保存镜像系统设置"};
+        } else if ("/pc/local/fb/friends-collect".equals(path)) {
+            page = new String[] {"friends-collect", "FB 好友采集", "未配置好友采集条件或范围，本页不提交采集。", "提交好友采集"};
+        } else if ("/pc/local/fb/groups-collect".equals(path)) {
+            page = new String[] {"groups-collect", "FB 小组采集", "未配置小组采集条件或范围，本页不提交采集。", "提交小组采集"};
+        } else if ("/pc/local/fb/pages-collect".equals(path)) {
+            page = new String[] {"pages-collect", "FB 主页采集", "未配置主页采集条件或范围，本页不提交采集。", "提交主页采集"};
+        } else if ("/pc/local/fb/live-collect".equals(path)) {
+            page = new String[] {"live-collect", "FB 直播采集", "未配置直播采集条件或范围，本页不提交采集。", "提交直播采集"};
+        } else if ("/pc/local/fb/ads-collect".equals(path)) {
+            page = new String[] {"ads-collect", "FB 广告采集", "未配置广告采集条件或范围，本页不提交采集。", "提交广告采集"};
+        } else if ("/pc/local/fb/ad-comment-intercept".equals(path)) {
+            page = new String[] {"ad-comment-intercept", "FB 广告评论截流", "本地没有广告评论或截流规则，本页不启动截流。", "开始广告评论截流"};
+        } else if ("/pc/local/fb/video-intercept".equals(path)) {
+            page = new String[] {"video-intercept", "FB 视频截流", "本地没有视频或截流规则，本页不启动截流。", "开始视频截流"};
+        } else if ("/pc/local/fb/active-user-check".equals(path)) {
+            page = new String[] {"active-user-check", "FB 活跃用户检测", "本地没有帐号或活跃检测结果，本页不执行检测。", "开始活跃用户检测"};
+        } else if ("/pc/local/fb/inquiry-reply".equals(path)) {
+            page = new String[] {"inquiry-reply", "FB 询盘回复", "未配置询盘或回复目标，本页不触发回复。", "开始询盘回复"};
+        }
+        if (page == null) {
+            return null;
+        }
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>"
+                + page[1]
+                + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d3-fb-route=\""
+                + page[0]
+                + "\"><h1>"
+                + page[1]
+                + "</h1><p>D3_FB_LOCAL_PAGE</p><p>离线提示："
+                + page[2]
+                + "</p><button data-d1-action=\"guarded\" disabled>"
+                + page[3]
+                + "</button></main></body></html>";
+    }
+
+    private static String localD4TkLocalPage(String url) {
+        String path = normalizedUrlPath(url); String[] page = null;
+        if ("/pc/local/tiktok/ai-collect".equals(path)) page = new String[] {"ai-collect", "TK AI采集", "未配置采集条件或范围，本页不提交采集。", "提交 AI采集"};
+        else if ("/pc/local/tiktok/ai-filter".equals(path)) page = new String[] {"ai-filter", "TK AI筛选", "本地没有可筛选的数据，本页不执行筛选。", "开始 AI筛选"};
+        else if ("/pc/local/tiktok/mirror-system".equals(path)) page = new String[] {"mirror-system", "TK 镜像系统", "本地没有可保存的镜像设置，本页不写入配置。", "保存镜像设置"};
+        else if ("/pc/local/tiktok/ios-multi-account".equals(path)) page = new String[] {"ios-multi-account", "TK IOS多号", "未接入 iOS 设备或帐号，本页不启动多号操作。", "启动 IOS多号"};
+        else if ("/pc/local/tiktok/ai-super-account".equals(path)) page = new String[] {"ai-super-account", "TK AI超级号", "本地没有可用超级号，本页不启动帐号操作。", "启用 AI超级号"};
+        else if ("/pc/local/tiktok/api-publish".equals(path)) page = new String[] {"api-publish", "TK API发布", "未配置发布帐号或内容，本页不触发发布。", "提交 API发布"};
+        else if ("/pc/local/tiktok/ai-live".equals(path)) page = new String[] {"ai-live", "TK AI直播", "直播设备与任务未接入，本页不启动直播。", "启动 AI直播"};
+        else if ("/pc/local/tiktok/cloud-collect".equals(path)) page = new String[] {"cloud-collect", "TK 云采集", "未配置云采集条件，本页不提交采集。", "提交云采集"};
+        else if ("/pc/local/tiktok/trending".equals(path)) page = new String[] {"trending", "TK AI上热门", "未配置帐号或推广目标，本页不触发操作。", "开始上热门"};
+        else if ("/pc/local/tiktok/cloud-filter".equals(path)) page = new String[] {"cloud-filter", "TK 云筛选", "本地没有可筛选的数据，本页不执行筛选。", "开始云筛选"};
+        if (page == null) return null;
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>" + page[1] + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d4-tk-route=\"" + page[0] + "\"><h1>" + page[1] + "</h1><p>D4_TK_LOCAL_PAGE</p><p>离线提示：" + page[2] + "</p><button data-d1-action=\"guarded\" disabled>" + page[3] + "</button></main></body></html>";
+    }
+
+    private static String localD5TgLocalPage(String url) {
+        String path = normalizedUrlPath(url);
+        String[] page = null;
+        if ("/pc/local/tg/jump-push".equals(path)) {
+            page = new String[] {"jump-push", "TG 跳推系统", "未配置跳推帐号或发送目标，本页不触发发送。", "启动跳推系统"};
+        } else if ("/pc/local/tg/accounts".equals(path)) {
+            page = new String[] {"accounts", "TG 帐号", "本地未保存 TG 帐号，帐号管理能力尚未接入。", "管理 TG 帐号"};
+        } else if ("/pc/local/tg/ai-collect".equals(path)) {
+            page = new String[] {"ai-collect", "TG AI 采集", "未配置采集条件或范围，本页不提交采集。", "提交 TG AI采集"};
+        } else if ("/pc/local/tg/ai-data".equals(path)) {
+            page = new String[] {"ai-data", "TG AI数据", "本地未保存 TG 数据，本页不读取或修改数据。", "查看 TG AI数据"};
+        } else if ("/pc/local/tg/group-collect".equals(path)) {
+            page = new String[] {"group-collect", "TG AI 群采集", "未配置群采集条件或范围，本页不提交采集。", "提交 TG AI群采集"};
+        } else if ("/pc/local/tg/group-member-extract".equals(path)) {
+            page = new String[] {"group-member-extract", "TG AI 群成员提取", "未配置 TG 群或成员范围，本页不提取成员。", "提取 TG 群成员"};
+        } else if ("/pc/local/tg/ai-filter".equals(path)) {
+            page = new String[] {"ai-filter", "TG AI筛选", "本地没有可筛选的数据，本页不执行筛选。", "开始 TG AI筛选"};
+        } else if ("/pc/local/tg/ai-growth".equals(path)) {
+            page = new String[] {"ai-growth", "TG AI裂变", "未配置帐号或裂变目标，本页不启动裂变。", "启动 TG AI裂变"};
+        } else if ("/pc/local/tg/android-agent".equals(path)) {
+            page = new String[] {"android-agent", "TG 安卓智能体", "安卓设备与智能体运行链未接入，本页不启动设备。", "启动 TG 安卓智能体"};
+        } else if ("/pc/local/tg/aicloud-fingerprint".equals(path)) {
+            page = new String[] {"aicloud-fingerprint", "TG AiCloud指纹", "本地没有可绑定的 TG AiCloud 指纹数据。", "绑定 TG AiCloud指纹"};
+        } else if ("/pc/local/tg/adspower-fingerprint".equals(path)) {
+            page = new String[] {"adspower-fingerprint", "TG AdsPower指纹", "本地没有可绑定的 TG AdsPower 指纹数据。", "绑定 TG AdsPower指纹"};
+        }
+        if (page == null) {
+            return null;
+        }
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>" + page[1]
+                + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d5-tg-route=\""
+                + page[0] + "\"><h1>" + page[1] + "</h1><p>D5_TG_LOCAL_PAGE</p><p>离线提示："
+                + page[2] + "</p><button data-d1-action=\"guarded\" disabled>" + page[3]
+                + "</button></main></body></html>";
+    }
+
+    private static String localD5GeoLocalPage(String url) {
+        String path = normalizedUrlPath(url);
+        String[] page = null;
+        if ("/pc/local/geo/google-seo".equals(path)) page = new String[] {"google-seo", "精准官网挖掘", "未配置官网挖掘关键词或地区，本页不发起搜索。", "开始官网挖掘"};
+        else if ("/pc/local/geo/precise-number-mining".equals(path)) page = new String[] {"precise-number-mining", "精准号码挖掘", "未配置号码挖掘条件，本页不发起检索。", "开始号码挖掘"};
+        else if ("/pc/local/geo/google-geo-media".equals(path)) page = new String[] {"google-geo-media", "Google GEO外媒体", "本地未保存 GEO 外媒体数据，本页不读取外部媒体。", "查看 GEO外媒体"};
+        else if ("/pc/local/geo/global-number-collect".equals(path)) page = new String[] {"global-number-collect", "全球号码采集", "未配置号码采集条件或范围，本页不提交采集。", "开始全球号码采集"};
+        else if ("/pc/local/geo/global-region-collect".equals(path)) page = new String[] {"global-region-collect", "全球地区采集", "未配置地区采集范围，本页不提交采集。", "开始全球地区采集"};
+        else if ("/pc/local/geo/customs-data-mining".equals(path)) page = new String[] {"customs-data-mining", "海关数据挖掘", "本地没有可挖掘的海关数据，本页不发起查询。", "开始海关数据挖掘"};
+        else if ("/pc/local/geo/global-company-data".equals(path)) page = new String[] {"global-company-data", "全球企业大数据", "本地未保存全球企业数据，本页不读取或修改数据。", "查看全球企业数据"};
+        else if ("/pc/local/geo/global-big-data".equals(path)) page = new String[] {"global-big-data", "全球大数据", "本地未保存全球大数据，本页不读取或修改数据。", "查看全球大数据"};
+        else if ("/pc/local/geo/number-ai-active-filter".equals(path)) page = new String[] {"number-ai-active-filter", "号码 AI筛选活跃", "本地没有可筛选的号码数据，本页不执行筛选。", "开始号码 AI筛选"};
+        if (page == null) return null;
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>" + page[1] + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d5-geo-route=\"" + page[0] + "\"><h1>" + page[1] + "</h1><p>D5_GEO_LOCAL_PAGE</p><p>离线提示：" + page[2] + "</p><button data-d1-action=\"guarded\" disabled>" + page[3] + "</button></main></body></html>";
+    }
+
+    private static String localD5WaLocalPage(String url) {
+        String path = normalizedUrlPath(url);
+        String[] page = null;
+        if ("/pc/local/wa/overview".equals(path)) page = new String[] {"overview", "信息总览", "未配置客服账号或会话，本页不读取消息。", "查看客服概览"};
+        else if ("/pc/local/wa/account-groups".equals(path)) page = new String[] {"account-groups", "账号分组", "未接入 WhatsApp 账号，本页不创建或调整分组。", "管理账号分组"};
+        else if ("/pc/local/wa/account-list".equals(path)) page = new String[] {"account-list", "账号列表", "未登录或绑定 WhatsApp 账号，本页不读取账号。", "查看账号列表"};
+        else if ("/pc/local/wa/contact-pool".equals(path)) page = new String[] {"contact-pool", "联系人数据池", "本地未配置联系人数据，本页不导入或读取联系人。", "查看联系人数据池"};
+        else if ("/pc/local/wa/fan-broadcast".equals(path)) page = new String[] {"fan-broadcast", "爆粉群发", "未配置接收对象，本页不创建或发送群发任务。", "开始爆粉群发"};
+        else if ("/pc/local/wa/group-broadcast".equals(path)) page = new String[] {"group-broadcast", "群聊群发", "未配置群聊或消息内容，本页不创建或发送群发任务。", "开始群聊群发"};
+        else if ("/pc/local/wa/customer-service-list".equals(path)) page = new String[] {"customer-service-list", "客服列表", "未接入客服账号，本页不读取会话或消息。", "查看客服列表"};
+        if (page == null) return null;
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"><title>" + page[1] + "</title><style>body{margin:0;background:#f7f8fa;color:#303133;font:14px Arial,sans-serif;}main{max-width:760px;margin:64px auto;padding:32px;background:#fff;border:1px solid #ebeef5;border-radius:6px;}h1{margin:0 0 16px;font-size:22px;}p{line-height:1.7;color:#606266;}button{margin-top:12px;padding:9px 18px;border:0;border-radius:4px;background:#c0c4cc;color:#fff;}</style></head><body><main data-d5-wa-route=\"" + page[0] + "\"><h1>" + page[1] + "</h1><p>D5_WA_LOCAL_PAGE</p><p>离线提示：" + page[2] + "</p><button data-d1-action=\"guarded\" disabled>" + page[3] + "</button></main></body></html>";
     }
 
     private static String localC6CommercePage(String url) {
@@ -634,6 +911,91 @@ public final class M5LocalSpiderBridge {
                     + "</main></body></html>";
         }
         return null;
+    }
+
+    public static String localC66RechargeDialogHtml() {
+        return "<html><body><main data-c6-surface=\"recharge\">"
+                + "<h1>充值</h1><p>C6_RECHARGE_UI</p>"
+                + "<p>当前离线，支付与订单功能不可用。</p>"
+                + "<button data-c6-action=\"disabled\" disabled>立即充值</button>"
+                + "</main></body></html>";
+    }
+
+    public static void openC66RechargeDialog() {
+        Runnable show = () -> {
+            final javax.swing.JDialog dialog = new javax.swing.JDialog((java.awt.Frame) null, "充值", false);
+            dialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+            javax.swing.JPanel panel = new javax.swing.JPanel();
+            panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+            panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(24, 28, 24, 28));
+            javax.swing.JLabel title = new javax.swing.JLabel("充值");
+            title.setFont(title.getFont().deriveFont(java.awt.Font.BOLD, 20f));
+            panel.add(title);
+            panel.add(javax.swing.Box.createVerticalStrut(14));
+            panel.add(new javax.swing.JLabel("当前离线，余额、支付与订单功能不可用。"));
+            panel.add(javax.swing.Box.createVerticalStrut(18));
+            javax.swing.JButton recharge = new javax.swing.JButton("立即充值");
+            recharge.setEnabled(false);
+            recharge.putClientProperty("data-c6-action", "disabled");
+            panel.add(recharge);
+            dialog.setContentPane(panel);
+            dialog.pack();
+            dialog.setSize(Math.max(dialog.getWidth(), 430), Math.max(dialog.getHeight(), 190));
+            dialog.setLocationByPlatform(true);
+            // This ownerless local dialog must remain above the JxBrowser shell it was opened from.
+            dialog.setAlwaysOnTop(true);
+            dialog.setVisible(true);
+            dialog.toFront();
+            dialog.requestFocus();
+            System.out.println("C66_RECHARGE_DIALOG_VISIBLE route=/pc/c6/recharge");
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            javax.swing.SwingUtilities.invokeLater(show);
+        }
+    }
+
+    private static String localC62ExternalRequestBlock(String url, boolean includeMirroredHosts) {
+        if (url == null) {
+            return null;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                    || host == null
+                    || "localhost".equalsIgnoreCase(host)
+                    || "127.0.0.1".equals(host)
+                    || "::1".equals(host)) {
+                return null;
+            }
+            if (!includeMirroredHosts && isC62MirroredHost(host)) {
+                return null;
+            }
+            String path = normalizedUrlPath(url).toLowerCase();
+            if (path.endsWith(".js")) {
+                return "/* C62_EXTERNAL_REQUEST_BLOCKED */";
+            }
+            if (path.endsWith(".css")) {
+                return "/* C62_EXTERNAL_REQUEST_BLOCKED */";
+            }
+            if (path.endsWith(".html") || path.startsWith("/pc/") || path.startsWith("/views/")) {
+                return "<!doctype html><html><body>C62_EXTERNAL_REQUEST_BLOCKED</body></html>";
+            }
+            return "{\"code\":503,\"msg\":\"C62_EXTERNAL_REQUEST_BLOCKED\",\"data\":null,\"rows\":[],\"total\":0}";
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static boolean isC62MirroredHost(String host) {
+        String lower = host == null ? "" : host.toLowerCase();
+        return "app.xdxsoft.com".equals(lower)
+                || "xdxsoft.com".equals(lower)
+                || "huochai.ai".equals(lower)
+                || lower.endsWith(".huochai.ai");
     }
 
     private static String localWebTerminalJson(String url) {
@@ -776,6 +1138,7 @@ public final class M5LocalSpiderBridge {
         if (path.endsWith(".html")
                 || path.equals("/")
                 || path.startsWith("/pc/")
+                || path.startsWith("/views/overseasAds/")
                 || path.startsWith("/aiAgent/")
                 || path.startsWith("/es/")
                 || path.startsWith("/wsClaw/")) {

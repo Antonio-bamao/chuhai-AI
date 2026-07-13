@@ -8,28 +8,67 @@
   ],
   "areas": [
     {
+      "code": "",
+      "label": "空区号"
+    },
+    {
       "code": "+1",
       "label": "美国/加拿大 +1"
+    },
+    {
+      "code": "+91",
+      "label": "印度 +91"
+    },
+    {
+      "code": "+92",
+      "label": "巴基斯坦 +92"
     }
   ],
   "operators": [
     {
-      "code": "europages.com",
-      "label": "Europages B2B 公开电话线索",
-      "platform": "europages.com",
+      "code": "indiamart.com",
+      "label": "IndiaMart B2B 公开联系方式",
+      "platform": "indiamart.com",
       "defaultGoogSite": "google.com",
-      "queryMode": "legacy_site_dork",
-      "queryTemplate": "site:{pltCode} {keywords} {areaCode}",
-      "enabled": false
+      "queryMode": "operator_template",
+      "queryTemplate": "site:{pltCode} {keywords} contact {areaCode}",
+      "enabled": true
     },
     {
-      "code": "made-in-china.com",
-      "label": "Made-in-China 供应商公开电话线索",
-      "platform": "made-in-china.com",
+      "code": "tradeindia.com",
+      "label": "TradeIndia B2B 公开联系方式",
+      "platform": "tradeindia.com",
       "defaultGoogSite": "google.com",
-      "queryMode": "legacy_site_dork",
-      "queryTemplate": "site:{pltCode} {keywords} {areaCode}",
-      "enabled": false
+      "queryMode": "operator_template",
+      "queryTemplate": "site:{pltCode} {keywords} contact {areaCode}",
+      "enabled": true
+    },
+    {
+      "code": "kompass.com",
+      "label": "Kompass 供应商公开联系方式",
+      "platform": "kompass.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "operator_template",
+      "queryTemplate": "site:{pltCode} {keywords} contact {areaCode}",
+      "enabled": true
+    },
+    {
+      "code": "in.kompass.com",
+      "label": "Kompass India 供应商公开联系方式",
+      "platform": "in.kompass.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "operator_template",
+      "queryTemplate": "site:{pltCode} {keywords} contact {areaCode}",
+      "enabled": true
+    },
+    {
+      "code": "exporthub.com",
+      "label": "ExportHub 出口商公开联系方式",
+      "platform": "exporthub.com",
+      "defaultGoogSite": "google.com",
+      "queryMode": "operator_template",
+      "queryTemplate": "site:{pltCode} {keywords} contact {areaCode}",
+      "enabled": true
     },
     {
       "code": "facebook.com",
@@ -58,6 +97,50 @@
     {
       "code": "wholesale supplier",
       "label": "wholesale supplier"
+    },
+    {
+      "code": "manufacturer contact",
+      "label": "manufacturer contact"
+    },
+    {
+      "code": "supplier contact",
+      "label": "supplier contact"
+    },
+    {
+      "code": "exporter contact",
+      "label": "exporter contact"
+    },
+    {
+      "code": "wholesaler contact",
+      "label": "wholesaler contact"
+    },
+    {
+      "code": "distributor contact",
+      "label": "distributor contact"
+    },
+    {
+      "code": "trader contact",
+      "label": "trader contact"
+    },
+    {
+      "code": "importer contact",
+      "label": "importer contact"
+    },
+    {
+      "code": "importer contact number",
+      "label": "importer contact number"
+    },
+    {
+      "code": "dealer contact",
+      "label": "dealer contact"
+    },
+    {
+      "code": "vendor contact",
+      "label": "vendor contact"
+    },
+    {
+      "code": "agent contact",
+      "label": "agent contact"
     }
   ]
 }

@@ -658,3 +658,130 @@
 - 结果：候选 `.artifacts/working/m5c-ai-filter/App-m5c-ai-filter.jar`，SHA-256 `9BC58198EFD4B69A30198B25A384304861F077D6A004F1CFDEAFF088F5C674D5`；独立运行目录 `.artifacts/working/m5c-ai-filter-run/` 只替换该副本的 `data/app/App.dll`。
 - 验证：`python -m unittest tests.test_m4_auth_patch` 通过 `8/8`，`git diff --check` 无错误。截图 `.artifacts/runtime/m5c-ai-filter/screen-06-ai-filter-fitted.png`（SHA-256 `FE5BE4AD2188E0D1235CC2123AEB072E34B6760F91350F9838D7CD4BF62AE789`）证明原版列表/筛选控件/空态渲染；`screen-08-empty-wa-channel-options.png`（SHA-256 `4CB28836E118C77212580EDDD0BF2EDC63A4018AE9C9DD1BA4CB90B8FED6D7C2`）证明导入交互和无 WA 分组选项空态。
 - 边界与结论：未改 `.cnf`、`cloud.spider.b`、`libmytrpc`，未碰其他菜单，未运行真实筛选。二元结论为跑通：UI 活 + 本地列表/空态可用；真实 WA 筛选执行待单独接入。
+
+## 2026-07-12 01:28｜D-1 X 平台各子菜单独立本地页面候选试点
+- 目标：D-1 X 平台各子菜单独立本地页面候选试点
+- 动作：定位 original(...) 统一 JSinglepage/AiCloud 目录值与裸 JSinglepage 兜底；按 TDD 新增九路由、九本地页和最小 overlay；从 C-67 构建候选；尝试独立运行包 GUI 验证。
+- 结果：候选 BA33BD1AC222ECDEDB80A7DC4E91EB9741CD124801F6243666E56BCE9D8265C8 仅替换菜单 JSON 和 M5LocalSpiderBridge；九页和禁用守门已由测试证明。隔离实例日志记录该候选但未出现独立可操作窗口，未完成 GUI/抓包验收。
+- 验证：三项 D-1 红绿测试通过；python -m unittest discover -s tests -v 为 74/74；根 data/app WhatsApp spider_data 当前 848。
+- 下一步：在不运行 live 的干净会话或 VM 中启动 isolated run，逐页点击并保存截图、请求观察和目标 IP 负证据；复核用户所指的 858 计数来源。
+
+## 2026-07-12 01:55｜D-1.1 补 X 九页隔离 GUI 与 0 外网取证
+- 目标：D-1.1 补 X 九页隔离 GUI 与 0 外网取证
+- 动作：停止既有 live Java PID 18664；启动隔离 run 的 D-1 候选 PID 24240；逐页点击 9 个 X 菜单并保存截图；以 500ms 间隔采样候选 PID 非 loopback TCP 90 秒；复核 SQLite 和 C-6/客服专项回归。
+- 结果：九页截图、九条显式 local leaf/D1_X_LOCAL_PAGE 日志和网络采样已保存；候选 PID 无非 loopback TCP 样本，四个指定 IP 均为 0；live 数据库 COUNT=848/MAX_ID=858/sqlite_sequence=858；候选已退出，未覆盖 live。
+- 验证：目标 IP 0、network-samples.csv 仅表头；C-6/客服专项 unittest 5/5 OK；既有全量 74/74 OK。
+- 下一步：若继续其它平台，复用 D-1 显式 leaf、本地桥、隔离 PID 和网络采样流程；当前保持候选分支且不 merge/PR。
+
+## 2026-07-12 03:00｜D-1.2 将 X 独立本地页候选 swap 到 live 并恢复现网
+- 目标：D-1.2 将 X 独立本地页候选 swap 到 live 并恢复现网
+- 动作：核验 C-67 live SHA；停止隔离候选；创建带时间戳备份和回滚锚点；swap D-1 候选到 data/app/App.dll；根 launcher 冷启 live；逐页点击 X 九菜单并采样 live PID 非 loopback TCP；复核 SQLite 并全量回归。
+- 结果：live SHA 已从 9A9D18AF…5EC1EDA1 切换为 BA33BD1A…D8265C8；live 已恢复并保存九页截图；目标 IP 均为 0；DB 为 COUNT=848/MAX_ID=858/sqlite_sequence=858。
+- 验证：rollback-anchor.json 与 live-smoke evidence 已落盘；90 秒 network-samples.csv 仅表头；python -m unittest discover -s tests -v 为 74/74 OK。
+- 下一步：保持 D-1 分支和回滚备份；若扩展其它平台，复用 D-1 显式 leaf、本地页面、live swap 与网络采样流程。
+
+## 2026-07-12 05:40｜D-1.3 修复 live .NET 启动器相对日志路径
+
+- 目标：消除 `logs\\202607` 访问被拒绝的未处理 .NET 弹窗，且不改 D-1 X 功能或采集链。
+- 诊断：反编译 `HuoChaiAI.exe` 确认 `StartAppBoot.Form1::WriteLog` 以相对 `logs\\` 组装日志路径；旧启动器在 `C:\Windows\System32` CWD 精确抛 `UnauthorizedAccessException`。D-1.2 的 `App.dll` 仅改两 Java class，且 D-1/C-67 启动器 SHA 相同，故为既有启动器/CWD 缺陷而非 X 改动引入。
+- 动作：在隔离副本将日志根改为 `Application.StartupPath + "\\logs\\"`，并以 `catch (System.Exception)` 降级日志 I/O 错误；ILASM 重建后先用同入口反射探针验证，再按 SHA/时间戳备份/回滚锚点覆盖项目 live `data/app/HuoChaiAI.exe`。
+- 验证：旧件不可写 CWD 失败、修复 live 在正常及不可写 CWD 均成功；D-1 `App.dll` 仍为 `BA33BD1A…D8265C8`，新鲜 Java 运行进入 X 精准搜索本地页并可见 `D1_X_LOCAL_PAGE`、离线提示、禁用提交守门；X 页 10 秒采样无非 loopback TCP，四目标 IP 0；SQLite 为 `COUNT=848 / MAX_ID=858 / sqlite_sequence=858`；完整 `python -m unittest discover -s tests -v` 为 74/74 OK。
+- 边界：未修改 `.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集执行；未触碰用户桌面原始安装目录 `H:\HuoChaiAI\app`；保留分支，不 merge/PR。完整证据见 `.artifacts/working/d13-log-diagnosis/evidence.md`。
+
+## 2026-07-12 06:45｜D-2 Instagram 独立本地页候选与隔离验收
+
+- 目标：仅将 Instagram 九个子菜单由统一兜底改为显式 `/pc/local/ins/<leaf>` 本地页；不接真实采集/登录/群发/指纹后端，不覆盖 D-1 live。
+- 诊断：`C4131_002..010` 原先八项为 `original-i18n -> JSinglepage + /pc/aicloud/my`，`C4131_005` 为旧 C-5 `/es/bigData/bigDataTask?code=ins_blogger_data`；均不能产生区分度。D-2 目录改为九个明确 leaf，配对显式 child，避免 `JSinglepage` 归一化兜底。
+- 动作：只替换候选中的 `com/sbf/util/http/SBFApi.class` 与 `com/sbf/main/jxbrowser/M5LocalSpiderBridge.class`。每页生成 `D2_INS_LOCAL_PAGE`、语义化离线提示、且操作按钮固定 `data-d1-action="guarded" disabled`。同时将通用补丁器的大 JSON 生成改为分段 `StringBuilder`，避免 JVM 单常量 64KiB UTF-8 上限；旧 Instagram/C-5 测试契约同步为 D-2 九页本地路由。
+- 结果：候选 `.artifacts/working/d2-ins-local-pages/App.d2.ins.candidate.dll` SHA-256 `D6230E67854553E89F25858719853171DF21AD9BA770D0ADCF7E3F8BD0864751`；ZIP 条目名相同且仅上述两 class 字节不同。隔离窗口逐页保存 `screens/ins-*.png` 九张截图，均可见本地页标记、禁用守门及不同标题/提示。点击九项时共采样 180 次（约 136 秒），CSV 仅表头，无非 loopback TCP 连接；`47.97.27.111`、`163.181.39.184`、`39.101.114.44`、`163.181.39.181` 均为 0。
+- 恢复：隔离 D-2 进程已退出，隔离 run 的 App.dll 已还原为 D-1 SHA `BA33BD1A…D8265C8`；项目 live `data/app/App.dll` 未改且保持同一 SHA，live Java 已重新启动并到达“功能入口”。未触碰 `.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集链。
+- 最终验证：`python -m unittest discover -s tests -p test_*.py -v` 为 `78/78 OK`（165.701 秒）；live `data/app/data/whatsappdata/db_spider_data_whatsapp_users_lists.data` 为 `COUNT=848 / MAX_ID=858 / sqlite_sequence=858`。候选仍只保留在工作目录，不 merge/PR、不覆盖 live。
+
+## 2026-07-13 02:40｜D5 TG local-page candidate and pre-swap gates
+- 目标：D5 TG local-page candidate and pre-swap gates
+- 动作：Added eleven C4135 Telegram explicit /pc/local/tg leaf routes, guarded static local pages, D5 overlay mode, red-green route/bridge/overlay tests, and migrated three obsolete aggregate contracts from old TG C5 routing to D5 leaves. Built candidate from current live baseline and ran isolated cold-start TCP sampling.
+- 结果：Candidate App.d5.tg.candidate.dll SHA-256 9A4B1D3D2DC1A8499E44D567ACAE97FEB1E78D04970A50E0030C76D14ABCD3B2 exists; it differs from E32995C73414EBE3A96E460DD70A87AEA7D14D52185E78CB2CDCE1315572C34F only in SBFApi.class and M5LocalSpiderBridge.class. Live was not swapped.
+- 验证：Three D5 tests red then green; full unittest suite fresh 84/84 OK; isolated candidate launcher logged the D5 hash; 180 500ms non-loopback TCP samples are empty and watched-target count is 0; isolated runner App.dll and project live App.dll both restored to E32995...72C34F.
+- 下一步：Await user direction on the project launcher UAC blocker before any D5 live swap; do not begin GEO.
+
+## 2026-07-13 02:46｜D5 TG live swap smoke retry
+- 目标：D5 TG live swap smoke retry
+- 动作：Retried the current live launcher with the user present, made timestamped backup App.live-20260713-024543-E32995C7.dll and rollback anchor, swapped the D5 candidate, then polled for the live Java window without driving any menu.
+- 结果：The live Java window was not observed within 12 seconds, so the smoke gate failed and the candidate was immediately rolled back. D5 remains a candidate only.
+- 验证：Rollback hash is E32995C73414EBE3A96E460DD70A87AEA7D14D52185E78CB2CDCE1315572C34F; database remains 848/858/858. Candidate evidence remains 84/84 regression, two-class delta, and 180 empty non-loopback TCP samples.
+- 下一步：Ask user whether the UAC prompt appeared and was accepted during the retry; only retry swap after that confirmation. Do not start GEO.
+
+## 2026-07-13 02:48｜D5 rollback live restoration
+- 目标：D5 rollback live restoration
+- 动作：After immediate DLL rollback, retried the reverted launcher without menu automation and inspected the app window state.
+- 结果：The reverted E32995...72C34F live Java process appeared after the earlier 12-second observation window and exposed the 功能入口 window. D5 candidate remains unswapped.
+- 验证：Computer-use app discovery identified process H:\项目\出海-AI\data\jdk\bin\java.exe with one window titled 功能入口; live App.dll hash remains E32995C73414EBE3A96E460DD70A87AEA7D14D52185E78CB2CDCE1315572C34F.
+- 下一步：If the user authorizes another D5 live attempt, use a longer post-UAC readiness window and retain the immediate rollback rule; otherwise keep candidate only and do not start GEO.
+
+## 2026-07-13 02:55｜D5 TG second live-swap attempt and final gate
+- 目标：D5 TG second live-swap attempt and final gate
+- 动作：With user authorization, created a fresh timestamped backup and rollback anchor, swapped candidate 9A4B1D...BCD3B2, launched the project live application, and observed for 60 seconds without menu automation.
+- 结果：No Java window appeared during the full 60-second smoke window, so the swap was immediately rolled back. TG remains candidate-only.
+- 验证：Live rollback hash E32995C73414EBE3A96E460DD70A87AEA7D14D52185E78CB2CDCE1315572C34F; SQLite 848/858/858. Candidate remains validated by 84/84 regression, two-class JAR delta, and 180-sample zero-external-TCP isolation evidence.
+- 下一步：Stop D5 platform progression. Diagnose the live launcher/UAC path as a separate task before any third swap; do not open GEO or WhatsApp customer-service rounds.
+
+## 2026-07-13 03:44｜D-5.2 asInvoker launcher replacement and TG live swap
+
+- 目标：以已验证的 asInvoker 小启动器替换 project live 的 UAC 更新启动器，将 D5 TG 候选切入 live，并完成自动化冷启/回归/网络/数据库门；不改桌面快捷方式、不自动点击 TG 菜单。
+- 动作：先核验 live App.dll `E32995C7…72C34F`、旧 launcher `58EBCEFC…51BF4`、候选 `9A4B1D3D…ABCD3B2` 与 asInvoker `986BE98D…B8933E`，再备份为 `data/app/backups/App.live-20260713-034418-E32995C7.dll`、`HuoChaiAI.live-20260713-034418-58EBCEFC.exe`。随后原子替换 live App.dll 和 launcher；通过 project 路径启动，只被动观察窗口。
+- 结果：asInvoker 启动日志记录候选 SHA 与 Java PID `26812`，`H:\\项目\\出海-AI\\data\\jdk\\bin\\java.exe` 出现“功能入口”窗口；窗口枚举未见 Consent/UAC/HuoChai/.NET 异常对话框。180 次 TCP 采样从 03:48:06 至 03:50:19，CSV 仅表头，非 loopback 行数 0，四个历史目标均 0。DB `spider_data` 为 `COUNT=848 / MAX_ID=858 / sqlite_sequence=858`；切换后完整回归为 `84/84 OK`（186.280 秒）。
+- 下一步：live Java 窗口保留，交用户手工点击 TG 11 个子菜单，逐页确认独立本地页、D5 标记、语义空态和禁用守门；用户确认前不将 TG 标为最终锁定、不开始 GEO。
+
+## 2026-07-13 03:55｜D-5.2 TG user visual acceptance
+
+- 结果：用户已手工验收 TG 全部 11 个子菜单并明确确认“TG 11 页通过”。D5 TG 正式锁进 project live 基线；保留 asInvoker 小启动器和对应 App.dll 回滚备份。
+- 边界：未启动 GEO 或 WhatsApp 下一轮；未修改桌面快捷方式、`.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集链。
+
+## 2026-07-13 20:05｜D-5 GEO candidate build and interrupted isolation smoke
+
+- 目标：按 D-5 第二轮将海外 GEO 九个子菜单迁移为独立 `/pc/local/geo/<leaf>` 空态页；候选优先，不覆盖 TG live。
+- 动作：将 `C4134_002/C4134_003/C4134_006/C4137_001..006` 从原 C5/归一化兜底替换为九条显式 GEO 叶路由；本地桥为每页输出 `D5_GEO_LOCAL_PAGE`、语义化离线提示与 `data-d1-action="guarded" disabled`。候选由 TG live `9A4B1D3D…ABCD3B2` 构建，JAR 仅替换 `SBFApi.class`、`M5LocalSpiderBridge.class`。
+- 结果：候选 `App.d5.geo.candidate.dll` SHA-256 `3EAFBA67276CCA2BE80C6E690B42EED88E5DA2D9C69DD6B5E90339B0E9183CF8`；D5 GEO 路由/页面/两类覆盖测试通过，完整回归 `87/87 OK`，构建前后 DB 均为 `848/858/858`。
+- 阻断：在 project live TG Java 实例仍运行时，隔离 asInvoker 记录 GEO SHA、`java_pid=23608` 与 `Start Success` 后提前退出，未出现第二个 Java 窗口，无法开始候选 PID 的非 loopback TCP 采样。未将此归因于 GEO 代码；疑似共享实例冲突，仍待排查。
+- 恢复：立即将隔离 D4 runner 的 App.dll 恢复至 `E32995…72C34F`；project live App.dll 仍为 TG `9A4B1D3D…ABCD3B2`，启动器和 DB 均未改。需用户授权短暂停止 live TG 后重做隔离冷启、网络采样和 DB 复核；所有候选门通过后，仍需用户另行授权才可 GEO live swap。
+
+## 2026-07-13 20:25｜D-5 GEO isolated cold-start and network gate
+
+- 前提：用户授权短暂停止当前 project live TG 窗口以排除并发实例干扰；仅停止已核验路径的 Java PID `4100`。
+- 动作：隔离 runner 写入 GEO 候选并通过 asInvoker 启动。Java PID `27836` 正常进入“功能入口”；对该 PID 执行 180 次非 loopback TCP 采样。采样结束后停止隔离候选、恢复 runner App.dll，并以 project `data/app/HuoChaiAI.exe` 冷启 TG live。
+- 结果：`network-samples.csv` 仅表头（180 个样本、非 loopback 连接 0、四个历史目标均 0）；候选 DB 为 `848/858/858`。候选与 TG live 的 ZIP 差异精确为 `SBFApi.class`、`M5LocalSpiderBridge.class` 两类。隔离 runner 已还原至 `E32995…72C34F`；TG live 保持 `9A4B1D3D…ABCD3B2`，新 PID `38524` 出现“功能入口”窗口。
+- 结论：GEO 候选三门（87/87、0 外网、DB 不变）均通过，仍未 swap 到 live。后续须取得用户单独授权，才可执行带备份和回滚锚点的 GEO live swap 并交用户肉眼验收。
+
+## 2026-07-13 20:37｜D-5 GEO authorized live swap and automatic smoke
+
+- 授权：用户明确确认 GEO live swap。
+- 动作：停止已核验 TG live Java PID `38524`；将 TG `9A4B1D3D…ABCD3B2` 备份为 `data/app/backups/App.live-20260713-202650-9A4B1D3D.dll`，再切入 GEO `3EAFBA67…183CF8`。保留 asInvoker launcher 不变，通过 project 路径冷启。
+- 结果：新 Java PID `37508` 正常显示“火柴AI”，launcher 记录 GEO SHA；未见 UAC、HuoChaiAI 或 .NET 异常进程。切换后完整回归 `87/87 OK`（231.772 秒），live PID 180 次非 loopback TCP 采样仅表头、四个历史目标均 0，DB `848/858/858`。
+- 回滚：`data/app/backups/D5-GEO-rollback-20260713-202650.md` 已记录恢复路径。当前仅待用户手工验收 GEO 9 页；任一页不符合独立本地页/禁用守门要求即按该锚点回滚。
+
+## 2026-07-13 20:41｜D-5 GEO user visual acceptance
+
+- 结果：用户已明确确认“现在 9 页都通过”，并提供“全球地区采集”本地页截图；截图可见 `D5_GEO_LOCAL_PAGE`、贴合语义的离线提示及禁用“开始全球地区采集”按钮。
+- 结论：D-5 GEO 正式锁进 project live 基线，live App.dll `3EAFBA67…183CF8`；保留 TG 回滚备份与 GEO rollback anchor。未修改 launcher、桌面快捷方式、`.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集链。
+- 下一步：如用户继续授权，按一次一平台纪律开启 WhatsApp AI龙虾客服候选轮；仅做 UI 空态骨架和禁用守门，不做真实扫码登录或收发消息。
+
+## 2026-07-13 21:04｜D-5 WhatsApp AI龙虾客服 candidate and isolation gates
+
+- 目标：将 7 个 `wskefu` 菜单由旧客服会话页/归一化兜底迁移为 `/pc/local/wa/<leaf>` 独立本地页；不实现扫码、登录、账号接入、会话、联系人、群发或消息能力。
+- 动作：新增 `D5_WA_LOCAL_PAGE` 路由、桥接页和 `--d5-wa-overlay`，并将旧 C5 `C4936_000` 断言迁移为 WA 七页本地契约。新页面均含语义离线提示和 `data-d1-action="guarded" disabled`。
+- 结果：候选 `App.d5.wa.candidate.dll` SHA-256 `63135EA6272140F9C816357F63554F72F122A8EF60AC8E8394B1E5F365185F71` 相对 GEO live `3EAFBA67…183CF8` 仅改变 `SBFApi.class`、`M5LocalSpiderBridge.class`。完整回归 `90/90 OK`（208.631 秒）；隔离候选 PID `30064` 冷启到“功能入口”，180 次非 loopback TCP 采样仅表头、四个历史目标均 0；DB `848/858/858`。
+- 恢复：停止隔离候选并将 runner App.dll 恢复为 `E32995…72C34F`；project GEO live 保持 `3EAFBA67…183CF8`，重新冷启到 Java PID `29356` 的“功能入口”。未覆盖 live、未修改 launcher、桌面快捷方式、`.cnf`、`cloud.spider.b`、`libmytrpc`、时钟或采集链。
+- 下一步：等待用户单独授权后才可 WA live swap；切换后需冷启、回归、网络/DB 复核，再交用户手工验收 7 页。
+
+## 2026-07-13 21:07｜D-5 WhatsApp AI龙虾客服 authorized live swap and automatic smoke
+
+- 授权：用户明确授权 WA 候选切入 live。
+- 动作：停止已核验 GEO live Java PID `29356`；将 GEO `3EAFBA67…183CF8` 备份为 `data/app/backups/App.live-20260713-210700-3EAFBA67.dll`，再切入 WA `63135EA6…185F71`。保持 asInvoker launcher 不变，通过 project 路径冷启。
+- 结果：新 Java PID `36148` 正常显示“火柴AI”，launcher 记录 WA SHA；未见 UAC、HuoChaiAI 或 .NET 异常进程。切换后完整回归 `90/90 OK`（231.193 秒），live PID 180 次非 loopback TCP 采样仅表头、四个历史目标均 0，DB `848/858/858`。
+- 回滚：`data/app/backups/D5-WA-rollback-20260713-210700.md` 已记录恢复路径。当前仅待用户手工验收 WA 7 页；任一页不符合独立本地页/禁用守门要求即按该锚点回滚。
+
+## 2026-07-13 21:11｜D-5 WhatsApp AI龙虾客服 user visual acceptance
+
+- 结果：用户确认“可以了”，并提供“账号列表”本地页截图；截图可见 `D5_WA_LOCAL_PAGE`、离线提示及禁用“查看账号列表”按钮。
+- 结论：D-5 WA 正式锁进 project live 基线，live App.dll `63135EA6…185F71`；保留 GEO 回滚备份与 WA rollback anchor。未修改 launcher、桌面快捷方式、`.cnf`、`cloud.spider.b`、`libmytrpc`、系统时钟或采集链。
+- 里程碑：D-5 的 TG 11 页、GEO 9 页和 WA 客服 7 页均已按同一两类覆盖层模板完成自动门和用户肉眼验收。

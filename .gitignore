@@ -11,6 +11,9 @@ data/app/config/.env
 data/app/config/yescaptcha.properties
 
 # Runtime-generated application state
+/temp/
+/data/app/*.log
+/data/app/backups/
 /activemq-data/
 /data/app/activemq-data/
 /data/app/app/
@@ -22,6 +25,8 @@ data/app/config/yescaptcha.properties
 /data/app/mydocuments.path
 
 # Runtime-extracted device helpers
+/data/jdk/
+/data/lib/
 /data/adbv4/
 /data/app/btcall/
 /data/lib/scrcpysv4.jar
